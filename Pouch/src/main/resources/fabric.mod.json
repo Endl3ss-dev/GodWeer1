@@ -1,0 +1,40 @@
+{
+	"schemaVersion": 1,
+	"id": "punch",
+	"version": "${version}",
+	"name": "Punch",
+	"description": "best dlc 1.21.4",
+	"authors": [
+		"zenZ and Kodek<3"
+	],
+	"contact": {
+		"homepage": "https://punchdlc.fun",
+		"sources": "https://t.me/antidaunleak"
+	},
+	"license": "CC0-1.0",
+	"icon": "assets/punch/icon.png",
+	"environment": "*",
+	"jars": [
+		{
+			"file": "META-INF/jars/baritone-standalone-fabric-1.13.1.jar"
+		}
+	],
+	"entrypoints": {
+		"main": [
+			"antileak.base.Punch"
+		],
+		"client": [
+			"antileak.base.client.PunchClient"
+		]
+	},
+	"mixins": [
+		"punch.mixins.json"
+	],
+	"accessWidener": "punch.accesswidener",
+	"depends": {
+		"fabricloader": ">=0.18.4",
+		"minecraft": "~1.21.4",
+		"java": ">=21",
+		"fabric-api": "*"
+	}
+}
