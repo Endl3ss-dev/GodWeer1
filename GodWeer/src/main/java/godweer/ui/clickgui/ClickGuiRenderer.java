@@ -22,11 +22,16 @@ import java.util.List;
 
 public class ClickGuiRenderer {
 
+    private static final ModuleCategory[] CATEGORIES = ModuleCategory.values();
+
     private final ClickGuiState state;
     private final ClickGuiSettingRenderer settingRenderer;
     private final ClickGuiThemeSelector themeSelector;
     private final MenuPanel menuPanel;
     private final List<String> descriptionLines = new ArrayList<>();
+
+    private Module describedModule;
+    private float descriptionWidth = -1.0f;
 
     public ClickGuiRenderer(ClickGuiState state, ClickGuiSettingRenderer settingRenderer,
                             ClickGuiThemeSelector themeSelector, MenuPanel menuPanel) {
@@ -42,48 +47,53 @@ public class ClickGuiRenderer {
         }
 
         float alphaMul = Mth.clamp(animationProgress, 0.0f, 1.0f);
-        int shadeColor = getFadeShadeColor(alphaMul, 120);
         int colorTheme = ThemeManager.getColor();
         Module hoveredModule = null;
 
-        ModuleCategory[] categories = ModuleCategory.values();
+        themeSelector.update(window, state);
+
+        ModuleCategory[] categories = CATEGORIES;
         for (int i = 0; i < categories.length; i++) {
             ModuleCategory category = categories[i];
             float panelX = ClickGuiLayout.getCategoryPanelX(state.getX(), i);
             Module categoryHoveredModule = renderCategoryPanel(context, mouseX, mouseY, panelX, category,
-                    colorTheme, alphaMul, shadeColor);
+                    colorTheme, alphaMul);
             if (categoryHoveredModule != null) {
                 hoveredModule = categoryHoveredModule;
             }
         }
 
-        renderSearch(context, categories.length, colorTheme, alphaMul);
-        themeSelector.render(context, window, state.getRenderOffsetY(), alphaMul, getFadeShadeColor(alphaMul, 95));
-        renderDescription(context, window, hoveredModule, alphaMul);
+        renderSearch(context, colorTheme, alphaMul);
+        themeSelector.render(context, window, state, alphaMul);
+        renderDescription(context, hoveredModule, alphaMul);
     }
 
     private Module renderCategoryPanel(GuiGraphics context, int mouseX, int mouseY, float panelX,
-                                       ModuleCategory category, int colorTheme, float alphaMul, int shadeColor) {
+                                       ModuleCategory category, int colorTheme, float alphaMul) {
         float slideOffX = menuPanel != null ? menuPanel.getPanelSlideOffsetX(category) : 0f;
         float slideOffY = menuPanel != null ? menuPanel.getPanelSlideOffsetY(category) : 0f;
+        if (category == ModuleCategory.PLAYER) {
+            slideOffY += themeSelector.getPlayerOffsetY();
+        }
         float panelAlphaScale = menuPanel != null ? menuPanel.getPanelAlpha(category) : 1f;
 
         float actualPanelX = panelX + slideOffX;
         float panelY = state.getY() + state.getRenderOffsetY() + slideOffY;
         float effectiveAlpha = alphaMul * panelAlphaScale;
 
-        RenderUtils.drawRoundedRect(context.pose(), actualPanelX, panelY, ClickGuiLayout.WIDTH,
-                ClickGuiLayout.HEIGHT, 9f, ColorUtils.rgba(0, 0, 0, 240));
+        RenderUtils.drawRoundedRect(context.pose(), actualPanelX, panelY, ClickGuiLayout.getWidth(),
+                ClickGuiLayout.getHeight(), 9f, ColorUtils.rgba(0, 0, 0, 240));
 
         String categoryName = category.getName();
         FontRenderer iconFont = icons(14);
         FontRenderer titleFont = issue(15);
 
         if (iconFont != null && titleFont != null) {
+            float titleCenterX = actualPanelX + ClickGuiLayout.getWidth() * 0.5f;
             iconFont.drawCenteredString(context.pose(), category.getIcons(),
-                    actualPanelX + 50 - (titleFont.getWidth(categoryName) / 2f) - 4, panelY + 13,
+                    titleCenterX - (titleFont.getWidth(categoryName) / 2f) - 4, panelY + 13,
                     alpha(colorTheme, effectiveAlpha));
-            titleFont.drawCenteredString(context.pose(), categoryName, actualPanelX + 52, panelY + 12,
+            titleFont.drawCenteredString(context.pose(), categoryName, titleCenterX + 2, panelY + 12,
                     alpha(-1, effectiveAlpha));
         }
 
@@ -94,7 +104,7 @@ public class ClickGuiRenderer {
         Module hoveredModule = null;
 
         ScissorUtils.push();
-        ScissorUtils.setFromComponentCoordinates(actualPanelX, contentY, ClickGuiLayout.WIDTH, contentHeight + 1);
+        ScissorUtils.setFromComponentCoordinates(actualPanelX, contentY, ClickGuiLayout.getWidth(), contentHeight + 1);
 
         List<Module> modules = state.getModules(category);
         for (int i = 0, size = modules.size(); i < size; i++) {
@@ -152,7 +162,7 @@ public class ClickGuiRenderer {
         }
 
         if (HoveringUtils.isHovered(mouseX, mouseY, panelX + ClickGuiLayout.MODULE_PADDING, moduleY,
-                ClickGuiLayout.MODULE_INNER_WIDTH, moduleHeight)) {
+                ClickGuiLayout.getModuleInnerWidth(), moduleHeight)) {
             return module;
         }
         return null;
@@ -160,7 +170,7 @@ public class ClickGuiRenderer {
 
     private void renderModuleBackground(GuiGraphics context, float panelX, float moduleY, float moduleHeight) {
         RenderUtils.drawRoundedRect(context.pose(), panelX + ClickGuiLayout.MODULE_PADDING, moduleY - 0.5f,
-                ClickGuiLayout.MODULE_INNER_WIDTH, moduleHeight + 1, 5f, ColorUtils.rgba(0, 0, 0, 30));
+                ClickGuiLayout.getModuleInnerWidth(), moduleHeight + 1, 5f, ColorUtils.rgba(0, 0, 0, 30));
     }
 
     // Три точки, вращающиеся вокруг центра при раскрытии модуля.
@@ -170,7 +180,7 @@ public class ClickGuiRenderer {
                 ? alpha(ColorUtils.rgba(255, 255, 255, 220), alphaMul)
                 : alpha(ColorUtils.rgba(255, 255, 255, 100), alphaMul);
 
-        float dotsX = panelX + 87.5f;
+        float dotsX = panelX + ClickGuiLayout.getWidth() - 12.5f;
         float baseY = moduleY + 10f;
         float spacing = 2f;
         float radius = 2.1f;
@@ -192,15 +202,15 @@ public class ClickGuiRenderer {
         RenderUtils.drawRoundCircle(context.pose(), originX + rx, originY + ry, radius, color);
     }
 
-    private void renderSearch(GuiGraphics context, int categoryCount, int colorTheme, float alphaMul) {
+    private void renderSearch(GuiGraphics context, int colorTheme, float alphaMul) {
         float searchY = ClickGuiLayout.getSearchY(state.getY() + state.getRenderOffsetY());
-        float searchW = getSearchWidth();
-        float searchX = ClickGuiLayout.getSearchX(state.getX(), categoryCount, searchW) - 10;
+        float searchW = ClickGuiLayout.getWidth();
+        float searchX = ClickGuiLayout.getSearchX(state.getX());
         float searchH = ClickGuiLayout.SEARCH_HEIGHT;
         float selectionPaddingLeft = 3.0f;
         float selectionPaddingRight = 1.5f;
 
-        RenderUtils.drawRoundedRect(context.pose(), searchX - 0.5f, searchY - 0.5f, searchW + 1f, searchH + 1f, 6f,
+        RenderUtils.drawRoundedRect(context.pose(), searchX, searchY, searchW, searchH, 6f,
                 ColorUtils.rgba(0, 0, 0, 220));
 
         String query = state.getSearchText();
@@ -218,7 +228,7 @@ public class ClickGuiRenderer {
             iconFont.draw(context.pose(), "l", iconX + 2, searchY + 6.5f, alpha(colorTheme, alphaMul));
         }
 
-        FontRenderer font = issue(15);
+        FontRenderer font = Fonts.Font5.get(14);
         if (font == null) {
             return;
         }
@@ -250,7 +260,7 @@ public class ClickGuiRenderer {
         ScissorUtils.pop();
     }
 
-    private void renderDescription(GuiGraphics context, Window window, Module hoveredModule, float alphaMul) {
+    private void renderDescription(GuiGraphics context, Module hoveredModule, float alphaMul) {
         if (hoveredModule == null) {
             return;
         }
@@ -261,21 +271,27 @@ public class ClickGuiRenderer {
             return;
         }
 
-        FontRenderer descriptionFont = issue(16);
+        FontRenderer descriptionFont = Fonts.Font5.get(13);
         if (descriptionFont == null) {
             return;
         }
 
-        float maxWidth = window.getGuiScaledWidth() - 40.0f;
-        wrapDescription(descriptionFont, description, maxWidth);
+        float maxWidth = ClickGuiLayout.getWidth() - 8.0f;
+        if (describedModule != hoveredModule || descriptionWidth != maxWidth) {
+            describedModule = hoveredModule;
+            descriptionWidth = maxWidth;
+            wrapDescription(descriptionFont, description, maxWidth);
+        }
         if (descriptionLines.isEmpty()) {
             return;
         }
 
         float lineHeight = descriptionFont.getHeight() - 2.0f;
         float boxHeight = descriptionLines.size() * lineHeight;
-        float centerX = window.getGuiScaledWidth() * 0.5f;
-        float startY = ClickGuiLayout.THEME_PANEL_Y - boxHeight - 6.0f;
+        float visualPanelX = ClickGuiLayout.getCategoryPanelX(state.getX(), ModuleCategory.RENDER.ordinal());
+        float centerX = visualPanelX + ClickGuiLayout.getWidth() * 0.5f;
+        float panelY = state.getY() + state.getRenderOffsetY();
+        float startY = panelY - boxHeight - 5.0f;
 
         for (int i = 0, size = descriptionLines.size(); i < size; i++) {
             descriptionFont.drawCenteredString(context.pose(), descriptionLines.get(i), centerX,
@@ -283,7 +299,6 @@ public class ClickGuiRenderer {
         }
     }
 
-    // Список переиспользуется между кадрами: описание перерисовывается каждый кадр наведения.
     private void wrapDescription(FontRenderer font, String text, float maxWidth) {
         descriptionLines.clear();
 
@@ -310,15 +325,6 @@ public class ClickGuiRenderer {
         }
     }
 
-    private float getSearchWidth() {
-        String query = state.getSearchText();
-        String text = query.isEmpty() ? "Search..." : query;
-        FontRenderer font = issue(15);
-        float textWidth = font == null ? text.length() * 6f : font.getWidth(text);
-        float contentWidth = ClickGuiLayout.SEARCH_TEXT_X + textWidth + ClickGuiLayout.SEARCH_RIGHT_PADDING;
-        return Math.max(ClickGuiLayout.SEARCH_WIDTH, contentWidth);
-    }
-
     private FontRenderer issue(int size) {
         return Fonts.Font2.get(size);
     }
@@ -335,8 +341,4 @@ public class ClickGuiRenderer {
         return ColorUtils.applyAlpha(color, alphaMul);
     }
 
-    private int getFadeShadeColor(float alphaMul, int maxAlpha) {
-        int alpha = Mth.clamp((int) ((1.0f - alphaMul) * maxAlpha), 0, 255);
-        return ColorUtils.rgba(0, 0, 0, alpha);
-    }
 }

@@ -4,7 +4,7 @@ public enum ModuleCategory {
 
     COMBAT("Combat", "A"),
     MOVEMENT("Movement", "B"),
-    RENDER("Visuals", "D"),
+    RENDER("Visual", "D"),
     MISC("Util", "E"),
     PLAYER("Player", "C");
 

@@ -24,6 +24,8 @@ import java.util.List;
 
 public class ClickGuiInputHandler {
 
+    private static final ModuleCategory[] CATEGORIES = ModuleCategory.values();
+
     private final ClickGuiState state;
     private final ClickGuiThemeSelector themeSelector;
 
@@ -34,9 +36,8 @@ public class ClickGuiInputHandler {
 
     public boolean mouseClicked(double mouseX, double mouseY, int button, Window window) {
         if (window != null && button == 0) {
-            int categoryCount = ModuleCategory.values().length;
-            float searchW = getSearchWidth();
-            float searchX = ClickGuiLayout.getSearchX(state.getX(), categoryCount, searchW) - 10;
+            float searchW = ClickGuiLayout.getWidth();
+            float searchX = ClickGuiLayout.getSearchX(state.getX());
             float searchY = ClickGuiLayout.getSearchY(state.getY() + state.getRenderOffsetY());
 
             boolean searchHovered = HoveringUtils.isHovered(mouseX, mouseY, searchX, searchY, searchW,
@@ -63,18 +64,21 @@ public class ClickGuiInputHandler {
 
         state.setEditingTextSetting(null);
 
-        if (themeSelector.handleClick(window, mouseX, mouseY, button, state.getRenderOffsetY())) {
+        if (themeSelector.handleClick(window, state, mouseX, mouseY, button)) {
             return true;
         }
 
-        ModuleCategory[] categories = ModuleCategory.values();
+        ModuleCategory[] categories = CATEGORIES;
         for (int i = 0; i < categories.length; i++) {
             ModuleCategory category = categories[i];
+            if (category == ModuleCategory.PLAYER && !themeSelector.isPlayerInteractive()) {
+                continue;
+            }
             float panelX = ClickGuiLayout.getCategoryPanelX(state.getX(), i);
             float contentY = ClickGuiLayout.getContentY(state.getY() + state.getRenderOffsetY());
             float contentHeight = ClickGuiLayout.getContentHeight();
 
-            if (!HoveringUtils.isHovered(mouseX, mouseY, panelX, contentY, ClickGuiLayout.WIDTH, contentHeight)) {
+            if (!HoveringUtils.isHovered(mouseX, mouseY, panelX, contentY, ClickGuiLayout.getWidth(), contentHeight)) {
                 continue;
             }
 
@@ -86,7 +90,7 @@ public class ClickGuiInputHandler {
                 float moduleHeight = ClickGuiLayout.getModuleHeight(module, openProgress);
 
                 if (HoveringUtils.isHovered(mouseX, mouseY, panelX + ClickGuiLayout.MODULE_PADDING, moduleY,
-                        ClickGuiLayout.MODULE_INNER_WIDTH, ClickGuiLayout.MODULE_HEADER_HEIGHT)) {
+                        ClickGuiLayout.getModuleInnerWidth(), ClickGuiLayout.MODULE_HEADER_HEIGHT)) {
                     if (button == 0) {
                         module.toggle();
                     } else if (button == 1) {
@@ -114,8 +118,9 @@ public class ClickGuiInputHandler {
 
     public boolean mouseReleased(int button) {
         state.stopSearchSelection();
+        boolean themeHandled = themeSelector.handleRelease(button);
         if (button != 0) {
-            return false;
+            return themeHandled;
         }
 
         List<Module> modules = state.getAllModules();
@@ -128,33 +133,37 @@ public class ClickGuiInputHandler {
                 }
             }
         }
-        return false;
+        return themeHandled;
     }
 
     public boolean mouseDragged(double mouseX, double mouseY, int button) {
+        if (themeSelector.handleDrag(mouseY, button)) {
+            return true;
+        }
         if (button != 0 || !state.isSearchActive() || !state.isSearchDragging()) {
             return false;
         }
 
-        int categoryCount = ModuleCategory.values().length;
-        float searchX = ClickGuiLayout.getSearchX(state.getX(), categoryCount, getSearchWidth()) - 10;
+        float searchX = ClickGuiLayout.getSearchX(state.getX());
         state.updateSearchSelection(getSearchIndexAt(mouseX, searchX));
         return true;
     }
 
     public boolean mouseScrolled(double mouseX, double mouseY, double verticalAmount) {
-        Window window = Minecraft.getInstance().getWindow();
-        if (window != null && themeSelector.handleScroll(window, mouseX, mouseY, verticalAmount)) {
+        if (themeSelector.handleScroll(state, mouseX, mouseY, verticalAmount)) {
             return true;
         }
 
-        ModuleCategory[] categories = ModuleCategory.values();
+        ModuleCategory[] categories = CATEGORIES;
         for (int i = 0; i < categories.length; i++) {
             ModuleCategory category = categories[i];
+            if (category == ModuleCategory.PLAYER && !themeSelector.isPlayerInteractive()) {
+                continue;
+            }
             float panelX = ClickGuiLayout.getCategoryPanelX(state.getX(), i);
             float contentY = ClickGuiLayout.getContentY(state.getY() + state.getRenderOffsetY());
             float contentHeight = ClickGuiLayout.getContentHeight();
-            if (HoveringUtils.isHovered(mouseX, mouseY, panelX, contentY, ClickGuiLayout.WIDTH, contentHeight)) {
+            if (HoveringUtils.isHovered(mouseX, mouseY, panelX, contentY, ClickGuiLayout.getWidth(), contentHeight)) {
                 state.addScroll(category, verticalAmount, contentHeight);
                 return true;
             }
@@ -290,15 +299,6 @@ public class ClickGuiInputHandler {
         return text.length();
     }
 
-    private float getSearchWidth() {
-        String query = state.getSearchText();
-        String text = query.isEmpty() ? "Search..." : query;
-        FontRenderer font = issue(14);
-        float textWidth = font == null ? text.length() * 6f : font.getWidth(text);
-        float contentWidth = ClickGuiLayout.SEARCH_TEXT_X + textWidth + ClickGuiLayout.SEARCH_RIGHT_PADDING;
-        return Math.max(ClickGuiLayout.SEARCH_WIDTH, contentWidth);
-    }
-
     private boolean handleSettingClick(double mouseX, double mouseY, int button, float panelX, float moduleY,
                                        List<Setting> settings) {
         float settingYoffset = ClickGuiLayout.SETTING_START_Y;
@@ -313,7 +313,7 @@ public class ClickGuiInputHandler {
             float settingY = moduleY + settingYoffset + ClickGuiLayout.SETTING_PADDING;
 
             if (setting instanceof BooleanSetting booleanSetting) {
-                float toggleX = panelX + 75;
+                float toggleX = ClickGuiLayout.getBooleanToggleX(panelX);
                 float toggleY = settingY - 5;
                 if (button == 0 && HoveringUtils.isHovered(mouseX, mouseY, toggleX, toggleY, 16, 9)) {
                     booleanSetting.setState(!booleanSetting.isState());
@@ -322,7 +322,7 @@ public class ClickGuiInputHandler {
                 settingYoffset += 12f;
 
             } else if (setting instanceof TextSetting textSetting) {
-                float boxX = panelX + 49f;
+                float boxX = ClickGuiLayout.getTextSettingX(panelX);
                 float boxY = settingY - 5.5f;
                 if (button == 0 && HoveringUtils.isHovered(mouseX, mouseY, boxX, boxY,
                         ClickGuiLayout.TEXT_SETTING_WIDTH, 9f)) {
@@ -337,7 +337,7 @@ public class ClickGuiInputHandler {
                 float sliderX = panelX + ClickGuiLayout.SETTING_LEFT;
                 float sliderY = settingY + 6;
                 if (button == 0 && HoveringUtils.isHovered(mouseX, mouseY, sliderX, sliderY,
-                        ClickGuiLayout.SLIDER_WIDTH, 4.5f)) {
+                        ClickGuiLayout.getSliderWidth(), 4.5f)) {
                     floatSetting.setActive(true);
                     floatSetting.setValue(state.getSliderValue(floatSetting, sliderX, mouseX));
                     state.beginSliderDrag(floatSetting, mouseX);
@@ -404,7 +404,7 @@ public class ClickGuiInputHandler {
                         ? "..."
                         : state.toEnglish(KeyBoardUtils.getBindName(bindSetting.getKey()));
                 float bindWidth = (chipFont != null ? chipFont.getWidth(bindString) : bindString.length() * 6f) + 6f;
-                float bindX = panelX + ClickGuiLayout.SETTING_RIGHT - bindWidth;
+                float bindX = panelX + ClickGuiLayout.getSettingRight() - bindWidth;
                 float bindY = settingY - 5.5f;
                 if (button == 0 && HoveringUtils.isHovered(mouseX, mouseY, bindX, bindY, bindWidth, 9)) {
                     state.setBindingSetting(bindSetting);

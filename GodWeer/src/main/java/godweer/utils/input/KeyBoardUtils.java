@@ -2,7 +2,6 @@ package godweer.utils.input;
 
 import godweer.managers.ModuleManager;
 import godweer.modules.Module;
-import godweer.ui.MenuPanel;
 
 import net.minecraft.client.Minecraft;
 
@@ -27,8 +26,8 @@ public final class KeyBoardUtils {
             return;
         }
 
-        if (key == GLFW.GLFW_KEY_RIGHT_SHIFT) {
-            mc.setScreen(new MenuPanel());
+        if (ClickGuiController.isOpenKey(key)) {
+            ClickGuiController.requestOpen();
             return;
         }
 

@@ -12,6 +12,8 @@ import godweer.ui.clickgui.ClickGuiState;
 import godweer.ui.clickgui.ClickGuiThemeSelector;
 import godweer.utils.animation.AnimationUtils;
 import godweer.utils.animation.Easings;
+import godweer.utils.client.ClientSoundPlayer;
+import godweer.utils.input.ClickGuiController;
 import godweer.utils.render.RenderUtils;
 import godweer.utils.render.msdf.Fonts;
 
@@ -34,10 +36,12 @@ public class MenuPanel extends Screen {
     private static final float SLIDE_OFFSET = 220f;
     private static final float PANEL_OFFSET_Y_MUL = 22.0f;
 
+    private static final ModuleCategory[] CATEGORIES = ModuleCategory.values();
+
     // Состояние (скроллы, анимации, поиск) переживает закрытие экрана.
     private static final ClickGuiState SHARED_STATE = new ClickGuiState();
 
-    private final int categoryCount = ModuleCategory.values().length;
+    private final int categoryCount = CATEGORIES.length;
     private final ClickGuiState state = SHARED_STATE;
     private final ClickGuiThemeSelector themeSelector = new ClickGuiThemeSelector();
     private final ClickGuiRenderer renderer =
@@ -52,6 +56,7 @@ public class MenuPanel extends Screen {
     private static boolean diagnosticsLogged;
 
     private boolean closing;
+    private boolean closeSoundPlayed;
 
     public MenuPanel() {
         super(Component.literal("ClickGui"));
@@ -60,7 +65,7 @@ public class MenuPanel extends Screen {
     }
 
     private void initPanelAnimations() {
-        for (ModuleCategory category : ModuleCategory.values()) {
+        for (ModuleCategory category : CATEGORIES) {
             panelSlideX.put(category, new AnimationUtils(getStartOffX(category), SLIDE_SPEED, Easings.QUINT_OUT));
             panelSlideY.put(category, new AnimationUtils(getStartOffY(category), SLIDE_SPEED, Easings.QUINT_OUT));
             panelAlpha.put(category, new AnimationUtils(0f, ALPHA_SPEED, Easings.BOUNCE_OUT));
@@ -68,7 +73,7 @@ public class MenuPanel extends Screen {
     }
 
     private void resetPanelSlides() {
-        for (ModuleCategory category : ModuleCategory.values()) {
+        for (ModuleCategory category : CATEGORIES) {
             AnimationUtils slideX = panelSlideX.get(category);
             AnimationUtils slideY = panelSlideY.get(category);
             AnimationUtils alpha = panelAlpha.get(category);
@@ -152,6 +157,7 @@ public class MenuPanel extends Screen {
         openAnimation.setValue(0f);
         openAnimation.setEasing(Easings.CUBIC_OUT);
         closing = false;
+        closeSoundPlayed = false;
         logDiagnosticsOnce();
     }
 
@@ -247,7 +253,7 @@ public class MenuPanel extends Screen {
         if (inputHandler.keyPressed(keyCode, modifiers)) {
             return true;
         }
-        if (keyCode == GLFW.GLFW_KEY_ESCAPE || keyCode == GLFW.GLFW_KEY_RIGHT_SHIFT) {
+        if (keyCode == GLFW.GLFW_KEY_ESCAPE || ClickGuiController.isOpenKey(keyCode)) {
             startClosing();
             return true;
         }
@@ -272,12 +278,27 @@ public class MenuPanel extends Screen {
         startClosing();
     }
 
+    @Override
+    public void removed() {
+        playCloseSound();
+        super.removed();
+    }
+
     private void startClosing() {
         if (closing) {
             return;
         }
         closing = true;
         openAnimation.setEasing(Easings.CUBIC_IN);
+        playCloseSound();
+    }
+
+    private void playCloseSound() {
+        if (closeSoundPlayed) {
+            return;
+        }
+        closeSoundPlayed = true;
+        ClientSoundPlayer.playSound("closegui.wav", 0.6, 1.0f);
     }
 
     private void updateAnimation() {

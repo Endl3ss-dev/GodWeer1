@@ -2,6 +2,7 @@ package godweer.managers;
 
 import godweer.modules.Module;
 import godweer.modules.ModuleCategory;
+import godweer.modules.impl.render.ClickGui;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -22,7 +23,7 @@ public final class ModuleManager {
         MODULES.clear();
         BY_CATEGORY.clear();
 
-        // register(new SomeModule()); — модули добавляются здесь
+        register(new ClickGui());
 
         rebuildIndex();
     }

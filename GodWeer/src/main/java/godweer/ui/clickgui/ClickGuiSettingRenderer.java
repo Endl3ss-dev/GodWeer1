@@ -42,7 +42,7 @@ public class ClickGuiSettingRenderer {
 
         ScissorUtils.push();
         ScissorUtils.setFromComponentCoordinates(panelX + ClickGuiLayout.MODULE_PADDING, settingsClipY - 3,
-                ClickGuiLayout.MODULE_INNER_WIDTH, settingsClipHeight);
+                ClickGuiLayout.getModuleInnerWidth(), settingsClipHeight);
 
         float settingYoffset = ClickGuiLayout.SETTING_START_Y;
         for (int i = 0, size = settings.size(); i < size; i++) {
@@ -97,13 +97,14 @@ public class ClickGuiSettingRenderer {
 
         drawStringWithHoverScroll(issue(13), context.pose(), booleanSetting.displayName(),
                 panelX + ClickGuiLayout.SETTING_LEFT, settingY - 3,
-                (panelX + 73f) - (panelX + ClickGuiLayout.SETTING_LEFT), getPrimarySettingColor(alpha),
-                mouseX, mouseY, state, getSettingTextKey(booleanSetting));
+                ClickGuiLayout.getBooleanTextEndX(panelX) - (panelX + ClickGuiLayout.SETTING_LEFT),
+                getPrimarySettingColor(alpha), mouseX, mouseY, state, getSettingTextKey(booleanSetting));
 
-        RenderUtils.drawRoundedRect(context.pose(), panelX + 75, settingY - 5, 16, 9, 4.5f,
+        float toggleX = ClickGuiLayout.getBooleanToggleX(panelX);
+        RenderUtils.drawRoundedRect(context.pose(), toggleX, settingY - 5, 16, 9, 4.5f,
                 ColorUtils.rgba(r, g, b, alpha));
 
-        float circleX = panelX + 79.5f + (circleProgress * 6.2f);
+        float circleX = toggleX + 4.5f + (circleProgress * 6.2f);
         RenderUtils.drawRoundCircle(context.pose(), circleX + 0.5f, settingY - 0.5f, 7,
                 ColorUtils.rgba(255, 255, 255, alpha));
     }
@@ -119,7 +120,7 @@ public class ClickGuiSettingRenderer {
         float animatedPos = sliderAnimation.getValue();
 
         String valueString = formatSliderValue(floatSetting);
-        float valueX = panelX + ClickGuiLayout.SETTING_RIGHT - issue(12).getWidth(valueString);
+        float valueX = panelX + ClickGuiLayout.getSettingRight() - issue(12).getWidth(valueString);
         float nameMaxWidth = (valueX - 4f) - (panelX + ClickGuiLayout.SETTING_LEFT);
 
         drawStringWithHoverScroll(issue(12), context.pose(), floatSetting.displayName(),
@@ -130,13 +131,13 @@ public class ClickGuiSettingRenderer {
 
         int sliderBackgroundColor = ColorUtils.setAlphaColor(ColorUtils.darken(colorTheme, 0.2f), alpha);
         RenderUtils.drawRoundedRect(context.pose(), panelX + ClickGuiLayout.SETTING_LEFT, settingY + 6,
-                ClickGuiLayout.SLIDER_WIDTH, 4.5f, 2f, sliderBackgroundColor);
+                ClickGuiLayout.getSliderWidth(), 4.5f, 2f, sliderBackgroundColor);
 
         int sliderFillColor = ColorUtils.setAlphaColor(colorTheme, alpha);
         RenderUtils.drawRoundedRect(context.pose(), panelX + ClickGuiLayout.SETTING_LEFT, settingY + 6,
-                animatedPos * ClickGuiLayout.SLIDER_WIDTH, 4.5f, 2f, sliderFillColor);
+                animatedPos * ClickGuiLayout.getSliderWidth(), 4.5f, 2f, sliderFillColor);
         RenderUtils.drawRoundCircle(context.pose(),
-                panelX + ClickGuiLayout.SETTING_LEFT + animatedPos * ClickGuiLayout.SLIDER_WIDTH,
+                panelX + ClickGuiLayout.SETTING_LEFT + animatedPos * ClickGuiLayout.getSliderWidth(),
                 settingY + 8.25f, 6, ColorUtils.setAlphaColor(-1, alpha));
     }
 
@@ -147,7 +148,7 @@ public class ClickGuiSettingRenderer {
         String preview = value == null || value.isEmpty() ? "..." : value;
         String boxText = editing ? preview + "_" : preview;
         float boxWidth = ClickGuiLayout.TEXT_SETTING_WIDTH;
-        float boxX = panelX + 49f;
+        float boxX = ClickGuiLayout.getTextSettingX(panelX);
 
         drawStringWithHoverScroll(issue(13), context.pose(), textSetting.displayName(),
                 panelX + ClickGuiLayout.SETTING_LEFT, settingY - 3,
@@ -170,7 +171,7 @@ public class ClickGuiSettingRenderer {
                                    double mouseX, double mouseY, ModeSetting modeSetting, ClickGuiState state) {
         drawStringWithHoverScroll(issue(12), context.pose(), modeSetting.displayName(),
                 panelX + ClickGuiLayout.SETTING_LEFT, settingY - 2,
-                ClickGuiLayout.SETTING_RIGHT - ClickGuiLayout.SETTING_LEFT, getPrimarySettingColor(alpha),
+                ClickGuiLayout.getSettingRight() - ClickGuiLayout.SETTING_LEFT, getPrimarySettingColor(alpha),
                 mouseX, mouseY, state, getSettingTextKey(modeSetting));
 
         FontRenderer chipFont = issue(12);
@@ -228,7 +229,7 @@ public class ClickGuiSettingRenderer {
         }
 
         String counter = enabledCount + "/" + entries.size();
-        float counterX = panelX + ClickGuiLayout.SETTING_RIGHT - issue(12).getWidth(counter);
+        float counterX = panelX + ClickGuiLayout.getSettingRight() - issue(12).getWidth(counter);
 
         drawStringWithHoverScroll(issue(12), context.pose(), listSetting.displayName(),
                 panelX + ClickGuiLayout.SETTING_LEFT, settingY - 2,
@@ -293,7 +294,7 @@ public class ClickGuiSettingRenderer {
 
         String bindString = binding ? "..." : state.toEnglish(KeyBoardUtils.getBindName(bindSetting.getKey()));
         float bindWidth = issue(12).getWidth(bindString) + 6f;
-        float bindX = panelX + ClickGuiLayout.SETTING_RIGHT - bindWidth;
+        float bindX = panelX + ClickGuiLayout.getSettingRight() - bindWidth;
 
         int bindTextColor = ColorUtils.setAlphaColor(
                 ColorUtils.interpolateColor(ColorUtils.rgb(140, 139, 145), -1, progress), alpha);

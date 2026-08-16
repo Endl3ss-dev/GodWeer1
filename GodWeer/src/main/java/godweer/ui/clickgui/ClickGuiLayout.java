@@ -8,6 +8,7 @@ import godweer.modules.api.setting.ListSetting;
 import godweer.modules.api.setting.ModeSetting;
 import godweer.modules.api.setting.Setting;
 import godweer.modules.api.setting.TextSetting;
+import godweer.modules.impl.render.ClickGui;
 import godweer.utils.render.msdf.FontRenderer;
 import godweer.utils.render.msdf.Fonts;
 
@@ -15,36 +16,20 @@ import java.util.List;
 
 public final class ClickGuiLayout {
 
-    public static final float WIDTH = 100f;
-    public static final float HEIGHT = 275f;
-    public static final float CATEGORY_PANEL_STEP = 108f;
-
-    public static final float THEME_PANEL_Y = 100f;
-    public static final float THEME_PANEL_H = 15f;
-    public static final float THEME_BOX_SIZE = 8f;
-    public static final float THEME_BOX_GAP = 4f;
-    public static final float THEME_BOX_RADIUS = 2f;
-    public static final float THEME_SIDE_PADDING = 4f;
-
     public static final float MODULE_PADDING = 3f;
     public static final float MODULE_GAP = 2f;
     public static final float MODULE_HEADER_HEIGHT = 17f;
-    public static final float MODULE_INNER_WIDTH = 93.5f;
     public static final float SETTING_START_Y = 20f;
     public static final float SETTING_PADDING = 4f;
     public static final float SETTING_BOTTOM_PADDING = 3f;
     public static final float SETTING_LEFT = 10f;
-    public static final float SETTING_RIGHT = 89f;
-    public static final float SLIDER_WIDTH = 79f;
     public static final float TEXT_SETTING_WIDTH = 42f;
-    public static final float CLICKABLE_WIDTH = 79f;
     public static final float TAG_START_Y = 10f;
     public static final float TAG_GAP = 3f;
     public static final float TAG_ROW_GAP = 2f;
     public static final int SEARCH_MAX_CHARS = 24;
-    public static final float SEARCH_WIDTH = 75f;
     public static final float SEARCH_HEIGHT = 18f;
-    public static final float SEARCH_GAP = 8f;
+    public static final float SEARCH_GAP = 3f;
     public static final float SEARCH_ICON_X = 3.5f;
     public static final float SEARCH_TEXT_X = 19f;
     public static final float SEARCH_RIGHT_PADDING = 8f;
@@ -52,12 +37,51 @@ public final class ClickGuiLayout {
     private ClickGuiLayout() {
     }
 
+    public static float getWidth() {
+        return ClickGui.getCategoryWidth();
+    }
+
+    public static float getHeight() {
+        return ClickGui.getSize();
+    }
+
+    public static float getCategoryGap() {
+        return ClickGui.getCategoryGap();
+    }
+
+    public static float getModuleInnerWidth() {
+        return getWidth() - 6.5f;
+    }
+
+    public static float getSettingRight() {
+        return getWidth() - 11.0f;
+    }
+
+    public static float getSliderWidth() {
+        return getSettingRight() - SETTING_LEFT;
+    }
+
+    public static float getBooleanToggleX(float panelX) {
+        return panelX + getWidth() - 25.0f;
+    }
+
+    public static float getBooleanTextEndX(float panelX) {
+        return getBooleanToggleX(panelX) - 2.0f;
+    }
+
+    public static float getTextSettingX(float panelX) {
+        return panelX + getWidth() - TEXT_SETTING_WIDTH - 9.0f;
+    }
+
     public static float getTotalCategoriesWidth(int categoryCount) {
-        return (WIDTH * categoryCount) + (8f * (categoryCount - 1));
+        if (categoryCount <= 0) {
+            return 0.0f;
+        }
+        return getWidth() * categoryCount + getCategoryGap() * (categoryCount - 1);
     }
 
     public static float getCategoryPanelX(float x, int index) {
-        return x + (index * CATEGORY_PANEL_STEP);
+        return x + index * (getWidth() + getCategoryGap());
     }
 
     public static float getContentY(float y) {
@@ -65,19 +89,15 @@ public final class ClickGuiLayout {
     }
 
     public static float getContentHeight() {
-        return HEIGHT - 30f;
+        return getHeight() - 30f;
     }
 
-    public static float getSearchX(float x, int categoryCount) {
-        return x + (getTotalCategoriesWidth(categoryCount) / 2f) - (SEARCH_WIDTH / 2f);
-    }
-
-    public static float getSearchX(float x, int categoryCount, float searchWidth) {
-        return x + (getTotalCategoriesWidth(categoryCount) / 2f) - (searchWidth / 2f);
+    public static float getSearchX(float x) {
+        return x;
     }
 
     public static float getSearchY(float y) {
-        return y + HEIGHT + SEARCH_GAP;
+        return y + getHeight() + SEARCH_GAP;
     }
 
     public static boolean hasVisibleSettings(List<Setting> settings) {
@@ -91,7 +111,7 @@ public final class ClickGuiLayout {
     }
 
     public static float getTagAvailableWidth() {
-        return SETTING_RIGHT - SETTING_LEFT + 2.0f;
+        return getSettingRight() - SETTING_LEFT + 2.0f;
     }
 
     public static float getTagHeight() {
@@ -193,7 +213,7 @@ public final class ClickGuiLayout {
     }
 
     public static float getModuleHeight(Module module, float openProgress) {
-        return MODULE_HEADER_HEIGHT + (calculateSettingsHeight(module) * openProgress);
+        return MODULE_HEADER_HEIGHT + calculateSettingsHeight(module) * openProgress;
     }
 
     private static FontRenderer chipFont() {

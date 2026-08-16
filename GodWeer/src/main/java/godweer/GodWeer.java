@@ -1,6 +1,7 @@
 package godweer;
 
 import godweer.managers.ModuleManager;
+import godweer.utils.input.ClickGuiController;
 
 import net.fabricmc.api.ClientModInitializer;
 
@@ -30,6 +31,7 @@ public class GodWeer implements ClientModInitializer {
 
 		// Шрифты грузятся лениво при первом обращении: на этом этапе GL-контекст ещё не готов.
 		ModuleManager.init();
+		ClickGuiController.init();
 
 		LOGGER.info("{} v{} loaded in {} ms", MOD_NAME, MOD_VERSION, (System.nanoTime() - start) / 1_000_000L);
 	}

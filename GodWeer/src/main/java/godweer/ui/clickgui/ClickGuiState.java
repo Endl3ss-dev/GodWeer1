@@ -21,6 +21,7 @@ import java.util.Map;
 
 public class ClickGuiState {
 
+    private static final ModuleCategory[] CATEGORIES = ModuleCategory.values();
     private static final Map<Character, Character> RU_TO_EN = new HashMap<>();
 
     static {
@@ -79,7 +80,7 @@ public class ClickGuiState {
         filterQuery = "";
         filteredByCategory.clear();
 
-        for (ModuleCategory category : ModuleCategory.values()) {
+        for (ModuleCategory category : CATEGORIES) {
             List<Module> categoryModules = new ArrayList<>();
             for (int i = 0, size = allModules.size(); i < size; i++) {
                 Module module = allModules.get(i);
@@ -96,7 +97,7 @@ public class ClickGuiState {
     public void updatePosition(Window window, int categoryCount) {
         float totalCategoriesWidth = ClickGuiLayout.getTotalCategoriesWidth(categoryCount);
         this.x = (window.getGuiScaledWidth() / 2f) - (totalCategoriesWidth / 2f);
-        this.y = (window.getGuiScaledHeight() / 2f) - (ClickGuiLayout.HEIGHT / 2f);
+        this.y = (window.getGuiScaledHeight() / 2f) - (ClickGuiLayout.getHeight() / 2f);
     }
 
     public float getX() {
@@ -138,7 +139,7 @@ public class ClickGuiState {
         filterQuery = searchText;
         String query = searchText.toLowerCase(Locale.ROOT);
 
-        for (ModuleCategory category : ModuleCategory.values()) {
+        for (ModuleCategory category : CATEGORIES) {
             List<Module> modules = modulesByCategory.get(category);
             List<Module> target = filteredByCategory.computeIfAbsent(category, key -> new ArrayList<>());
             target.clear();
@@ -192,7 +193,7 @@ public class ClickGuiState {
     public float getSliderValue(FloatSetting setting, float posX, double mouseX) {
         float delta = setting.getMax() - setting.getMin();
         float clickedX = (float) mouseX - posX;
-        float value = Math.max(0f, Math.min(1f, clickedX / ClickGuiLayout.SLIDER_WIDTH));
+        float value = Math.max(0f, Math.min(1f, clickedX / ClickGuiLayout.getSliderWidth()));
         float outValue = setting.getMin() + delta * value;
         float increment = setting.getIncrement();
         outValue = Math.round(outValue / increment) * increment;
@@ -229,7 +230,7 @@ public class ClickGuiState {
             return setting.get();
         }
 
-        double pixelsPerStep = ClickGuiLayout.SLIDER_WIDTH / steps;
+        double pixelsPerStep = ClickGuiLayout.getSliderWidth() / steps;
         if (pixelsPerStep <= 0.0D) {
             return setting.get();
         }
