@@ -31,8 +31,10 @@ public final class ClickGuiThemeSelector {
     private static final float TITLE_HEIGHT = 25.0f;
     private static final float ROW_HEIGHT = 26.0f;
     private static final float ROW_GAP = 2.0f;
-    private static final float COLOR_SIZE = 12.0f;
-    private static final float SELECTED_MARK_WIDTH = 2.0f;
+    private static final float PILL_WIDTH = 5.0f;
+    private static final float PILL_HEIGHT = 16.0f;
+    private static final float PILL_PULSE_GROW = 4.0f;
+    private static final long PILL_PULSE_PERIOD_MS = 1200L;
     private static final float SCROLLBAR_WIDTH = 2.0f;
     private static final float SCROLLBAR_GAP = 3.0f;
     private static final float SCROLLBAR_MIN_HEIGHT = 18.0f;
@@ -264,24 +266,16 @@ public final class ClickGuiThemeSelector {
             renderThemeBackground(context, panelX, rowY, rowWidth, primaryColor,
                     selectedTheme, hoverProgress, alphaMul);
 
-            renderThemeSwatch(context, panelX + PANEL_PADDING + 5.0f,
-                    rowY + (ROW_HEIGHT - COLOR_SIZE) * 0.5f, primaryColor,
-                    getThemeDisplayColor(theme, 1), alphaMul);
+            renderThemePill(context, panelX + PANEL_PADDING + 5.0f, rowY, primaryColor,
+                    selectedTheme, alphaMul);
 
             float textCenterX = panelX + PANEL_PADDING + rowWidth * 0.5f;
             int nameColor = ColorUtils.applyAlpha(-1, alphaMul);
             int codeColor = selectedTheme
                     ? ColorUtils.applyAlpha(primaryColor, alphaMul)
                     : ColorUtils.applyAlpha(ColorUtils.rgba(155, 155, 165, 255), alphaMul);
-            nameFont.drawCenteredString(context.pose(), theme.getName(), textCenterX, rowY + 5.0f, nameColor);
-            codeFont.drawCenteredString(context.pose(), theme.getHexCode(), textCenterX, rowY + 16.5f, codeColor);
-
-            if (selectedTheme) {
-                float markX = panelX + PANEL_PADDING + rowWidth - 6.0f;
-                RenderUtils.drawRoundedRect(context.pose(), markX, rowY + 7.0f,
-                        SELECTED_MARK_WIDTH, ROW_HEIGHT - 14.0f, 1.0f,
-                        ColorUtils.applyAlpha(primaryColor, alphaMul));
-            }
+            codeFont.drawCenteredString(context.pose(), theme.getHexCode(), textCenterX, rowY + 5.0f, codeColor);
+            nameFont.drawCenteredString(context.pose(), theme.getName(), textCenterX, rowY + 16.5f, nameColor);
         }
 
         renderScrollbar(context, panelX, panelWidth, listY, listHeight, maxScroll, themes.size(), alphaMul);
@@ -327,17 +321,20 @@ public final class ClickGuiThemeSelector {
                 1.0f, ColorUtils.applyAlpha(ColorUtils.rgba(255, 255, 255, 105), alphaMul));
     }
 
-    private void renderThemeSwatch(GuiGraphics context, float x, float y, int primaryColor,
-                                   int secondaryColor, float alphaMul) {
-        RenderUtils.drawRect(context.pose(), x - 0.5f, y - 0.5f, COLOR_SIZE + 1.0f, COLOR_SIZE + 1.0f,
-                ColorUtils.applyAlpha(ColorUtils.rgba(255, 255, 255, 45), alphaMul));
-
-        // Диагональный сплит: верхне-левый треугольник — основной цвет темы, нижне-правый — вторичный
-        int primary = ColorUtils.applyAlpha(primaryColor, alphaMul);
-        int secondary = ColorUtils.applyAlpha(secondaryColor, alphaMul);
-        RenderUtils.drawTriangle(context.pose(), x, y, x + COLOR_SIZE, y, x, y + COLOR_SIZE, primary);
-        RenderUtils.drawTriangle(context.pose(), x + COLOR_SIZE, y, x + COLOR_SIZE, y + COLOR_SIZE,
-                x, y + COLOR_SIZE, secondary);
+    private void renderThemePill(GuiGraphics context, float x, float rowY, int color,
+                                 boolean selected, float alphaMul) {
+        float height = PILL_HEIGHT;
+        float colorMul = 1.0f;
+        if (selected) {
+            // Пульсация: синус по времени двигает высоту капсулы и её яркость альфы
+            float phase = (System.currentTimeMillis() % PILL_PULSE_PERIOD_MS) / (float) PILL_PULSE_PERIOD_MS;
+            float pulse = 0.5f + 0.5f * (float) Math.sin(phase * (Math.PI * 2.0));
+            height += pulse * PILL_PULSE_GROW;
+            colorMul = 0.55f + 0.45f * pulse;
+        }
+        float pillY = rowY + (ROW_HEIGHT - height) * 0.5f;
+        RenderUtils.drawRoundedRect(context.pose(), x, pillY, PILL_WIDTH, height, PILL_WIDTH * 0.5f,
+                ColorUtils.applyAlpha(color, alphaMul * colorMul));
     }
 
     private void renderGrip(GuiGraphics context, float panelX, float gripY, float alphaMul) {
