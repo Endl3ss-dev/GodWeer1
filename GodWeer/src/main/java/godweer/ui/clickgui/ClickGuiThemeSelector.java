@@ -31,6 +31,7 @@ public final class ClickGuiThemeSelector {
     private static final float TITLE_HEIGHT = 25.0f;
     private static final float ROW_HEIGHT = 26.0f;
     private static final float ROW_GAP = 2.0f;
+    private static final float COLOR_SIZE = 12.0f;
     private static final float SELECTED_MARK_WIDTH = 2.0f;
     private static final float SCROLLBAR_WIDTH = 2.0f;
     private static final float SCROLLBAR_GAP = 3.0f;
@@ -263,6 +264,10 @@ public final class ClickGuiThemeSelector {
             renderThemeBackground(context, panelX, rowY, rowWidth, primaryColor,
                     selectedTheme, hoverProgress, alphaMul);
 
+            renderThemeSwatch(context, panelX + PANEL_PADDING + 5.0f,
+                    rowY + (ROW_HEIGHT - COLOR_SIZE) * 0.5f, primaryColor,
+                    getThemeDisplayColor(theme, 1), alphaMul);
+
             float textCenterX = panelX + PANEL_PADDING + rowWidth * 0.5f;
             int nameColor = ColorUtils.applyAlpha(-1, alphaMul);
             int codeColor = selectedTheme
@@ -320,6 +325,19 @@ public final class ClickGuiThemeSelector {
                 1.0f, ColorUtils.applyAlpha(ColorUtils.rgba(255, 255, 255, 18), alphaMul));
         RenderUtils.drawRoundedRect(context.pose(), scrollbarX, thumbY, SCROLLBAR_WIDTH, thumbHeight,
                 1.0f, ColorUtils.applyAlpha(ColorUtils.rgba(255, 255, 255, 105), alphaMul));
+    }
+
+    private void renderThemeSwatch(GuiGraphics context, float x, float y, int primaryColor,
+                                   int secondaryColor, float alphaMul) {
+        RenderUtils.drawRect(context.pose(), x - 0.5f, y - 0.5f, COLOR_SIZE + 1.0f, COLOR_SIZE + 1.0f,
+                ColorUtils.applyAlpha(ColorUtils.rgba(255, 255, 255, 45), alphaMul));
+
+        // Диагональный сплит: верхне-левый треугольник — основной цвет темы, нижне-правый — вторичный
+        int primary = ColorUtils.applyAlpha(primaryColor, alphaMul);
+        int secondary = ColorUtils.applyAlpha(secondaryColor, alphaMul);
+        RenderUtils.drawTriangle(context.pose(), x, y, x + COLOR_SIZE, y, x, y + COLOR_SIZE, primary);
+        RenderUtils.drawTriangle(context.pose(), x + COLOR_SIZE, y, x + COLOR_SIZE, y + COLOR_SIZE,
+                x, y + COLOR_SIZE, secondary);
     }
 
     private void renderGrip(GuiGraphics context, float panelX, float gripY, float alphaMul) {

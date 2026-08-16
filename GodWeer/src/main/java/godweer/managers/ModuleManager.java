@@ -6,7 +6,6 @@ import godweer.modules.ModuleCategory;
 import godweer.modules.impl.combat.ItemSwap;
 import godweer.modules.impl.combat.SexAura;
 import godweer.modules.impl.player.DrinkUse;
-import godweer.modules.impl.render.ClickGui;
 
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 
@@ -31,7 +30,6 @@ public final class ModuleManager {
         MODULES.clear();
         BY_CATEGORY.clear();
 
-        register(new ClickGui());
         register(new SexAura());
         register(new ItemSwap());
         register(new DrinkUse());
