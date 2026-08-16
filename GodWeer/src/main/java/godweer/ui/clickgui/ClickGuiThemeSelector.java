@@ -31,9 +31,6 @@ public final class ClickGuiThemeSelector {
     private static final float TITLE_HEIGHT = 25.0f;
     private static final float ROW_HEIGHT = 26.0f;
     private static final float ROW_GAP = 2.0f;
-    private static final float PREVIEW_WIDTH = 22.0f;
-    private static final float PREVIEW_HEIGHT = 12.0f;
-    private static final float PREVIEW_RADIUS = 3.0f;
     private static final float SELECTED_MARK_WIDTH = 2.0f;
     private static final float SCROLLBAR_WIDTH = 2.0f;
     private static final float SCROLLBAR_GAP = 3.0f;
@@ -262,19 +259,17 @@ public final class ClickGuiThemeSelector {
             float hoverProgress = hoverAnimation.getValue();
             boolean selectedTheme = theme == selected;
             int primaryColor = getThemeDisplayColor(theme, 0);
-            int secondaryColor = getThemeDisplayColor(theme, 1);
 
             renderThemeBackground(context, panelX, rowY, rowWidth, primaryColor,
                     selectedTheme, hoverProgress, alphaMul);
-            renderThemePreview(context, panelX, rowY, primaryColor, secondaryColor, alphaMul);
 
-            float textX = panelX + PANEL_PADDING + 7.0f + PREVIEW_WIDTH + 6.0f;
+            float textCenterX = panelX + PANEL_PADDING + rowWidth * 0.5f;
             int nameColor = ColorUtils.applyAlpha(-1, alphaMul);
             int codeColor = selectedTheme
                     ? ColorUtils.applyAlpha(primaryColor, alphaMul)
                     : ColorUtils.applyAlpha(ColorUtils.rgba(155, 155, 165, 255), alphaMul);
-            nameFont.draw(context.pose(), theme.getName(), textX, rowY + 5.0f, nameColor);
-            codeFont.draw(context.pose(), theme.getHexCode(), textX, rowY + 16.5f, codeColor);
+            nameFont.drawCenteredString(context.pose(), theme.getName(), textCenterX, rowY + 5.0f, nameColor);
+            codeFont.drawCenteredString(context.pose(), theme.getHexCode(), textCenterX, rowY + 16.5f, codeColor);
 
             if (selectedTheme) {
                 float markX = panelX + PANEL_PADDING + rowWidth - 6.0f;
@@ -307,22 +302,6 @@ public final class ClickGuiThemeSelector {
                     rowWidth - 1.6f, ROW_HEIGHT - 1.6f, 3.4f,
                     ColorUtils.applyAlpha(ColorUtils.setAlphaColor(primaryColor, accentAlpha), alphaMul));
         }
-    }
-
-    private void renderThemePreview(GuiGraphics context, float panelX, float rowY,
-                                    int primaryColor, int secondaryColor, float alphaMul) {
-        float previewX = panelX + PANEL_PADDING + 7.0f;
-        float previewY = rowY + (ROW_HEIGHT - PREVIEW_HEIGHT) * 0.5f;
-        float halfWidth = PREVIEW_WIDTH * 0.5f;
-
-        RenderUtils.drawRoundedRect(context.pose(), previewX - 1.0f, previewY - 1.0f,
-                PREVIEW_WIDTH + 2.0f, PREVIEW_HEIGHT + 2.0f, PREVIEW_RADIUS + 1.0f,
-                ColorUtils.applyAlpha(ColorUtils.rgba(255, 255, 255, 32), alphaMul));
-        RenderUtils.drawRoundedRect(context.pose(), previewX, previewY, halfWidth + 1.0f, PREVIEW_HEIGHT,
-                PREVIEW_RADIUS, ColorUtils.applyAlpha(primaryColor, alphaMul));
-        RenderUtils.drawRoundedRect(context.pose(), previewX + halfWidth - 1.0f, previewY,
-                halfWidth + 1.0f, PREVIEW_HEIGHT, PREVIEW_RADIUS,
-                ColorUtils.applyAlpha(secondaryColor, alphaMul));
     }
 
     private void renderScrollbar(GuiGraphics context, float panelX, float panelWidth, float listY,
