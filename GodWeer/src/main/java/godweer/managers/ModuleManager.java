@@ -2,7 +2,6 @@ package godweer.managers;
 
 import godweer.modules.Module;
 import godweer.modules.ModuleCategory;
-import godweer.modules.impl.render.ClickGui;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -22,8 +21,6 @@ public final class ModuleManager {
     public static void init() {
         MODULES.clear();
         BY_CATEGORY.clear();
-
-        register(new ClickGui());
 
         rebuildIndex();
     }

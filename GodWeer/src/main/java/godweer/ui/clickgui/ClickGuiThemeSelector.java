@@ -254,8 +254,7 @@ public final class ClickGuiThemeSelector {
 
             float colorX = panelX + PANEL_PADDING + 4.0f;
             float colorY = rowY + (ROW_HEIGHT - COLOR_SIZE) * 0.5f;
-            RenderUtils.drawRoundedRect(context.pose(), colorX, colorY, COLOR_SIZE, COLOR_SIZE, 3.0f,
-                    ColorUtils.applyAlpha(themeColor, alphaMul));
+            renderThemeSwatch(context, colorX, colorY, theme, themeColor, alphaMul);
 
             float textX = colorX + COLOR_SIZE + 6.0f;
             int nameColor = ColorUtils.applyAlpha(-1, alphaMul);
@@ -303,6 +302,27 @@ public final class ClickGuiThemeSelector {
     private float getMaxScroll(float panelHeight, int themeCount) {
         float contentHeight = themeCount * ROW_HEIGHT + Math.max(0, themeCount - 1) * ROW_GAP;
         return Math.max(0.0f, contentHeight - getListHeight(panelHeight));
+    }
+
+    private void renderThemeSwatch(GuiGraphics context, float x, float y, Theme theme, int primaryColor,
+                                   float alphaMul) {
+        RenderUtils.drawRect(context.pose(), x - 0.5f, y - 0.5f, COLOR_SIZE + 1.0f, COLOR_SIZE + 1.0f,
+                ColorUtils.applyAlpha(ColorUtils.rgba(255, 255, 255, 45), alphaMul));
+
+        // Диагональный сплит: верхне-левый треугольник — основной цвет темы, нижне-правый — вторичный
+        int primary = ColorUtils.applyAlpha(primaryColor, alphaMul);
+        int secondary = ColorUtils.applyAlpha(getThemeSecondaryColor(theme, primaryColor), alphaMul);
+        RenderUtils.drawTriangle(context.pose(), x, y, x + COLOR_SIZE, y, x, y + COLOR_SIZE, primary);
+        RenderUtils.drawTriangle(context.pose(), x + COLOR_SIZE, y, x + COLOR_SIZE, y + COLOR_SIZE,
+                x, y + COLOR_SIZE, secondary);
+    }
+
+    private int getThemeSecondaryColor(Theme theme, int primaryColor) {
+        int[] colors = theme.getColors();
+        if (colors.length > 1 && ColorUtils.alpha(colors[1]) != 0) {
+            return colors[1];
+        }
+        return ColorUtils.darken(primaryColor, 0.35f);
     }
 
     private int getThemeDisplayColor(Theme theme) {

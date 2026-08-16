@@ -8,7 +8,6 @@ import godweer.modules.api.setting.ListSetting;
 import godweer.modules.api.setting.ModeSetting;
 import godweer.modules.api.setting.Setting;
 import godweer.modules.api.setting.TextSetting;
-import godweer.modules.impl.render.ClickGui;
 import godweer.utils.render.msdf.FontRenderer;
 import godweer.utils.render.msdf.Fonts;
 
@@ -16,6 +15,9 @@ import java.util.List;
 
 public final class ClickGuiLayout {
 
+    public static final float CATEGORY_GAP = 10.0f;
+    public static final float CATEGORY_WIDTH = 115.0f;
+    public static final float PANEL_HEIGHT = 245.0f;
     public static final float MODULE_PADDING = 3f;
     public static final float MODULE_GAP = 2f;
     public static final float MODULE_HEADER_HEIGHT = 17f;
@@ -38,15 +40,15 @@ public final class ClickGuiLayout {
     }
 
     public static float getWidth() {
-        return ClickGui.getCategoryWidth();
+        return CATEGORY_WIDTH;
     }
 
     public static float getHeight() {
-        return ClickGui.getSize();
+        return PANEL_HEIGHT;
     }
 
     public static float getCategoryGap() {
-        return ClickGui.getCategoryGap();
+        return CATEGORY_GAP;
     }
 
     public static float getModuleInnerWidth() {

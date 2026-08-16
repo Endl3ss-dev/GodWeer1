@@ -93,6 +93,41 @@ public final class RenderUtils {
         RenderSystem.disableBlend();
     }
 
+    public static void drawTriangle(PoseStack matrices, float x1, float y1, float x2, float y2,
+                                    float x3, float y3, int color) {
+        int alpha = (color >> 24) & 0xFF;
+        if (alpha == 0) {
+            alpha = 255;
+        }
+        float r = ((color >> 16) & 0xFF) / 255.0f;
+        float g = ((color >> 8) & 0xFF) / 255.0f;
+        float b = (color & 0xFF) / 255.0f;
+        float a = alpha / 255.0f;
+
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.disableCull();
+        RenderSystem.disableDepthTest();
+
+        Matrix4f matrix = matrices.last().pose();
+        BufferBuilder buffer = Tesselator.getInstance()
+                .begin(VertexFormat.Mode.TRIANGLES, DefaultVertexFormat.POSITION_COLOR);
+
+        buffer.addVertex(matrix, x1, y1, 0.0f).setColor(r, g, b, a);
+        buffer.addVertex(matrix, x2, y2, 0.0f).setColor(r, g, b, a);
+        buffer.addVertex(matrix, x3, y3, 0.0f).setColor(r, g, b, a);
+
+        MeshData mesh = buffer.build();
+        if (mesh != null) {
+            RenderSystem.setShader(CoreShaders.POSITION_COLOR);
+            BufferUploader.drawWithShader(mesh);
+        }
+
+        RenderSystem.enableDepthTest();
+        RenderSystem.enableCull();
+        RenderSystem.disableBlend();
+    }
+
     public static void drawRoundCircle(PoseStack matrices, float x, float y, float radius, int color) {
         drawRoundedRect(matrices, x - (radius / 2.0f), y - (radius / 2.0f), radius, radius,
                 (radius / 2.0f) - 0.5f, color);
