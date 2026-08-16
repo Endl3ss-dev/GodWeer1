@@ -6,6 +6,9 @@ import godweer.modules.ModuleCategory;
 import godweer.modules.impl.combat.ItemSwap;
 import godweer.modules.impl.combat.SexAura;
 import godweer.modules.impl.player.DrinkUse;
+import godweer.modules.impl.render.Arrows;
+import godweer.modules.impl.render.ChinaHat;
+import godweer.modules.impl.render.Trails;
 
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 
@@ -33,6 +36,9 @@ public final class ModuleManager {
         register(new SexAura());
         register(new ItemSwap());
         register(new DrinkUse());
+        register(new Trails());
+        register(new ChinaHat());
+        register(new Arrows());
 
         rebuildIndex();
         FriendManager.init();
