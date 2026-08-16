@@ -31,8 +31,10 @@ public final class ClickGuiThemeSelector {
     private static final float TITLE_HEIGHT = 25.0f;
     private static final float ROW_HEIGHT = 26.0f;
     private static final float ROW_GAP = 2.0f;
-    private static final float COLOR_SIZE = 12.0f;
-    private static final float SELECTED_BORDER = 0.6f;
+    private static final float SELECTED_MARK_WIDTH = 2.0f;
+    private static final float SCROLLBAR_WIDTH = 2.0f;
+    private static final float SCROLLBAR_GAP = 3.0f;
+    private static final float SCROLLBAR_MIN_HEIGHT = 18.0f;
     private static final float PLAYER_VISIBLE_HEIGHT = 24.0f;
     private static final float OFFSCREEN_MARGIN = 4.0f;
     private static final float DRAG_THRESHOLD = 30.0f;
@@ -42,6 +44,7 @@ public final class ClickGuiThemeSelector {
 
     private final AnimationUtils transition = new AnimationUtils(0.0f, 7.5f, Easings.CUBIC_IN_OUT);
     private final AnimationUtils scrollAnimation = new AnimationUtils(0.0f, 10.0f, Easings.CUBIC_OUT);
+    private final AnimationUtils[] hoverAnimations;
 
     private boolean themeOpen;
     private float transitionProgress;
@@ -52,6 +55,14 @@ public final class ClickGuiThemeSelector {
     private int dragMode;
     private double dragStartY;
     private boolean dragTriggered;
+
+    public ClickGuiThemeSelector() {
+        int themeCount = ThemeManager.getThemes().size();
+        hoverAnimations = new AnimationUtils[themeCount];
+        for (int i = 0; i < themeCount; i++) {
+            hoverAnimations[i] = new AnimationUtils(0.0f, 12.0f, Easings.CUBIC_OUT);
+        }
+    }
 
     public void update(Window window, ClickGuiState state) {
         float basePanelY = getBasePanelY(state);
@@ -74,7 +85,8 @@ public final class ClickGuiThemeSelector {
         return !themeOpen && transitionProgress <= 0.001f && dragMode == DRAG_NONE;
     }
 
-    public void render(GuiGraphics context, Window window, ClickGuiState state, float alphaMul) {
+    public void render(GuiGraphics context, Window window, ClickGuiState state,
+                       double mouseX, double mouseY, float alphaMul) {
         if (context == null || window == null) {
             return;
         }
@@ -94,11 +106,11 @@ public final class ClickGuiThemeSelector {
 
         FontRenderer titleFont = Fonts.Font5.get(14);
         if (titleFont != null) {
-            titleFont.drawCenteredString(context.pose(), "Theme", panelX + panelWidth * 0.5f, panelY + 11.0f,
+            titleFont.drawCenteredString(context.pose(), "Themes", panelX + panelWidth * 0.5f, panelY + 11.0f,
                     ColorUtils.applyAlpha(-1, alphaMul));
         }
 
-        renderThemes(context, panelX, panelY, panelWidth, panelHeight, alphaMul);
+        renderThemes(context, panelX, panelY, panelWidth, panelHeight, mouseX, mouseY, alphaMul);
 
         if (themeOpen && transitionProgress >= 0.98f) {
             renderGrip(context, panelX, getPlayerPanelY(state) + 5.0f, alphaMul);
@@ -139,7 +151,7 @@ public final class ClickGuiThemeSelector {
         float listY = panelY + TITLE_HEIGHT;
         float listHeight = getListHeight(panelHeight);
         if (!HoveringUtils.isHovered(mouseX, mouseY, panelX + PANEL_PADDING, listY,
-                panelWidth - PANEL_PADDING * 2.0f, listHeight)) {
+                getRowWidth(panelWidth), listHeight)) {
             return HoveringUtils.isHovered(mouseX, mouseY, panelX, panelY, panelWidth, panelHeight);
         }
 
@@ -150,7 +162,7 @@ public final class ClickGuiThemeSelector {
                 continue;
             }
             if (HoveringUtils.isHovered(mouseX, mouseY, panelX + PANEL_PADDING, rowY,
-                    panelWidth - PANEL_PADDING * 2.0f, ROW_HEIGHT)) {
+                    getRowWidth(panelWidth), ROW_HEIGHT)) {
                 ThemeManager.setCurrent(themes.get(i));
                 return true;
             }
@@ -208,7 +220,7 @@ public final class ClickGuiThemeSelector {
     }
 
     private void renderThemes(GuiGraphics context, float panelX, float panelY, float panelWidth,
-                              float panelHeight, float alphaMul) {
+                              float panelHeight, double mouseX, double mouseY, float alphaMul) {
         List<Theme> themes = ThemeManager.getThemes();
         if (themes.isEmpty()) {
             return;
@@ -222,7 +234,7 @@ public final class ClickGuiThemeSelector {
 
         float listY = panelY + TITLE_HEIGHT;
         float listHeight = getListHeight(panelHeight);
-        float rowWidth = panelWidth - PANEL_PADDING * 2.0f;
+        float rowWidth = getRowWidth(panelWidth);
         float maxScroll = getMaxScroll(panelHeight, themes.size());
         if (scrollTarget > maxScroll) {
             scrollTarget = maxScroll;
@@ -230,7 +242,8 @@ public final class ClickGuiThemeSelector {
         Theme selected = ThemeManager.getCurrent();
 
         ScissorUtils.push();
-        ScissorUtils.setFromComponentCoordinates(panelX + PANEL_PADDING, listY, rowWidth, listHeight);
+        ScissorUtils.setFromComponentCoordinates(panelX + PANEL_PADDING, listY,
+                panelWidth - PANEL_PADDING * 2.0f, listHeight);
 
         for (int i = 0, size = themes.size(); i < size; i++) {
             Theme theme = themes.get(i);
@@ -239,32 +252,74 @@ public final class ClickGuiThemeSelector {
                 continue;
             }
 
-            int themeColor = getThemeDisplayColor(theme);
-            if (theme == selected) {
-                RenderUtils.drawRoundedRect(context.pose(), panelX + PANEL_PADDING, rowY, rowWidth, ROW_HEIGHT,
-                        4.0f, ColorUtils.applyAlpha(themeColor, alphaMul));
-                RenderUtils.drawRoundedRect(context.pose(), panelX + PANEL_PADDING + SELECTED_BORDER,
-                        rowY + SELECTED_BORDER, rowWidth - SELECTED_BORDER * 2.0f,
-                        ROW_HEIGHT - SELECTED_BORDER * 2.0f, 3.6f,
-                        ColorUtils.applyAlpha(ColorUtils.rgba(10, 10, 12, 235), alphaMul));
-            } else {
-                RenderUtils.drawRoundedRect(context.pose(), panelX + PANEL_PADDING, rowY, rowWidth, ROW_HEIGHT,
-                        4.0f, ColorUtils.applyAlpha(ColorUtils.rgba(0, 0, 0, 120), alphaMul));
-            }
+            boolean hovered = HoveringUtils.isHovered(mouseX, mouseY, panelX + PANEL_PADDING, rowY,
+                    rowWidth, ROW_HEIGHT);
+            AnimationUtils hoverAnimation = hoverAnimations[i];
+            hoverAnimation.update(hovered ? 1.0f : 0.0f);
+            float hoverProgress = hoverAnimation.getValue();
+            boolean selectedTheme = theme == selected;
+            int primaryColor = getThemeDisplayColor(theme, 0);
 
-            float colorX = panelX + PANEL_PADDING + 4.0f;
-            float colorY = rowY + (ROW_HEIGHT - COLOR_SIZE) * 0.5f;
-            renderThemeSwatch(context, colorX, colorY, theme, themeColor, alphaMul);
+            renderThemeBackground(context, panelX, rowY, rowWidth, primaryColor,
+                    selectedTheme, hoverProgress, alphaMul);
 
-            float textX = colorX + COLOR_SIZE + 6.0f;
+            float textCenterX = panelX + PANEL_PADDING + rowWidth * 0.5f;
             int nameColor = ColorUtils.applyAlpha(-1, alphaMul);
-            int codeColor = theme == selected ? ColorUtils.applyAlpha(themeColor, alphaMul)
+            int codeColor = selectedTheme
+                    ? ColorUtils.applyAlpha(primaryColor, alphaMul)
                     : ColorUtils.applyAlpha(ColorUtils.rgba(155, 155, 165, 255), alphaMul);
-            nameFont.draw(context.pose(), theme.getName(), textX, rowY + 5.0f, nameColor);
-            codeFont.draw(context.pose(), theme.getHexCode(), textX, rowY + 16.5f, codeColor);
+            nameFont.drawCenteredString(context.pose(), theme.getName(), textCenterX, rowY + 5.0f, nameColor);
+            codeFont.drawCenteredString(context.pose(), theme.getHexCode(), textCenterX, rowY + 16.5f, codeColor);
+
+            if (selectedTheme) {
+                float markX = panelX + PANEL_PADDING + rowWidth - 6.0f;
+                RenderUtils.drawRoundedRect(context.pose(), markX, rowY + 7.0f,
+                        SELECTED_MARK_WIDTH, ROW_HEIGHT - 14.0f, 1.0f,
+                        ColorUtils.applyAlpha(primaryColor, alphaMul));
+            }
         }
 
+        renderScrollbar(context, panelX, panelWidth, listY, listHeight, maxScroll, themes.size(), alphaMul);
         ScissorUtils.pop();
+    }
+
+    private void renderThemeBackground(GuiGraphics context, float panelX, float rowY, float rowWidth,
+                                       int primaryColor, boolean selected, float hoverProgress, float alphaMul) {
+        int surfaceAlpha = selected ? 30 : 13 + Math.round(hoverProgress * 17.0f);
+        RenderUtils.drawRoundedRect(context.pose(), panelX + PANEL_PADDING, rowY, rowWidth, ROW_HEIGHT,
+                4.0f, ColorUtils.applyAlpha(ColorUtils.rgba(255, 255, 255, surfaceAlpha), alphaMul));
+
+        if (selected) {
+            int borderAlpha = 135 + Math.round(hoverProgress * 60.0f);
+            RenderUtils.drawRoundedRect(context.pose(), panelX + PANEL_PADDING, rowY, rowWidth, ROW_HEIGHT,
+                    4.0f, ColorUtils.applyAlpha(ColorUtils.setAlphaColor(primaryColor, borderAlpha), alphaMul));
+            RenderUtils.drawRoundedRect(context.pose(), panelX + PANEL_PADDING + 0.8f, rowY + 0.8f,
+                    rowWidth - 1.6f, ROW_HEIGHT - 1.6f, 3.4f,
+                    ColorUtils.applyAlpha(ColorUtils.rgba(12, 12, 15, 238), alphaMul));
+        } else if (hoverProgress > 0.001f) {
+            int accentAlpha = Math.max(1, Math.round(hoverProgress * 24.0f));
+            RenderUtils.drawRoundedRect(context.pose(), panelX + PANEL_PADDING + 0.8f, rowY + 0.8f,
+                    rowWidth - 1.6f, ROW_HEIGHT - 1.6f, 3.4f,
+                    ColorUtils.applyAlpha(ColorUtils.setAlphaColor(primaryColor, accentAlpha), alphaMul));
+        }
+    }
+
+    private void renderScrollbar(GuiGraphics context, float panelX, float panelWidth, float listY,
+                                 float listHeight, float maxScroll, int themeCount, float alphaMul) {
+        if (maxScroll <= 0.0f) {
+            return;
+        }
+
+        float contentHeight = themeCount * ROW_HEIGHT + Math.max(0, themeCount - 1) * ROW_GAP;
+        float thumbHeight = Math.max(SCROLLBAR_MIN_HEIGHT, listHeight * listHeight / contentHeight);
+        float travel = listHeight - thumbHeight;
+        float thumbY = listY + Mth.clamp(scrollOffset / maxScroll, 0.0f, 1.0f) * travel;
+        float scrollbarX = panelX + panelWidth - PANEL_PADDING - SCROLLBAR_WIDTH;
+
+        RenderUtils.drawRoundedRect(context.pose(), scrollbarX, listY, SCROLLBAR_WIDTH, listHeight,
+                1.0f, ColorUtils.applyAlpha(ColorUtils.rgba(255, 255, 255, 18), alphaMul));
+        RenderUtils.drawRoundedRect(context.pose(), scrollbarX, thumbY, SCROLLBAR_WIDTH, thumbHeight,
+                1.0f, ColorUtils.applyAlpha(ColorUtils.rgba(255, 255, 255, 105), alphaMul));
     }
 
     private void renderGrip(GuiGraphics context, float panelX, float gripY, float alphaMul) {
@@ -299,34 +354,22 @@ public final class ClickGuiThemeSelector {
         return panelHeight - TITLE_HEIGHT - PANEL_PADDING;
     }
 
+    private float getRowWidth(float panelWidth) {
+        return panelWidth - PANEL_PADDING * 2.0f - SCROLLBAR_WIDTH - SCROLLBAR_GAP;
+    }
+
     private float getMaxScroll(float panelHeight, int themeCount) {
         float contentHeight = themeCount * ROW_HEIGHT + Math.max(0, themeCount - 1) * ROW_GAP;
         return Math.max(0.0f, contentHeight - getListHeight(panelHeight));
     }
 
-    private void renderThemeSwatch(GuiGraphics context, float x, float y, Theme theme, int primaryColor,
-                                   float alphaMul) {
-        RenderUtils.drawRect(context.pose(), x - 0.5f, y - 0.5f, COLOR_SIZE + 1.0f, COLOR_SIZE + 1.0f,
-                ColorUtils.applyAlpha(ColorUtils.rgba(255, 255, 255, 45), alphaMul));
-
-        // Диагональный сплит: верхне-левый треугольник — основной цвет темы, нижне-правый — вторичный
-        int primary = ColorUtils.applyAlpha(primaryColor, alphaMul);
-        int secondary = ColorUtils.applyAlpha(getThemeSecondaryColor(theme, primaryColor), alphaMul);
-        RenderUtils.drawTriangle(context.pose(), x, y, x + COLOR_SIZE, y, x, y + COLOR_SIZE, primary);
-        RenderUtils.drawTriangle(context.pose(), x + COLOR_SIZE, y, x + COLOR_SIZE, y + COLOR_SIZE,
-                x, y + COLOR_SIZE, secondary);
-    }
-
-    private int getThemeSecondaryColor(Theme theme, int primaryColor) {
-        int[] colors = theme.getColors();
-        if (colors.length > 1 && ColorUtils.alpha(colors[1]) != 0) {
-            return colors[1];
+    private int getThemeDisplayColor(Theme theme, int colorIndex) {
+        if (theme.isRainbow()) {
+            return theme.getColor(colorIndex * 180);
         }
-        return ColorUtils.darken(primaryColor, 0.35f);
-    }
 
-    private int getThemeDisplayColor(Theme theme) {
-        int color = theme.getStaticColor();
+        int[] colors = theme.getColors();
+        int color = colors.length == 0 ? -1 : colors[Math.min(colorIndex, colors.length - 1)];
         if (ColorUtils.alpha(color) == 0) {
             return ColorUtils.rgba(220, 220, 220, 180);
         }

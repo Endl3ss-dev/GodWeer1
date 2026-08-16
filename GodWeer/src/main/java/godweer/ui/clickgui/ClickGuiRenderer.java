@@ -64,7 +64,7 @@ public class ClickGuiRenderer {
         }
 
         renderSearch(context, colorTheme, alphaMul);
-        themeSelector.render(context, window, state, alphaMul);
+        themeSelector.render(context, window, state, mouseX, mouseY, alphaMul);
         renderDescription(context, hoveredModule, alphaMul);
     }
 
