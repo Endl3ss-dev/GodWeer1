@@ -1,8 +1,14 @@
 package godweer.managers;
 
+import godweer.GodWeer;
 import godweer.modules.Module;
 import godweer.modules.ModuleCategory;
+import godweer.modules.impl.combat.ItemSwap;
+import godweer.modules.impl.combat.SexAura;
+import godweer.modules.impl.player.DrinkUse;
 import godweer.modules.impl.render.ClickGui;
+
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -16,6 +22,8 @@ public final class ModuleManager {
     private static final List<Module> VIEW = Collections.unmodifiableList(MODULES);
     private static final Map<ModuleCategory, List<Module>> BY_CATEGORY = new EnumMap<>(ModuleCategory.class);
 
+    private static boolean tickListenerRegistered;
+
     private ModuleManager() {
     }
 
@@ -24,15 +32,23 @@ public final class ModuleManager {
         BY_CATEGORY.clear();
 
         register(new ClickGui());
+        register(new SexAura());
+        register(new ItemSwap());
+        register(new DrinkUse());
 
         rebuildIndex();
+        FriendManager.init();
+
+        if (!tickListenerRegistered) {
+            ClientTickEvents.END_CLIENT_TICK.register(client -> tick());
+            tickListenerRegistered = true;
+        }
     }
 
     public static void register(Module module) {
-        if (module == null) {
-            return;
+        if (module != null) {
+            MODULES.add(module);
         }
-        MODULES.add(module);
     }
 
     public static void rebuildIndex() {
@@ -43,6 +59,21 @@ public final class ModuleManager {
         for (int i = 0, size = MODULES.size(); i < size; i++) {
             Module module = MODULES.get(i);
             BY_CATEGORY.get(module.getCategory()).add(module);
+        }
+    }
+
+    public static void tick() {
+        for (int i = 0, size = MODULES.size(); i < size; i++) {
+            Module module = MODULES.get(i);
+            if (!module.isEnable()) {
+                continue;
+            }
+            try {
+                module.onTick();
+            } catch (Exception exception) {
+                GodWeer.LOGGER.error("Module '{}' failed during client tick", module.getName(), exception);
+                module.setEnabled(false);
+            }
         }
     }
 
