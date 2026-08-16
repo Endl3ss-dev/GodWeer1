@@ -34,6 +34,9 @@ public abstract class Module {
         this.enable = false;
     }
 
+    public void onTick() {
+    }
+
     public void toggle() {
         setEnabled(!this.enable);
     }
