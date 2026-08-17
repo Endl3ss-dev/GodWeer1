@@ -1,5 +1,6 @@
 package godweer.modules.impl.render;
 
+import com.mojang.blaze3d.platform.GlStateManager;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.BufferUploader;
@@ -16,8 +17,6 @@ import godweer.managers.ThemeManager;
 import godweer.modules.Module;
 import godweer.modules.ModuleCategory;
 import godweer.modules.api.setting.BooleanSetting;
-import godweer.modules.api.setting.FloatSetting;
-import godweer.modules.api.setting.ModeSetting;
 import godweer.utils.color.ColorUtils;
 
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
@@ -37,23 +36,20 @@ public final class ChinaHat extends Module {
     private static final int SEGMENTS = 90;
     private static final float SEGMENT_STEP = (float) (Math.PI * 2.0 / SEGMENTS);
     private static final float CONE_HEIGHT = 0.3F;
+    private static final float GLOW_SKIRT = 0.16F;
+    private static final float GLOW_DROP = 0.06F;
+    private static final float MAX_PITCH_TILT = 30.0F;
+    private static final float PITCH_TILT_SCALE = 0.35F;
+    private static final float SHIMMER_SPEED_MS = 2600.0F;
 
     private static boolean eventsRegistered;
 
-    private final ModeSetting colorMode = new ModeSetting("Цвет", "Клиентский", "Клиентский", "Свой");
-    private final FloatSetting customRed = new FloatSetting("Красный", 190.0F, 0.0F, 255.0F, 1.0F)
-            .visible(() -> colorMode.is("Свой"));
-    private final FloatSetting customGreen = new FloatSetting("Зелёный", 143.0F, 0.0F, 255.0F, 1.0F)
-            .visible(() -> colorMode.is("Свой"));
-    private final FloatSetting customBlue = new FloatSetting("Синий", 255.0F, 0.0F, 255.0F, 1.0F)
-            .visible(() -> colorMode.is("Свой"));
-    private final BooleanSetting showOthers = new BooleanSetting("Других", true);
-    private final BooleanSetting showFriends = new BooleanSetting("Друзьях", true);
-    private final BooleanSetting showSelf = new BooleanSetting("Себе", true);
+    private final BooleanSetting showOthers = new BooleanSetting("На Других", true);
+    private final BooleanSetting showFriends = new BooleanSetting("На Друзьях", true);
 
     public ChinaHat() {
         super("ChinaHat", "Китайская шляпа над головой", ModuleCategory.RENDER);
-        addSettings(colorMode, customRed, customGreen, customBlue, showOthers, showFriends, showSelf);
+        addSettings(showOthers, showFriends);
         registerEvents();
     }
 
@@ -84,24 +80,27 @@ public final class ChinaHat extends Module {
         float partialTick = context.tickCounter().getGameTimeDeltaPartialTick(true);
         Vec3 camera = context.camera().getPosition();
 
-        int baseColor = resolveColor();
-        int coneColor = ColorUtils.setAlphaColor(baseColor, 125);
-        int outlineColor = ColorUtils.setAlphaColor(ColorUtils.darken(baseColor, 0.5F), 180);
+        int baseColor = ThemeManager.getColor();
+        int accentColor = ThemeManager.getColor(1);
+        // Фаза переливания общая на кадр: цвет "течёт" по окружности конуса.
+        float shimmerPhase = (System.currentTimeMillis() % (long) SHIMMER_SPEED_MS) / SHIMMER_SPEED_MS;
 
         RenderSystem.enableBlend();
         RenderSystem.defaultBlendFunc();
         RenderSystem.disableCull();
         RenderSystem.enableDepthTest();
+        RenderSystem.depthMask(false);
         RenderSystem.setShader(CoreShaders.POSITION_COLOR);
-        RenderSystem.lineWidth(2.0F);
 
         for (AbstractClientPlayer player : minecraft.level.players()) {
             if (!shouldRender(minecraft, player)) {
                 continue;
             }
-            renderHat(poseStack, camera, player, partialTick, baseColor, coneColor, outlineColor);
+            renderHat(poseStack, camera, player, partialTick, baseColor, accentColor, shimmerPhase);
         }
 
+        RenderSystem.depthMask(true);
+        RenderSystem.defaultBlendFunc();
         RenderSystem.enableCull();
         RenderSystem.disableBlend();
     }
@@ -111,19 +110,21 @@ public final class ChinaHat extends Module {
             return false;
         }
         if (player == minecraft.player) {
-            return showSelf.get() && !minecraft.options.getCameraType().isFirstPerson();
+            return !minecraft.options.getCameraType().isFirstPerson();
         }
         return FriendManager.isFriend(player) ? showFriends.get() : showOthers.get();
     }
 
     private void renderHat(PoseStack poseStack, Vec3 camera, AbstractClientPlayer player, float partialTick,
-                           int baseColor, int coneColor, int outlineColor) {
+                           int baseColor, int accentColor, float shimmerPhase) {
         double x = Mth.lerp(partialTick, player.xo, player.getX());
         double y = Mth.lerp(partialTick, player.yo, player.getY());
         double z = Mth.lerp(partialTick, player.zo, player.getZ());
 
         float headYaw = Mth.lerp(partialTick, player.yHeadRotO, player.yHeadRot);
         float pitch = Mth.lerp(partialTick, player.xRotO, player.getXRot());
+        // Полный pitch при взгляде вниз кладёт конус ребром к камере — шляпа выглядит плоской.
+        float tilt = Mth.clamp(pitch * PITCH_TILT_SCALE, -MAX_PITCH_TILT, MAX_PITCH_TILT);
 
         float eyeHeight = player.getEyeHeight();
         float hatOffset = player.getItemBySlot(EquipmentSlot.HEAD).isEmpty() ? 0.415F : 0.48F;
@@ -131,34 +132,59 @@ public final class ChinaHat extends Module {
 
         poseStack.pushPose();
         poseStack.translate(x - camera.x, y + eyeHeight - camera.y, z - camera.z);
-        // Поворот в системе головы: сначала yaw, затем наклон pitch — шляпа следует за взглядом.
         poseStack.mulPose(Axis.YP.rotationDegrees(-headYaw));
-        poseStack.mulPose(Axis.XP.rotationDegrees(pitch));
+        poseStack.mulPose(Axis.XP.rotationDegrees(tilt));
         poseStack.translate(0.0F, hatOffset, 0.0F);
 
         Matrix4f matrix = poseStack.last().pose();
         Tesselator tesselator = Tesselator.getInstance();
 
+        RenderSystem.defaultBlendFunc();
         BufferBuilder buffer = tesselator.begin(VertexFormat.Mode.TRIANGLE_STRIP, DefaultVertexFormat.POSITION_COLOR);
         for (int i = 0; i <= SEGMENTS; i++) {
             float angle = i * SEGMENT_STEP;
             float px = Mth.sin(angle) * radius;
             float pz = Mth.cos(angle) * radius;
-            buffer.addVertex(matrix, px, 0.0F, pz).setColor(coneColor);
-            buffer.addVertex(matrix, 0.0F, CONE_HEIGHT, 0.0F).setColor(baseColor);
+            int rimColor = shimmer(baseColor, accentColor, i, shimmerPhase, 150);
+            int apexColor = shimmer(accentColor, baseColor, i, shimmerPhase, 235);
+            buffer.addVertex(matrix, px, 0.0F, pz).setColor(rimColor);
+            buffer.addVertex(matrix, 0.0F, CONE_HEIGHT, 0.0F).setColor(apexColor);
         }
         draw(buffer);
 
-        RenderSystem.depthMask(false);
-        buffer = tesselator.begin(VertexFormat.Mode.DEBUG_LINE_STRIP, DefaultVertexFormat.POSITION_COLOR);
+        // Аддитивная "юбка" от кромки вниз-наружу: даёт мягкое свечение вместо жёсткого контура.
+        RenderSystem.blendFunc(GlStateManager.SourceFactor.SRC_ALPHA, GlStateManager.DestFactor.ONE);
+        buffer = tesselator.begin(VertexFormat.Mode.TRIANGLE_STRIP, DefaultVertexFormat.POSITION_COLOR);
+        float glowRadius = radius + GLOW_SKIRT;
         for (int i = 0; i <= SEGMENTS; i++) {
             float angle = i * SEGMENT_STEP;
-            buffer.addVertex(matrix, Mth.sin(angle) * radius, 0.0F, Mth.cos(angle) * radius).setColor(outlineColor);
+            float sin = Mth.sin(angle);
+            float cos = Mth.cos(angle);
+            int glowColor = shimmer(baseColor, accentColor, i, shimmerPhase, 110);
+            buffer.addVertex(matrix, sin * radius, 0.0F, cos * radius).setColor(glowColor);
+            buffer.addVertex(matrix, sin * glowRadius, -GLOW_DROP, cos * glowRadius)
+                    .setColor(ColorUtils.setAlphaColor(glowColor, 0));
         }
         draw(buffer);
-        RenderSystem.depthMask(true);
+
+        buffer = tesselator.begin(VertexFormat.Mode.TRIANGLE_STRIP, DefaultVertexFormat.POSITION_COLOR);
+        for (int i = 0; i <= SEGMENTS; i++) {
+            float angle = i * SEGMENT_STEP;
+            float px = Mth.sin(angle) * radius;
+            float pz = Mth.cos(angle) * radius;
+            int rimGlow = shimmer(accentColor, baseColor, i, shimmerPhase, 90);
+            buffer.addVertex(matrix, px, 0.0F, pz).setColor(rimGlow);
+            buffer.addVertex(matrix, 0.0F, CONE_HEIGHT, 0.0F).setColor(ColorUtils.setAlphaColor(rimGlow, 25));
+        }
+        draw(buffer);
 
         poseStack.popPose();
+    }
+
+    // Синусоидальная волна цвета по сегментам: плавное переливание base <-> accent без резких швов на стыке 0/2π.
+    private int shimmer(int from, int to, int segment, float phase, int alpha) {
+        float wave = Mth.sin((segment / (float) SEGMENTS + phase) * Mth.TWO_PI) * 0.5F + 0.5F;
+        return ColorUtils.setAlphaColor(ColorUtils.interpolate(from, to, wave), alpha);
     }
 
     private void draw(BufferBuilder buffer) {
@@ -166,12 +192,5 @@ public final class ChinaHat extends Module {
         if (mesh != null) {
             BufferUploader.drawWithShader(mesh);
         }
-    }
-
-    private int resolveColor() {
-        if (colorMode.is("Свой")) {
-            return ColorUtils.rgb((int) customRed.get(), (int) customGreen.get(), (int) customBlue.get());
-        }
-        return ThemeManager.getColor();
     }
 }

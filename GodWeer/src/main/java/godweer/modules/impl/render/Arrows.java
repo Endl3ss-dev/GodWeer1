@@ -51,6 +51,10 @@ public final class Arrows extends Module {
             GodWeer.id("textures/modules/arrows/arrow6.png")
     };
 
+    private static final int FRIENDLY_COLOR = ColorUtils.rgb(70, 220, 110);
+    private static final int HOSTILE_COLOR = ColorUtils.rgb(235, 60, 60);
+    private static final int DEFAULT_FRIEND_COLOR = ColorUtils.rgb(80, 170, 255);
+
     private static final float ROTATION_SMOOTHING = 0.18F;
     private static final float FADE_IN = 0.12F;
     private static final float FADE_OUT = 0.10F;
@@ -58,13 +62,7 @@ public final class Arrows extends Module {
     private static boolean eventsRegistered;
 
     private final ModeSetting texture = new ModeSetting("Текстура", "1", "1", "2", "3", "4", "5", "6");
-    private final ModeSetting colorMode = new ModeSetting("Цвет", "Клиентский", "Клиентский", "Свой", "Кастомное");
-    private final FloatSetting customRed = new FloatSetting("Красный", 190.0F, 0.0F, 255.0F, 1.0F)
-            .visible(() -> colorMode.is("Свой"));
-    private final FloatSetting customGreen = new FloatSetting("Зелёный", 143.0F, 0.0F, 255.0F, 1.0F)
-            .visible(() -> colorMode.is("Свой"));
-    private final FloatSetting customBlue = new FloatSetting("Синий", 255.0F, 0.0F, 255.0F, 1.0F)
-            .visible(() -> colorMode.is("Свой"));
+    private final ModeSetting colorMode = new ModeSetting("Цвет", "Клиентский", "Клиентский", "Свой/Чужой", "Кастомное");
     private final FloatSetting playerRed = new FloatSetting("Игроки: красный", 230.0F, 0.0F, 255.0F, 1.0F)
             .visible(() -> colorMode.is("Кастомное"));
     private final FloatSetting playerGreen = new FloatSetting("Игроки: зелёный", 50.0F, 0.0F, 255.0F, 1.0F)
@@ -77,9 +75,8 @@ public final class Arrows extends Module {
             .visible(() -> colorMode.is("Кастомное"));
     private final FloatSetting friendBlue = new FloatSetting("Друзья: синий", 255.0F, 0.0F, 255.0F, 1.0F)
             .visible(() -> colorMode.is("Кастомное"));
-    private final BooleanSetting showOthers = new BooleanSetting("Других", true);
-    private final BooleanSetting showFriends = new BooleanSetting("Друзьях", true);
     private final BooleanSetting onlyNaked = new BooleanSetting("Голых", false);
+    private final BooleanSetting showFriends = new BooleanSetting("Друзьях", true);
     private final FloatSetting size = new FloatSetting("Размер", 13.0F, 8.0F, 28.0F, 0.5F);
     private final FloatSetting distance = new FloatSetting("Дистанция", 58.0F, 30.0F, 120.0F, 1.0F);
 
@@ -88,9 +85,8 @@ public final class Arrows extends Module {
 
     public Arrows() {
         super("Arrows", "Стрелочки на игроков вокруг прицела", ModuleCategory.RENDER);
-        addSettings(texture, colorMode, customRed, customGreen, customBlue,
-                playerRed, playerGreen, playerBlue, friendRed, friendGreen, friendBlue,
-                showOthers, showFriends, onlyNaked, size, distance);
+        addSettings(texture, colorMode, playerRed, playerGreen, playerBlue,
+                friendRed, friendGreen, friendBlue, onlyNaked, showFriends, size, distance);
         registerEvents();
     }
 
@@ -140,7 +136,7 @@ public final class Arrows extends Module {
             }
 
             boolean friend = FriendManager.isFriend(player);
-            if (friend ? !showFriends.get() : !showOthers.get()) {
+            if (friend && !showFriends.get()) {
                 continue;
             }
             if (!friend && onlyNaked.get() && !isNaked(player)) {
@@ -221,15 +217,15 @@ public final class Arrows extends Module {
     }
 
     private int resolveColor(boolean friend) {
-        if (colorMode.is("Свой")) {
-            return ColorUtils.rgb((int) customRed.get(), (int) customGreen.get(), (int) customBlue.get());
+        if (colorMode.is("Свой/Чужой")) {
+            return friend ? FRIENDLY_COLOR : HOSTILE_COLOR;
         }
         if (colorMode.is("Кастомное")) {
             return friend
                     ? ColorUtils.rgb((int) friendRed.get(), (int) friendGreen.get(), (int) friendBlue.get())
                     : ColorUtils.rgb((int) playerRed.get(), (int) playerGreen.get(), (int) playerBlue.get());
         }
-        return friend ? ColorUtils.rgb(80, 170, 255) : ThemeManager.getColor();
+        return friend ? DEFAULT_FRIEND_COLOR : ThemeManager.getColor();
     }
 
     private boolean isNaked(Player player) {

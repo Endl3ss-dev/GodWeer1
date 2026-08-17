@@ -16,7 +16,6 @@ import godweer.modules.Module;
 import godweer.modules.ModuleCategory;
 import godweer.modules.api.setting.BooleanSetting;
 import godweer.modules.api.setting.FloatSetting;
-import godweer.modules.api.setting.ModeSetting;
 import godweer.utils.color.ColorUtils;
 
 import net.fabricmc.fabric.api.client.rendering.v1.WorldRenderContext;
@@ -42,22 +41,15 @@ public final class Trails extends Module {
 
     private static boolean eventsRegistered;
 
-    private final ModeSetting colorMode = new ModeSetting("Цвет", "Клиентский", "Клиентский", "Свой");
-    private final FloatSetting customRed = new FloatSetting("Красный", 190.0F, 0.0F, 255.0F, 1.0F)
-            .visible(() -> colorMode.is("Свой"));
-    private final FloatSetting customGreen = new FloatSetting("Зелёный", 143.0F, 0.0F, 255.0F, 1.0F)
-            .visible(() -> colorMode.is("Свой"));
-    private final FloatSetting customBlue = new FloatSetting("Синий", 255.0F, 0.0F, 255.0F, 1.0F)
-            .visible(() -> colorMode.is("Свой"));
-    private final BooleanSetting showOthers = new BooleanSetting("Других", true);
-    private final BooleanSetting showFriends = new BooleanSetting("Друзьях", true);
+    private final BooleanSetting showOthers = new BooleanSetting("На Других", true);
+    private final BooleanSetting showFriends = new BooleanSetting("На Друзьях", true);
     private final FloatSetting length = new FloatSetting("Длина", 1.0F, 0.2F, 3.0F, 0.1F);
 
     private final Map<UUID, ArrayDeque<TrailPoint>> trails = new HashMap<>();
 
     public Trails() {
         super("Trails", "Красивый след за игроками", ModuleCategory.RENDER);
-        addSettings(colorMode, customRed, customGreen, customBlue, showOthers, showFriends, length);
+        addSettings(showOthers, showFriends, length);
         registerEvents();
     }
 
@@ -94,15 +86,18 @@ public final class Trails extends Module {
         long now = System.currentTimeMillis();
         long lifetimeMs = (long) (length.get() * 1000.0F);
         float partialTick = context.tickCounter().getGameTimeDeltaPartialTick(true);
+        UUID selfId = minecraft.player.getUUID();
 
         for (AbstractClientPlayer player : minecraft.level.players()) {
-            if (player == minecraft.player || !player.isAlive() || player.isSpectator()) {
+            if (!player.isAlive() || player.isSpectator()) {
                 continue;
             }
 
-            boolean friend = FriendManager.isFriend(player);
-            if (friend ? !showFriends.get() : !showOthers.get()) {
-                continue;
+            if (player != minecraft.player) {
+                boolean friend = FriendManager.isFriend(player);
+                if (friend ? !showFriends.get() : !showOthers.get()) {
+                    continue;
+                }
             }
 
             ArrayDeque<TrailPoint> points = trails.computeIfAbsent(player.getUUID(), uuid -> new ArrayDeque<>());
@@ -134,12 +129,14 @@ public final class Trails extends Module {
             return;
         }
 
+        boolean firstPerson = minecraft.options.getCameraType().isFirstPerson();
+
         Vec3 camera = context.camera().getPosition();
         poseStack.pushPose();
         poseStack.translate(-camera.x, -camera.y, -camera.z);
         Matrix4f matrix = poseStack.last().pose();
 
-        int color = resolveColor();
+        int color = ThemeManager.getColor();
         int red = ColorUtils.red(color);
         int green = ColorUtils.green(color);
         int blue = ColorUtils.blue(color);
@@ -151,8 +148,12 @@ public final class Trails extends Module {
         RenderSystem.depthMask(false);
         RenderSystem.setShader(CoreShaders.POSITION_COLOR);
 
-        for (ArrayDeque<TrailPoint> points : trails.values()) {
-            renderTrail(matrix, points, red, green, blue);
+        for (Map.Entry<UUID, ArrayDeque<TrailPoint>> entry : trails.entrySet()) {
+            // Свой след пишем всегда, но рисуем только в 3-м лице: в 1-м он размазывается по камере.
+            if (firstPerson && entry.getKey().equals(selfId)) {
+                continue;
+            }
+            renderTrail(matrix, entry.getValue(), red, green, blue);
         }
 
         RenderSystem.depthMask(true);
@@ -205,13 +206,6 @@ public final class Trails extends Module {
         if (mesh != null) {
             BufferUploader.drawWithShader(mesh);
         }
-    }
-
-    private int resolveColor() {
-        if (colorMode.is("Свой")) {
-            return ColorUtils.rgb((int) customRed.get(), (int) customGreen.get(), (int) customBlue.get());
-        }
-        return ThemeManager.getColor();
     }
 
     private record TrailPoint(double x, double y, double z, float height, long time) {
