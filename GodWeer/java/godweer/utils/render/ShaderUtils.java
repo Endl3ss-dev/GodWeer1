@@ -61,6 +61,10 @@ public final class ShaderUtils {
 
     public static final ShaderProgram ESP_GLOW = register("shaderesp", "glow", DefaultVertexFormat.POSITION_TEX_COLOR);
     public static final ShaderProgram ESP_FILL = register("shaderesp", "fill", DefaultVertexFormat.POSITION_TEX_COLOR);
+<<<<<<< Updated upstream
+=======
+    public static final ShaderProgram CHINA_HAT = register("chinahat", "chinahat", DefaultVertexFormat.POSITION_TEX_COLOR);
+>>>>>>> Stashed changes
 
     private ShaderUtils() {
     }
@@ -69,9 +73,12 @@ public final class ShaderUtils {
         return new ShaderProgram(GodWeer.id("core/" + directory + "/" + name), format, ShaderDefines.EMPTY);
     }
 
+<<<<<<< Updated upstream
     // ShaderManager компилирует программу при первом обращении и кэширует её,
     // поэтому регистрация в CoreShaders.PROGRAMS не требуется; null означает провал компиляции.
     // getProgram() может кинуть при ошибке компиляции GLSL — гасим, иначе падает весь кадр.
+=======
+>>>>>>> Stashed changes
     public static CompiledShaderProgram get(ShaderProgram program) {
         try {
             return Minecraft.getInstance().getShaderManager().getProgram(program);
