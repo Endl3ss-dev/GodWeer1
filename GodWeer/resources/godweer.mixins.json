@@ -1,0 +1,18 @@
+{
+	"required": true,
+	"package": "godweer.mixins",
+	"compatibilityLevel": "JAVA_21",
+	"minVersion": "0.8",
+	"mixins": [
+	],
+	"client": [
+		"client.MixinKeyboardHandler",
+		"client.MixinMouseHandler"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	},
+	"overwrites": {
+		"requireAnnotations": true
+	}
+}
