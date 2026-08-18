@@ -93,7 +93,7 @@ public final class AntiCheatDetector extends Module {
         ServerData server = minecraft.getCurrentServer();
         String address = server == null ? "unknown" : server.ip;
         String name = server == null ? "unknown" : server.name;
-        String brand = minecraft.player.connection.getServerBrand();
+        String brand = minecraft.player.connection.serverBrand();
         analyzer.begin(address, name, brand, SharedConstants.getCurrentVersion().getName());
         inspectServerMetadata(minecraft, true);
         notifyChat("§aСканирование запущено на " + resolveDurationMinutes()
@@ -213,7 +213,7 @@ public final class AntiCheatDetector extends Module {
             return;
         }
 
-        analyzer.updateBrand(player.connection.getServerBrand());
+        analyzer.updateBrand(player.connection.serverBrand());
         int commandCount = player.connection.getCommands().getRoot().getChildren().size();
         if (forceCommands || commandCount != lastScannedCommandCount) {
             lastScannedCommandCount = commandCount;
