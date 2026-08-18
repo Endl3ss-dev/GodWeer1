@@ -1,0 +1,20 @@
+package mods.voicechat;
+
+import mods.voicechat.config.ConfigMigrator;
+import mods.voicechat.intercompatibility.ClientCompatibilityManager;
+import nuclear.control.events.EventManager;
+
+public class ForgeVoicechatClientMod extends VoicechatClient {
+
+    public ForgeVoicechatClientMod() {
+        initializeClient();
+        EventManager.register(ClientCompatibilityManager.INSTANCE);
+    }
+
+    @Override
+    public void initializeConfigs() {
+        super.initializeConfigs();
+        ConfigMigrator.migrateClientConfig();
+    }
+
+}
