@@ -7,7 +7,9 @@
 	],
 	"client": [
 		"client.MixinKeyboardHandler",
-		"client.MixinMouseHandler"
+		"client.MixinMouseHandler",
+		"client.MixinClientPacketListener",
+		"client.MixinClientCommonPacketListener"
 	],
 	"injectors": {
 		"defaultRequire": 1

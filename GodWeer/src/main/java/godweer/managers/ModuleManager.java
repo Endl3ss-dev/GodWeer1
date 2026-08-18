@@ -5,6 +5,7 @@ import godweer.modules.Module;
 import godweer.modules.ModuleCategory;
 import godweer.modules.impl.combat.ItemSwap;
 import godweer.modules.impl.combat.SexAura;
+import godweer.modules.impl.misc.AntiCheatDetector;
 import godweer.modules.impl.player.DrinkUse;
 import godweer.modules.impl.render.Arrows;
 import godweer.modules.impl.render.ChinaHat;
@@ -35,6 +36,7 @@ public final class ModuleManager {
 
         register(new SexAura());
         register(new ItemSwap());
+        register(new AntiCheatDetector());
         register(new DrinkUse());
         register(new Trails());
         register(new ChinaHat());
