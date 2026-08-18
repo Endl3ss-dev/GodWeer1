@@ -1,0 +1,30 @@
+{
+	"schemaVersion": 1,
+	"id": "godweer",
+	"version": "${version}",
+	"name": "GodWeer",
+	"description": "GodWeer — Minecraft 1.21.4 Fabric client.",
+	"authors": [
+		"GodWeer"
+	],
+	"contact": {
+		"sources": "https://github.com/Endl3ss-dev/GodWeer"
+	},
+	"license": "CC0-1.0",
+	"icon": "assets/godweer/icon.png",
+	"environment": "client",
+	"entrypoints": {
+		"client": [
+			"godweer.GodWeer"
+		]
+	},
+	"mixins": [
+		"godweer.mixins.json"
+	],
+	"depends": {
+		"fabricloader": ">=0.19.3",
+		"minecraft": "~1.21.4",
+		"java": ">=21",
+		"fabric-api": "*"
+	}
+}
