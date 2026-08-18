@@ -13,6 +13,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ServerData;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.chat.Component;
+import net.minecraft.network.protocol.game.ServerboundPlayerCommandPacket;
 import net.minecraft.network.protocol.game.ServerboundSetCarriedItemPacket;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.phys.Vec3;
@@ -21,12 +22,15 @@ public final class AntiCheatDetector extends Module {
 
     private static final long TICKS_PER_SECOND = 20L;
     private static final long STATUS_INTERVAL_TICKS = 1_200L;
+    private static final int REACTION_WINDOW_TICKS = 60;
+    private static final double MINIMUM_REACTION_DISTANCE = 0.03D;
+    private static final double TELEPORT_DISTANCE = 16.0D;
     private static AntiCheatDetector activeDetector;
 
     private final ModeSetting duration = new ModeSetting("Длительность", "20 минут",
             "10 минут", "15 минут", "20 минут");
-    private final ModeSetting intensity = new ModeSetting("Автотесты", "Осторожные",
-            "Осторожные", "Интенсивные");
+    private final ModeSetting intensity = new ModeSetting("Автотесты", "Интенсивные",
+            "Осторожные", "Интенсивные", "Граничные");
     private final BooleanSetting automaticActions = new BooleanSetting("Действия автоматически", true);
     private final BooleanSetting copyToClipboard = new BooleanSetting("Копировать отчёт", true);
     private final BooleanSetting stageNotifications = new BooleanSetting("Этапы в чат", true);
@@ -41,24 +45,40 @@ public final class AntiCheatDetector extends Module {
     private int lastScannedCommandCount = -1;
     private boolean scanning;
     private boolean reportFinalized;
+
     private boolean pendingCorrection;
     private double correctionStartX;
     private double correctionStartY;
     private double correctionStartZ;
+    private ScanStage correctionStage;
+    private ProbeAction correctionAction;
+    private int correctionLatencyTicks;
+
+    private ProbeAction lastConfirmedAction;
+    private long lastConfirmedActionTick = Long.MIN_VALUE;
+
     private boolean syntheticJump;
     private long releaseJumpAt;
+    private boolean jumpVerificationPending;
+    private long verifyJumpAt;
+    private double jumpStartY;
+
     private boolean syntheticSneak;
     private long releaseSneakAt;
+    private boolean sneakVerificationPending;
+    private long verifySneakAt;
+
     private boolean syntheticSprint;
     private boolean sprintBeforeProbe;
     private long releaseSprintAt;
+
     private boolean syntheticHotbar;
     private int hotbarBeforeProbe;
     private int hotbarProbeSlot;
     private long releaseHotbarAt;
 
     public AntiCheatDetector() {
-        super("AntiCheatDetector", "20-минутный анализ реакций и метаданных античита", ModuleCategory.MISC);
+        super("AntiCheatDetector", "Поэтапный анализ реакций и метаданных античита", ModuleCategory.MISC);
         addSettings(duration, intensity, automaticActions, copyToClipboard, stageNotifications);
     }
 
@@ -87,6 +107,8 @@ public final class AntiCheatDetector extends Module {
         scanning = true;
         reportFinalized = false;
         pendingCorrection = false;
+        lastConfirmedAction = null;
+        lastConfirmedActionTick = Long.MIN_VALUE;
         resetSyntheticState();
         activeDetector = this;
 
@@ -98,7 +120,11 @@ public final class AntiCheatDetector extends Module {
         inspectServerMetadata(minecraft, true);
         notifyChat("§aСканирование запущено на " + resolveDurationMinutes()
                 + " минут. Не открывайте GUI во время активных этапов.");
-        notifyChat("§7Используются только валидные vanilla-действия; точная версия возможна только при явной сигнатуре.");
+        if (isBoundaryMode()) {
+            notifyChat("§eГраничный режим использует частые, но валидные смены состояния и может вызвать флаги.");
+        } else {
+            notifyChat("§7Точная версия возможна только при явной сигнатуре сервера.");
+        }
     }
 
     @Override
@@ -130,14 +156,17 @@ public final class AntiCheatDetector extends Module {
         }
 
         scanTicks++;
-        releaseExpiredActions(minecraft, player);
+        verifyPendingActions(player);
         resolvePendingCorrection(player);
+        releaseExpiredActions(minecraft, player);
 
         ScanStage nextStage = resolveStage(scanTicks, targetTicks);
         if (nextStage != stage) {
             restoreSyntheticActions(minecraft);
             stage = nextStage;
             stageActionSequence = 0;
+            lastConfirmedAction = null;
+            lastConfirmedActionTick = Long.MIN_VALUE;
             if (stageNotifications.get()) {
                 notifyChat("§7Этап: §f" + stage.getDisplayName());
             }
@@ -175,10 +204,23 @@ public final class AntiCheatDetector extends Module {
         if (player == null) {
             return;
         }
+
         detector.pendingCorrection = true;
         detector.correctionStartX = player.getX();
         detector.correctionStartY = player.getY();
         detector.correctionStartZ = player.getZ();
+        detector.correctionStage = detector.stage;
+
+        if (detector.lastConfirmedAction != null) {
+            long latency = detector.scanTicks - detector.lastConfirmedActionTick;
+            if (latency >= 0L && latency <= REACTION_WINDOW_TICKS) {
+                detector.correctionAction = detector.lastConfirmedAction;
+                detector.correctionLatencyTicks = (int) latency;
+                return;
+            }
+        }
+        detector.correctionAction = null;
+        detector.correctionLatencyTicks = -1;
     }
 
     public static void onCustomPayloadPacket(String channel) {
@@ -209,7 +251,7 @@ public final class AntiCheatDetector extends Module {
 
     private void inspectServerMetadata(Minecraft minecraft, boolean forceCommands) {
         LocalPlayer player = minecraft.player;
-        if (player == null) {
+        if (player == null || minecraft.level == null) {
             return;
         }
 
@@ -232,7 +274,7 @@ public final class AntiCheatDetector extends Module {
             return;
         }
 
-        int baseCadence = intensity.is("Интенсивные") ? 35 : 90;
+        int baseCadence = resolveBaseCadence();
         long stageTick = scanTicks;
         switch (stage) {
             case FINGERPRINT, BASELINE -> {
@@ -244,21 +286,27 @@ public final class AntiCheatDetector extends Module {
             }
             case POSTURE -> {
                 if (stageTick % baseCadence == 0L) {
-                    startSneakProbe(minecraft, player);
+                    if ((stageActionSequence++ & 1) == 0) {
+                        startSneakProbe(minecraft, player);
+                    } else {
+                        startSprintProbe(player);
+                    }
                 }
             }
             case INTERACTION -> {
-                if (stageTick % baseCadence == 0L) {
+                int interactionCadence = isBoundaryMode() ? 5 : baseCadence;
+                if (stageTick % interactionCadence == 0L) {
                     runSwingProbe(player);
                 }
             }
             case INVENTORY -> {
-                if (stageTick % (baseCadence + 30L) == 0L) {
+                int inventoryCadence = isBoundaryMode() ? 12 : baseCadence + 30;
+                if (stageTick % inventoryCadence == 0L) {
                     startHotbarProbe(player);
                 }
             }
             case MIXED -> {
-                int mixedCadence = Math.max(20, baseCadence - 15);
+                int mixedCadence = isBoundaryMode() ? 8 : Math.max(20, baseCadence - 15);
                 if (stageTick % mixedCadence == 0L) {
                     runMixedAction(minecraft, player);
                 }
@@ -269,12 +317,8 @@ public final class AntiCheatDetector extends Module {
     private void runMovementAction(Minecraft minecraft, LocalPlayer player) {
         Vec3 velocity = player.getDeltaMovement();
         double horizontalSpeedSquared = velocity.x * velocity.x + velocity.z * velocity.z;
-        if ((stageActionSequence++ & 1) == 0) {
-            if (horizontalSpeedSquared < 0.0025D && player.onGround()) {
-                startJumpProbe(minecraft);
-            } else {
-                startSprintProbe(player);
-            }
+        if ((stageActionSequence++ & 1) == 0 && horizontalSpeedSquared < 0.0025D) {
+            startJumpProbe(minecraft, player);
         } else {
             startSprintProbe(player);
         }
@@ -283,22 +327,25 @@ public final class AntiCheatDetector extends Module {
     private void runMixedAction(Minecraft minecraft, LocalPlayer player) {
         int action = stageActionSequence++ % 5;
         switch (action) {
-            case 0 -> runMovementAction(minecraft, player);
-            case 1 -> startSneakProbe(minecraft, player);
-            case 2 -> runSwingProbe(player);
-            case 3 -> startHotbarProbe(player);
-            default -> runSwingProbe(player);
+            case 0 -> startJumpProbe(minecraft, player);
+            case 1 -> startSprintProbe(player);
+            case 2 -> startSneakProbe(minecraft, player);
+            case 3 -> runSwingProbe(player);
+            default -> startHotbarProbe(player);
         }
     }
 
-    private void startJumpProbe(Minecraft minecraft) {
-        if (syntheticJump || minecraft.options.keyJump.isDown()) {
+    private void startJumpProbe(Minecraft minecraft, LocalPlayer player) {
+        if (syntheticJump || jumpVerificationPending || minecraft.options.keyJump.isDown()) {
             return;
         }
+        analyzer.recordActionAttempt(ProbeAction.JUMP);
         syntheticJump = true;
+        jumpVerificationPending = true;
+        jumpStartY = player.getY();
+        verifyJumpAt = scanTicks + 1L;
         releaseJumpAt = scanTicks + 1L;
         minecraft.options.keyJump.setDown(true);
-        analyzer.recordAction(stage, ProbeAction.JUMP);
     }
 
     private void startSprintProbe(LocalPlayer player) {
@@ -306,47 +353,91 @@ public final class AntiCheatDetector extends Module {
             return;
         }
         Vec3 velocity = player.getDeltaMovement();
-        if (velocity.x * velocity.x + velocity.z * velocity.z < 0.001D) {
+        double horizontalSpeedSquared = velocity.x * velocity.x + velocity.z * velocity.z;
+        if (!isBoundaryMode() && horizontalSpeedSquared < 0.001D) {
             return;
         }
+
+        analyzer.recordActionAttempt(ProbeAction.SPRINT);
         syntheticSprint = true;
         sprintBeforeProbe = player.isSprinting();
-        releaseSprintAt = scanTicks + (intensity.is("Интенсивные") ? 8L : 16L);
-        player.setSprinting(!sprintBeforeProbe);
-        analyzer.recordAction(stage, ProbeAction.SPRINT);
+        releaseSprintAt = scanTicks + resolveHoldTicks(8L, 16L, 3L);
+        boolean targetSprinting = !sprintBeforeProbe;
+        player.setSprinting(targetSprinting);
+        if (isBoundaryMode()) {
+            sendSprintState(player, targetSprinting);
+        }
+        if (player.isSprinting() == targetSprinting) {
+            registerConfirmedAction(ProbeAction.SPRINT);
+        }
     }
 
     private void startSneakProbe(Minecraft minecraft, LocalPlayer player) {
-        if (syntheticSneak || minecraft.options.keyShift.isDown() || player.isUsingItem()) {
+        if (syntheticSneak || sneakVerificationPending || minecraft.options.keyShift.isDown()
+                || player.isUsingItem()) {
             return;
         }
+
+        analyzer.recordActionAttempt(ProbeAction.SNEAK);
         syntheticSneak = true;
-        releaseSneakAt = scanTicks + (intensity.is("Интенсивные") ? 6L : 12L);
+        sneakVerificationPending = true;
+        verifySneakAt = scanTicks + 1L;
+        releaseSneakAt = scanTicks + resolveHoldTicks(6L, 12L, 3L);
         minecraft.options.keyShift.setDown(true);
-        analyzer.recordAction(stage, ProbeAction.SNEAK);
+        if (isBoundaryMode()) {
+            player.connection.send(new ServerboundPlayerCommandPacket(
+                    player, ServerboundPlayerCommandPacket.Action.PRESS_SHIFT_KEY
+            ));
+        }
     }
 
     private void runSwingProbe(LocalPlayer player) {
         if (player.isUsingItem()) {
             return;
         }
+        analyzer.recordActionAttempt(ProbeAction.SWING);
         player.swing((stageActionSequence++ & 1) == 0 ? InteractionHand.MAIN_HAND : InteractionHand.OFF_HAND);
-        analyzer.recordAction(stage, ProbeAction.SWING);
+        registerConfirmedAction(ProbeAction.SWING);
     }
 
     private void startHotbarProbe(LocalPlayer player) {
         if (syntheticHotbar || player.isUsingItem() || player.containerMenu != player.inventoryMenu) {
             return;
         }
+
+        analyzer.recordActionAttempt(ProbeAction.HOTBAR);
         hotbarBeforeProbe = player.getInventory().selected;
         hotbarProbeSlot = (hotbarBeforeProbe + 1 + (stageActionSequence++ % 8)) % 9;
         if (hotbarProbeSlot == hotbarBeforeProbe) {
             hotbarProbeSlot = (hotbarBeforeProbe + 1) % 9;
         }
         syntheticHotbar = true;
-        releaseHotbarAt = scanTicks + (intensity.is("Интенсивные") ? 5L : 10L);
+        releaseHotbarAt = scanTicks + resolveHoldTicks(5L, 10L, 2L);
         selectHotbar(player, hotbarProbeSlot);
-        analyzer.recordAction(stage, ProbeAction.HOTBAR);
+        if (player.getInventory().selected == hotbarProbeSlot) {
+            registerConfirmedAction(ProbeAction.HOTBAR);
+        }
+    }
+
+    private void verifyPendingActions(LocalPlayer player) {
+        if (jumpVerificationPending && scanTicks >= verifyJumpAt) {
+            jumpVerificationPending = false;
+            if (!player.onGround() || player.getY() > jumpStartY + 0.01D) {
+                registerConfirmedAction(ProbeAction.JUMP);
+            }
+        }
+        if (sneakVerificationPending && scanTicks >= verifySneakAt) {
+            sneakVerificationPending = false;
+            if (player.isShiftKeyDown()) {
+                registerConfirmedAction(ProbeAction.SNEAK);
+            }
+        }
+    }
+
+    private void registerConfirmedAction(ProbeAction action) {
+        analyzer.recordActionSuccess(stage, action);
+        lastConfirmedAction = action;
+        lastConfirmedActionTick = scanTicks;
     }
 
     private void releaseExpiredActions(Minecraft minecraft, LocalPlayer player) {
@@ -356,10 +447,18 @@ public final class AntiCheatDetector extends Module {
         }
         if (syntheticSneak && scanTicks >= releaseSneakAt) {
             minecraft.options.keyShift.setDown(false);
+            if (isBoundaryMode()) {
+                player.connection.send(new ServerboundPlayerCommandPacket(
+                        player, ServerboundPlayerCommandPacket.Action.RELEASE_SHIFT_KEY
+                ));
+            }
             syntheticSneak = false;
         }
         if (syntheticSprint && scanTicks >= releaseSprintAt) {
             player.setSprinting(sprintBeforeProbe);
+            if (isBoundaryMode()) {
+                sendSprintState(player, sprintBeforeProbe);
+            }
             syntheticSprint = false;
         }
         if (syntheticHotbar && scanTicks >= releaseHotbarAt) {
@@ -381,9 +480,17 @@ public final class AntiCheatDetector extends Module {
         }
         if (syntheticSneak) {
             minecraft.options.keyShift.setDown(false);
+            if (player != null && isBoundaryMode()) {
+                player.connection.send(new ServerboundPlayerCommandPacket(
+                        player, ServerboundPlayerCommandPacket.Action.RELEASE_SHIFT_KEY
+                ));
+            }
         }
         if (player != null && syntheticSprint) {
             player.setSprinting(sprintBeforeProbe);
+            if (isBoundaryMode()) {
+                sendSprintState(player, sprintBeforeProbe);
+            }
         }
         if (player != null && syntheticHotbar && player.getInventory().selected == hotbarProbeSlot) {
             selectHotbar(player, hotbarBeforeProbe);
@@ -393,13 +500,24 @@ public final class AntiCheatDetector extends Module {
 
     private void resetSyntheticState() {
         syntheticJump = false;
+        jumpVerificationPending = false;
         syntheticSneak = false;
+        sneakVerificationPending = false;
         syntheticSprint = false;
         syntheticHotbar = false;
         releaseJumpAt = 0L;
+        verifyJumpAt = 0L;
         releaseSneakAt = 0L;
+        verifySneakAt = 0L;
         releaseSprintAt = 0L;
         releaseHotbarAt = 0L;
+    }
+
+    private void sendSprintState(LocalPlayer player, boolean sprinting) {
+        ServerboundPlayerCommandPacket.Action action = sprinting
+                ? ServerboundPlayerCommandPacket.Action.START_SPRINTING
+                : ServerboundPlayerCommandPacket.Action.STOP_SPRINTING;
+        player.connection.send(new ServerboundPlayerCommandPacket(player, action));
     }
 
     private void selectHotbar(LocalPlayer player, int slot) {
@@ -429,7 +547,18 @@ public final class AntiCheatDetector extends Module {
         double deltaY = player.getY() - correctionStartY;
         double deltaZ = player.getZ() - correctionStartZ;
         double distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY + deltaZ * deltaZ);
-        analyzer.recordCorrection(stage, distance);
+
+        CorrectionKind kind;
+        if (distance > TELEPORT_DISTANCE) {
+            kind = CorrectionKind.TELEPORT;
+        } else if (correctionAction != null && distance >= MINIMUM_REACTION_DISTANCE) {
+            kind = CorrectionKind.PROBE_REACTION;
+        } else {
+            kind = CorrectionKind.AMBIENT;
+        }
+        analyzer.recordCorrection(correctionStage, distance, kind, correctionAction, correctionLatencyTicks);
+        correctionAction = null;
+        correctionLatencyTicks = -1;
     }
 
     private void finalizeReport(Minecraft minecraft, String reason) {
@@ -480,6 +609,24 @@ public final class AntiCheatDetector extends Module {
         };
     }
 
+    private int resolveBaseCadence() {
+        if (isBoundaryMode()) {
+            return 12;
+        }
+        return intensity.is("Интенсивные") ? 35 : 90;
+    }
+
+    private long resolveHoldTicks(long intensive, long cautious, long boundary) {
+        if (isBoundaryMode()) {
+            return boundary;
+        }
+        return intensity.is("Интенсивные") ? intensive : cautious;
+    }
+
+    private boolean isBoundaryMode() {
+        return intensity.is("Граничные");
+    }
+
     private void notifyChat(String text) {
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.player != null) {
@@ -513,10 +660,26 @@ public final class AntiCheatDetector extends Module {
     }
 
     public enum ProbeAction {
-        JUMP,
-        SPRINT,
-        SNEAK,
-        SWING,
-        HOTBAR
+        JUMP("jump"),
+        SPRINT("sprint"),
+        SNEAK("sneak"),
+        SWING("swing"),
+        HOTBAR("hotbar");
+
+        private final String displayName;
+
+        ProbeAction(String displayName) {
+            this.displayName = displayName;
+        }
+
+        public String getDisplayName() {
+            return displayName;
+        }
+    }
+
+    public enum CorrectionKind {
+        PROBE_REACTION,
+        AMBIENT,
+        TELEPORT
     }
 }

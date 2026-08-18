@@ -14,6 +14,7 @@ final class AntiCheatAnalyzer {
 
     private static final int MAX_EVIDENCE = 160;
     private static final int MAX_MESSAGES = 80;
+    private static final int LATENCY_BUCKETS = 6;
     private static final Pattern VERSION_PATTERN = Pattern.compile(
             "(?i)(?:version|ver|build|v)\\s*[:#=\\-]?\\s*(\\d+(?:\\.\\d+){1,3}(?:[-+._][a-z0-9]+)?)"
     );
@@ -24,12 +25,19 @@ final class AntiCheatAnalyzer {
     private final Set<String> observedPayloads = new HashSet<>();
     private final Set<String> observedMessages = new HashSet<>();
     private final List<String> evidence = new ArrayList<>();
-    private final List<String> systemMessages = new ArrayList<>();
+    private final List<String> relevantSystemMessages = new ArrayList<>();
     private final long[] stageTicks = new long[AntiCheatDetector.ScanStage.values().length];
-    private final int[] stageCorrections = new int[AntiCheatDetector.ScanStage.values().length];
+    private final int[] stageReactionCorrections = new int[AntiCheatDetector.ScanStage.values().length];
+    private final int[] stageAmbientCorrections = new int[AntiCheatDetector.ScanStage.values().length];
+    private final int[] stageTeleports = new int[AntiCheatDetector.ScanStage.values().length];
     private final int[] stageActions = new int[AntiCheatDetector.ScanStage.values().length];
     private final double[] stageCorrectionDistance = new double[AntiCheatDetector.ScanStage.values().length];
     private final double[] stageMaximumCorrection = new double[AntiCheatDetector.ScanStage.values().length];
+    private final int[] actionAttempts = new int[AntiCheatDetector.ProbeAction.values().length];
+    private final int[] actionSuccesses = new int[AntiCheatDetector.ProbeAction.values().length];
+    private final int[] actionReactions = new int[AntiCheatDetector.ProbeAction.values().length];
+    private final int[][] actionLatencyBuckets = new int[AntiCheatDetector.ProbeAction.values().length][LATENCY_BUCKETS];
+    private final long[] actionLatencyTotal = new long[AntiCheatDetector.ProbeAction.values().length];
 
     private String serverAddress = "unknown";
     private String serverName = "unknown";
@@ -40,12 +48,10 @@ final class AntiCheatAnalyzer {
     private int customPayloads;
     private int commandNodes;
     private int disconnects;
-    private int totalCorrections;
-    private int jumpActions;
-    private int sprintActions;
-    private int sneakActions;
-    private int swingActions;
-    private int hotbarActions;
+    private int totalCorrectionPackets;
+    private int totalProbeReactions;
+    private int totalAmbientCorrections;
+    private int totalTeleports;
 
     AntiCheatAnalyzer() {
         for (Family family : Family.values()) {
@@ -79,27 +85,46 @@ final class AntiCheatAnalyzer {
         stageTicks[stage.ordinal()]++;
     }
 
-    void recordAction(AntiCheatDetector.ScanStage stage, AntiCheatDetector.ProbeAction action) {
-        stageActions[stage.ordinal()]++;
-        switch (action) {
-            case JUMP -> jumpActions++;
-            case SPRINT -> sprintActions++;
-            case SNEAK -> sneakActions++;
-            case SWING -> swingActions++;
-            case HOTBAR -> hotbarActions++;
-        }
+    void recordActionAttempt(AntiCheatDetector.ProbeAction action) {
+        actionAttempts[action.ordinal()]++;
     }
 
-    void recordCorrection(AntiCheatDetector.ScanStage stage, double distance) {
-        int index = stage.ordinal();
-        totalCorrections++;
-        stageCorrections[index]++;
-        stageCorrectionDistance[index] += distance;
-        if (distance > stageMaximumCorrection[index]) {
-            stageMaximumCorrection[index] = distance;
-        }
-        if (distance >= 0.05D) {
-            addEvidence("setback", stage.getDisplayName() + ": " + format(distance) + " blocks");
+    void recordActionSuccess(AntiCheatDetector.ScanStage stage, AntiCheatDetector.ProbeAction action) {
+        stageActions[stage.ordinal()]++;
+        actionSuccesses[action.ordinal()]++;
+    }
+
+    void recordCorrection(AntiCheatDetector.ScanStage stage, double distance,
+                          AntiCheatDetector.CorrectionKind kind,
+                          AntiCheatDetector.ProbeAction action, int latencyTicks) {
+        totalCorrectionPackets++;
+        int stageIndex = stage.ordinal();
+        switch (kind) {
+            case PROBE_REACTION -> {
+                totalProbeReactions++;
+                stageReactionCorrections[stageIndex]++;
+                stageCorrectionDistance[stageIndex] += distance;
+                if (distance > stageMaximumCorrection[stageIndex]) {
+                    stageMaximumCorrection[stageIndex] = distance;
+                }
+                if (action != null) {
+                    int actionIndex = action.ordinal();
+                    actionReactions[actionIndex]++;
+                    actionLatencyTotal[actionIndex] += latencyTicks;
+                    actionLatencyBuckets[actionIndex][latencyBucket(latencyTicks)]++;
+                }
+                addEvidence("probe-reaction", stage.getDisplayName() + ", action="
+                        + (action == null ? "unknown" : action.getDisplayName())
+                        + ", distance=" + format(distance) + ", latency=" + latencyTicks + " ticks");
+            }
+            case AMBIENT -> {
+                totalAmbientCorrections++;
+                stageAmbientCorrections[stageIndex]++;
+            }
+            case TELEPORT -> {
+                totalTeleports++;
+                stageTeleports[stageIndex]++;
+            }
         }
     }
 
@@ -138,10 +163,10 @@ final class AntiCheatAnalyzer {
         if (!observedMessages.add(clean)) {
             return;
         }
-        if (systemMessages.size() < MAX_MESSAGES) {
-            systemMessages.add(clean);
+        boolean signatureMatched = observeText("system-message", clean, 58);
+        if ((signatureMatched || isReactionMessage(clean)) && relevantSystemMessages.size() < MAX_MESSAGES) {
+            relevantSystemMessages.add(clean);
         }
-        observeText("system-message", clean, 58);
     }
 
     void recordDisconnect(String reason) {
@@ -149,13 +174,16 @@ final class AntiCheatAnalyzer {
         String clean = sanitize(reason);
         addEvidence("disconnect", clean);
         observeText("disconnect", clean, 82);
+        if (isReactionMessage(clean) && relevantSystemMessages.size() < MAX_MESSAGES) {
+            relevantSystemMessages.add("disconnect: " + clean);
+        }
     }
 
     String buildReport(long requestedDurationSeconds, long actualDurationSeconds, String finishReason) {
         List<Candidate> ranked = new ArrayList<>(candidates.values());
         ranked.sort((left, right) -> Integer.compare(right.score, left.score));
 
-        StringBuilder report = new StringBuilder(8192);
+        StringBuilder report = new StringBuilder(10_240);
         report.append("GodWeer AntiCheat Detector report\n");
         report.append("=================================\n");
         report.append("Server: ").append(serverName).append(" (").append(serverAddress).append(")\n");
@@ -203,19 +231,40 @@ final class AntiCheatAnalyzer {
         report.append("---------------\n");
         AntiCheatDetector.ScanStage[] stages = AntiCheatDetector.ScanStage.values();
         for (int i = 0; i < stages.length; i++) {
-            double average = stageCorrections[i] == 0 ? 0.0D : stageCorrectionDistance[i] / stageCorrections[i];
+            double average = stageReactionCorrections[i] == 0
+                    ? 0.0D : stageCorrectionDistance[i] / stageReactionCorrections[i];
             report.append(stages[i].getDisplayName()).append(": ")
                     .append(stageTicks[i] / 20L).append(" s, actions=").append(stageActions[i])
-                    .append(", corrections=").append(stageCorrections[i])
+                    .append(", reactions=").append(stageReactionCorrections[i])
+                    .append(", ambient=").append(stageAmbientCorrections[i])
+                    .append(", teleports=").append(stageTeleports[i])
                     .append(", avg=").append(format(average))
                     .append(", max=").append(format(stageMaximumCorrection[i])).append('\n');
         }
-        report.append("Actions: jump=").append(jumpActions)
-                .append(", sprint=").append(sprintActions)
-                .append(", sneak=").append(sneakActions)
-                .append(", swing=").append(swingActions)
-                .append(", hotbar=").append(hotbarActions).append('\n');
-        report.append("Packets observed: corrections=").append(totalCorrections)
+
+        report.append("\nAction verification and response latency\n");
+        report.append("----------------------------------------\n");
+        AntiCheatDetector.ProbeAction[] actions = AntiCheatDetector.ProbeAction.values();
+        for (int i = 0; i < actions.length; i++) {
+            double averageLatency = actionReactions[i] == 0
+                    ? 0.0D : (double) actionLatencyTotal[i] / actionReactions[i];
+            report.append(actions[i].getDisplayName())
+                    .append(": attempted=").append(actionAttempts[i])
+                    .append(", confirmed=").append(actionSuccesses[i])
+                    .append(", reactions=").append(actionReactions[i])
+                    .append(", avg-latency=").append(format(averageLatency)).append(" ticks")
+                    .append(", latency-buckets=")
+                    .append("0-2:").append(actionLatencyBuckets[i][0]).append(' ')
+                    .append("3-5:").append(actionLatencyBuckets[i][1]).append(' ')
+                    .append("6-10:").append(actionLatencyBuckets[i][2]).append(' ')
+                    .append("11-20:").append(actionLatencyBuckets[i][3]).append(' ')
+                    .append("21-40:").append(actionLatencyBuckets[i][4]).append(' ')
+                    .append("41-60:").append(actionLatencyBuckets[i][5]).append('\n');
+        }
+        report.append("Correction packets: total=").append(totalCorrectionPackets)
+                .append(", probe-reactions=").append(totalProbeReactions)
+                .append(", ambient=").append(totalAmbientCorrections)
+                .append(", teleports-filtered=").append(totalTeleports)
                 .append(", custom-payloads=").append(customPayloads)
                 .append(", command-nodes=").append(commandNodes)
                 .append(", disconnects=").append(disconnects).append('\n');
@@ -230,32 +279,35 @@ final class AntiCheatAnalyzer {
             }
         }
 
-        report.append("\nObserved system messages\n");
-        report.append("------------------------\n");
-        if (systemMessages.isEmpty()) {
+        report.append("\nRelevant AC/system messages\n");
+        report.append("---------------------------\n");
+        if (relevantSystemMessages.isEmpty()) {
             report.append("none\n");
         } else {
-            for (int i = 0; i < systemMessages.size(); i++) {
-                report.append("- ").append(systemMessages.get(i)).append('\n');
+            for (int i = 0; i < relevantSystemMessages.size(); i++) {
+                report.append("- ").append(relevantSystemMessages.get(i)).append('\n');
             }
         }
 
         report.append("\nInterpretation limits\n");
         report.append("---------------------\n");
-        report.append("- Normal movement reactions are not unique enough to prove an anti-cheat family.\n");
-        report.append("- Exact plugin versions are reported only when the server explicitly exposes one.\n");
+        report.append("- Only corrections within 60 ticks after a confirmed probe count as probe reactions.\n");
+        report.append("- Position changes above 16 blocks are classified as teleports, not anti-cheat setbacks.\n");
+        report.append("- Exact plugin versions are reported only when the server exposes a version-like signature.\n");
         report.append("- Proxy networks can hide or combine several anti-cheats.\n");
-        report.append("- Tests use valid vanilla actions and do not send malformed or exploit packets.\n");
+        report.append("- Boundary mode uses unusual but valid packets and never sends malformed or exploit payloads.\n");
         return report.toString();
     }
 
-    private void observeText(String source, String value, int weight) {
+    private boolean observeText(String source, String value, int weight) {
         String normalized = value.toLowerCase(Locale.ROOT);
+        boolean matched = false;
         for (Family family : Family.values()) {
             String matchedToken = family.findToken(normalized);
             if (matchedToken == null) {
                 continue;
             }
+            matched = true;
             Candidate candidate = candidates.get(family);
             int effectiveWeight = weight;
             if (source.equals("command-tree") && !isCommandMatch(normalized, matchedToken)) {
@@ -268,6 +320,26 @@ final class AntiCheatAnalyzer {
             }
             addEvidence(source, value);
         }
+        return matched;
+    }
+
+    private boolean isReactionMessage(String value) {
+        String normalized = value.toLowerCase(Locale.ROOT);
+        return normalized.contains("violation")
+                || normalized.contains("failed check")
+                || normalized.contains("invalid movement")
+                || normalized.contains("illegal movement")
+                || normalized.contains("suspicious movement")
+                || normalized.contains("setback")
+                || normalized.contains("flagged")
+                || normalized.contains("cheating")
+                || normalized.contains("anti cheat")
+                || normalized.contains("anti-cheat")
+                || normalized.contains("античит")
+                || normalized.contains("нарушение")
+                || normalized.contains("подозрительное движение")
+                || normalized.contains("обнаружен чит")
+                || normalized.contains("проверка не пройдена");
     }
 
     private boolean isCommandMatch(String command, String token) {
@@ -282,6 +354,25 @@ final class AntiCheatAnalyzer {
     private String extractVersion(String text) {
         Matcher matcher = VERSION_PATTERN.matcher(text);
         return matcher.find() ? matcher.group(1) : null;
+    }
+
+    private int latencyBucket(int latencyTicks) {
+        if (latencyTicks <= 2) {
+            return 0;
+        }
+        if (latencyTicks <= 5) {
+            return 1;
+        }
+        if (latencyTicks <= 10) {
+            return 2;
+        }
+        if (latencyTicks <= 20) {
+            return 3;
+        }
+        if (latencyTicks <= 40) {
+            return 4;
+        }
+        return 5;
     }
 
     private void addEvidence(String type, String value) {
@@ -358,7 +449,7 @@ final class AntiCheatAnalyzer {
         GUARDIAN("Guardian", "private/current branch", "guardian"),
         SOAROMA_SAC("SoaromaSAC", "current compatible branch", "soaromasac"),
         WRAITH("Wraith", "current compatible branch", "wraith"),
-        LIBS_DISGUISED_AC("Custom/embedded AC", "server-specific build", "anticheat", "anti-cheat");
+        CUSTOM_ANTI_CHEAT("Custom/embedded AC", "server-specific build", "anticheat", "anti-cheat");
 
         private final String displayName;
         private final String versionHint;
