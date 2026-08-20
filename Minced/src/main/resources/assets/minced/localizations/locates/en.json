@@ -1,0 +1,466 @@
+{
+  "meta": {
+    "author": "Grok/dream1xd",
+    "locate": "en",
+    "display": "English"
+  },
+  "descriptions": {
+    "modules": {
+      "key": "Module bind",
+      "aura": {
+        "fixMovement": "Adjust movement based on rotation",
+        "stickPlayer": "Chase the opponent",
+        "canBeenSeen": "Attack if not in field of view",
+        "attackFromEntity": "Do not attack through other entities",
+        "notAttackEat": "Do not attack while using",
+        "shieldBreaker": "Break the target shield",
+        "ignoreNaked": "Ignore players without armor",
+        "onlyCritical": "Only critical hits",
+        "onlyJumpCritical": "Critical hits only when jumping",
+        "tpsSync": "Synchronize with TPS",
+        "ignoreNpc": "Ignore NPCs",
+        "targetShift": "Do not hold the last opponent",
+        "distance": "Attack distance",
+        "rotateDistance": "Aiming distance",
+        "rotateType": "Aiming mode",
+        "funtimeBypass": "Bypass other checks on FT",
+        "spookyBypass": "Bypass other checks on SpookyTime",
+        "smoothRotation": "Smooth aiming",
+        "randomizeRotation": "Randomize aiming",
+        "targets": "Targets",
+        "sprintingType": "Sprint reset mode",
+        "sortMode": "Sort by",
+        "version": "PvP version",
+        "otherMaceCheck": "Additional checks with a mace",
+        "attackUpperY": "Hit only when above the target",
+        "antiMultiActions": "Avoid checking for simultaneous actions (MultiActions)",
+        "sorting": {
+          "armor": "Armor",
+          "distance": "Distance",
+          "health": "Health",
+          "all": "All"
+        },
+        "sprinting": {
+          "packet": "Packet",
+          "forward": "Forward"
+        },
+        "targetsType": {
+          "players": "Players",
+          "villagers": "Villagers",
+          "animals": "Animals",
+          "mobs": "Mobs"
+        }
+      },
+      "autobuff": {
+        "cooldown": "Cooldown",
+        "onground": "Throw only on ground",
+        "onlyNoTarget": "Do not use when targeting",
+        "onlyNoEat": "Do not use while eating",
+        "onBuffDisable": "Disable after use",
+        "buffMode": "Mode of use",
+        "auto": "Auto",
+        "onKey": "On Bind",
+        "buffKey": "Bind of use"
+      },
+      "autogapple": {
+        "health": "Health threshold for use",
+        "noEatOnRegeneration": "Do not use during regeneration"
+      },
+      "criticals": {
+        "mode": "Mode"
+      },
+      "autototem": {
+        "renderCount": "Render totem count",
+        "health": "Health threshold for use",
+        "healthElytra": "Health threshold for use (on elytra)",
+        "backOlder": "Return older item after health recovery",
+        "onFallDistance": "Use during fall",
+        "fallDistance": "Fall distance threshold for use",
+        "swapBackSafeZone": "Additional health gain for returning the item",
+        "useSpeed": "Speed of using the totem"
+      },
+      "nointeract": {
+        "onlyAura": "Only when Aura is enabled"
+      },
+      "superitemexploit": {
+        "sila": "Number of packets"
+      },
+      "antiafk": {
+        "jumping": "Jump",
+        "chat": "Send random chat messages",
+        "command": "Execute random commands"
+      },
+      "auctionhelper": {
+        "mode": "Item sorting mode",
+        "balance": "Balance",
+        "nice": "Profit"
+      },
+      "autoaccept": {
+        "onlyFriends": "Accept only friends",
+        "teleport": "Accept teleportations",
+        "team": "Accept team invitations (/duel team)",
+        "clan": "Accept clan invitations"
+      },
+      "coordinatesdropper": {
+        "global": "Write to global chat"
+      },
+      "chestfinder": {
+        "render": "Render found chests"
+      },
+      "cheststealer": {
+        "cooldown": "Cooldown"
+      },
+      "communication": {
+        "irc": "IRC chat (Add '@' prefix before messages)",
+        "locationMode": "Who to share server location data with",
+        "all": "Everyone",
+        "friends": "Friends",
+        "nobody": "Nobody",
+        "fetchOther": "Collect server location data from other users"
+      },
+      "elytraswap": {
+        "useKey": "Use bind"
+      },
+      "freecam": {
+        "speed": "Flight speed in XYZ"
+      },
+      "fthelper": {
+        "disorientation": "Disorientation use bind",
+        "trapka": "Trap use bind",
+        "pil": "Explicit dust use bind",
+        "plast": "Plastic use bind",
+        "godAura": "God aura use bind",
+        "shulker": "Shulker use bind",
+        "potionOfKiller": "Killer potion use bind",
+        "potionOfMedic": "Medic potion use bind",
+        "potionOfWinner": "Winner potion use bind",
+        "potionOfAgent": "Agent potion use bind",
+        "potionOfBurp": "Burp potion use bind",
+        "potionOfAcid": "Sulfuric acid potion use bind",
+        "potionOfFlash": "Flash urine potion use bind",
+        "banWarning": "Show notification when a player is banned without anticheat",
+        "potionWarning": "Show notification when other players use donation potions",
+        "bindWarning": "Show notification when items are used",
+        "cdWarning": "Show notification when items on cooldown are used"
+      },
+      "hwhelper": {
+        "bombItem": "Explosive item use bind",
+        "bombTrap": "Explosive trap use bind",
+        "stan": "Stan use bind",
+        "snowBall": "Snowball use bind",
+        "trap": "Default trap use bind"
+      },
+      "infosounds": {
+        "statusBool": "Sound on module state change",
+        "mode": "Mode",
+        "attackBool": "Sound on entity attack",
+        "volume": "Volume of all client sounds",
+        "status": {
+          "one": "First",
+          "two": "Second",
+          "three": "Third",
+          "four": "Fourth",
+          "five": "Five",
+          "six": "Six"
+        },
+        "attack": {
+          "skeet": "Skeet",
+          "pop": "Bubble",
+          "hitMarker": "Hit Marker"
+        }
+      },
+      "itemscroller": {
+        "cooldown": "Item transfer cooldown"
+      },
+      "nodelay": {
+        "jump": "Disable delay on jump",
+        "rightClick": "Disable delay on right-click",
+        "leftClick": "Disable delay on left-click"
+      },
+      "nofall": {
+        "mode": "Mode",
+        "default": "Default"
+      },
+      "nopush": {
+        "blocks": "Do not push away from blocks",
+        "entities": "Do not push away from entities",
+        "fishingRod": "Do not push away from fishing rod"
+      },
+      "staffalert": {
+        "pling": "Play sound alert"
+      },
+      "swaphelper": {
+        "first": "First item",
+        "two": "Second item",
+        "bind": "Use bind",
+        "legit": "Legit use",
+        "crystal": "Crystals",
+        "gapple": "Apples",
+        "totems": "Totems",
+        "shield": "Shield",
+        "sphere": "Sphere"
+      },
+      "elytratarget": {
+        "searchRadius": "Opponent search radius",
+        "predictMode": "Position prediction mode",
+        "disabled": "Disabled",
+        "smart": "Smart",
+        "mace": "Mace",
+        "drawBox": "Draw prediction box",
+        "disableBind": "Prediction disable bind",
+        "notifyBind": "Show notification when prediction disable bind state changes"
+      },
+      "flight": {
+        "mode": "Mode",
+        "default": "Default",
+        "packet": "Packet",
+        "test": "Test",
+        "cat": "RW Elytra"
+      },
+      "guiwalk": {
+        "mode": "Mode",
+        "default": "Default"
+      },
+      "noslow": {
+        "onlyOnHurt": "Only when taking damage",
+        "mode": "Mode",
+        "default": "Default",
+        "leftHand": "Use the same on the left hand"
+      },
+      "speed": {
+        "mode": "Mode",
+        "default": "Default",
+        "collision": "Collision",
+        "test": "Test",
+        "speed": "Speed",
+        "groundSpeed": "Ground speed",
+        "jumpSpeed": "Jump speed",
+        "turnSpeed": "Targeting strength",
+        "turnFullSpeed": "Full targeting strength",
+        "hitboxSize": "Hitbox size increase strength",
+        "autoCorrection": "Automatic movement correction"
+      },
+      "spider": {
+        "mode": "Mode",
+        "spoof": "Spoof"
+      },
+      "timer": {
+        "speed": "Speed"
+      },
+      "custominterface": {
+        "bossBar": "Modify boss bar",
+        "animateContainer": "Animate containers",
+        "animateTab": "Animate player list"
+      },
+      "potionbar": {
+        "icons": "Icons"
+      },
+      "stafflist": {
+        "mode": "Acquisition mode",
+        "vanish": "Vanish"
+      },
+      "targethud": {
+        "particles": "Particles",
+        "items": "Items",
+        "absorption": "Absorption"
+      },
+      "triangles": {
+        "noRenderFriend": "Do not draw arrows on friends",
+        "renderNickname": "Draw player nicknames above arrows"
+      },
+      "notifications": {
+        "direction": "Notification position on screen",
+        "down": "Bottom",
+        "center": "Center",
+        "specWarning": "Warn when target requests spectator mode",
+        "healthWarning": "Warn when health threshold is reached",
+        "healthWarningAmount": "Health threshold for warning",
+        "armorWarning": "Warning for low armor durability",
+        "armorWarningAmount": "Achieving a percentage of strength for warning",
+        "totemWarning": "Warning when breaking the totem of undying"
+      },
+      "aspectratio": {
+        "scale": "Screen expansion strength"
+      },
+      "chinahat": {
+        "renderFriend": "Render on friends"
+      },
+      "esp": {
+        "ignoreNaked": "Ignore players without armor",
+        "mode": "Mode",
+        "box": "Boxes"
+      },
+      "jumpcircles": {
+        "speed": "Animation speed",
+        "size": "Initial size",
+        "mode": "Image type",
+        "default": "Default",
+        "old": "Old",
+        "new": "New"
+      },
+      "nametags": {
+        "ignoreNaked": "Ignore players without armor",
+        "renderItems": "Render items",
+        "renderArmor": "Render armor",
+        "renderArmorProtection": "Render armor protection level",
+        "renderCount": "Render item count",
+        "interactiveW2s": "Create tags interactivity in the chat"
+      },
+      "norender": {
+        "scoreBoard": "Do not render scoreboard on the right",
+        "bossBar": "Do not render boss bar",
+        "armorstands": "Do not render armor stands"
+      },
+      "particles": {
+        "attack": "Render on attack",
+        "world": "Render in world",
+        "move": "Render on movement",
+        "totem": "Render on totem use",
+        "glow": "Add extra glow effect to particles",
+        "mode": "Mode",
+        "default": "Default",
+        "downUp": "Fall and rise",
+        "full": "Full",
+        "firstPerson": "Render in first person",
+        "blockLogic": "Repel particles from blocks",
+        "size": "Image size",
+        "count": "Number of particles at once",
+        "time": "Time of existence"
+      },
+      "pearltrace": {
+        "particles": "Render particles during item flight",
+        "mills": "Render block distance to item"
+      },
+      "renderoptimizer": {
+        "fastClouds": "Fast cloud computation",
+        "fastSky": "Fast sky computation"
+      },
+      "swinganimations": {
+        "mode": "Animation type",
+        "speed": "Use animation duration",
+        "strength": "Use animation tilt strength",
+        "handType": "Select hand",
+        "first": "First",
+        "two": "Second",
+        "xCoordinate": "Hand X position",
+        "yCoordinate": "Hand Y position",
+        "zCoordinate": "Hand Z position",
+        "onlyOnTarget": "Only when targeting",
+        "360": "Rotate hand 360 degrees"
+      },
+      "targetesp": {
+        "mode": "Mode",
+        "marker": "Marker",
+        "bloom": "Ghosts",
+        "newMarker": "New Marker",
+        "circle": "Circle",
+        "oldBloom": "Old Ghosts",
+        "cat": "Cat",
+        "speed": "Speed",
+        "size": "Size"
+      },
+      "waveycapes": {
+        "friends": "Render on friends"
+      },
+      "watermark": {
+        "server": "Server",
+        "coordinates": "Coordinates"
+      },
+      "ambience": {
+        "fog": "Change cloud color based on theme"
+      },
+      "mediaintegration": {
+        "image": "Draw the cover of a song",
+        "visualizer": "Draw fake visualizations",
+        "progress": "Draw the song progress-bar",
+        "playStopKey": "Audio Play/Stop bind",
+        "nextKey": "Next audio bind",
+        "prevKey": "Previous audio bind"
+      },
+      "informationhider": {
+        "nameHider": "Hide your nickname",
+        "skinHider": "Hide players skin",
+        "titleHider": "Hide scoreboard title"
+      },
+      "invisibilityopacity": {
+        "opacity": "Opacity"
+      },
+      "interface": {
+        "openBind": "Open bind"
+      },
+      "killmessage": {
+        "message": "Message"
+      },
+      "extratab": {
+        "extraCount": "Maximum number of players in list",
+        "numericalPing": "Render ping as a number",
+        "head": "Render player head on non-licensed servers"
+      },
+      "noclip": {
+        "mode": "Mode",
+        "default": "Default"
+      },
+      "elytrabooster": {
+        "mode": "Speed mode",
+        "custom": "Custom",
+        "speed": "Speed"
+      },
+      "elytramotion": {
+        "distance": "Distance"
+      },
+      "airstack": {
+        "mode": "Mode"
+      },
+      "elytrabounce": {
+        "autoJump": "Auto jump"
+      },
+      "autoexplosion": {
+        "noSelfExplosion": "Don’t explode yourself",
+        "blocks": "Blocks",
+        "crystals": "End Crystal",
+        "respawnAnchor": "Respawn Anchor"
+      },
+      "rotations": {
+        "movementFix": "Adjust movement based on rotation",
+        "rotationStick": "Fully bind movement to rotation"
+      },
+      "itemshelper": {
+        "windCharge": "Wind charge use bind",
+        "enderPearl": "Ender pearl use bind",
+        "crossBow": "Cross bow use bind",
+        "fireWork": "Firework use bind",
+        "windCharge90": "Set the pitch to 90 degrees when using a wind charge",
+        "wingChargeOnAttack": "Use wind charge when attack with a mace",
+        "additionalCheckBypass": "Bypass other checks (Lightning Grim)",
+        "legit": "Legit use"
+      },
+      "slotblocker": {
+        "slots": "Slots"
+      },
+      "bowspammer":{
+        "speed": "Speed"
+      },
+      "glasshands": {
+        "optimizedRendering": "Optimized mask rendering",
+        "colorMixFactor": "Client color mixing factor",
+        "blurMixFactor": "Blur mixing factor"
+      },
+      "highjump": {
+        "yLength": "Jump factor"
+      },
+      "noweb": {
+        "mode": "Mode",
+        "fully": "Fully"
+      },
+      "worldtime": {
+        "time": "Time"
+      },
+      "hitesp": {
+        "movementFactor": "Movement factor"
+      },
+      "positionbuffering": {
+        "bufferingTime": "Maximum position buffering time"
+      }
+    }
+  }
+}

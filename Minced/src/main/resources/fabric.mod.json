@@ -1,0 +1,24 @@
+{
+  "schemaVersion": 1,
+  "id": "minced",
+  "name": "Minced",
+  "version": "1.0.0",
+  "description": "Minced Fabric client.",
+  "environment": "client",
+  "entrypoints": {
+    "main": [
+      "minced.core.Minced"
+    ],
+    "client": [
+      "minced.core.AutoConfigState"
+    ]
+  },
+  "mixins": [
+    "minced.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.16.0",
+    "minecraft": "~1.21",
+    "java": ">=21"
+  }
+}
