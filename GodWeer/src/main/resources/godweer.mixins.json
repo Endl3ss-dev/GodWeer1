@@ -7,7 +7,8 @@
 	],
 	"client": [
 		"client.MixinKeyboardHandler",
-		"client.MixinMouseHandler"
+		"client.MixinMouseHandler",
+		"client.MixinMinecraft"
 	],
 	"injectors": {
 		"defaultRequire": 1

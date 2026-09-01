@@ -4,6 +4,7 @@ import godweer.GodWeer;
 import godweer.modules.Module;
 import godweer.modules.ModuleCategory;
 import godweer.modules.impl.combat.ItemSwap;
+import godweer.modules.impl.combat.KillAura;
 import godweer.modules.impl.combat.SexAura;
 import godweer.modules.impl.player.DrinkUse;
 import godweer.modules.impl.movement.Speed;
@@ -35,6 +36,7 @@ public final class ModuleManager {
         BY_CATEGORY.clear();
 
         register(new SexAura());
+        register(new KillAura());
         register(new ItemSwap());
         register(new Speed());
         register(new DrinkUse());
