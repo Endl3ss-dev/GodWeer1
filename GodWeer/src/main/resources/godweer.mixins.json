@@ -8,7 +8,8 @@
 	"client": [
 		"client.MixinKeyboardHandler",
 		"client.MixinMouseHandler",
-		"client.MixinMinecraft"
+		"client.MixinMinecraft",
+		"client.MixinDeltaTracker"
 	],
 	"injectors": {
 		"defaultRequire": 1
