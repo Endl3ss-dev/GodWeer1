@@ -1,36 +1,10 @@
- - Спасибо большое за помощь и модуль..)
+ Спасибо что прочитал)
 
- - Минусы: Модуль сильно флагает даже на минимальных настройках.
+ Пожалуйста посмотри все файлы `Speed.java` на гит
 
  Задачи:
  1. Сделать так что бы при входе с клиента у меня всегда был аккаунт с ником GodWeer_Test, На счет безопасности
  Не парься, я уберу перед релизом.
- 2. Посмотри другие проекты в этом же гите:
+ 2. Посмотри другие проекты в этом же гите и сделать гигантскую киллауру с костамизацтией или выбором обходов
 
-Volon: [1.21.4]
-GodWeer\Volon\src\main\java\fun\volon\client\modules\impl\movement\SpeedAres2.java
-GodWeer\Volon\src\main\java\fun\volon\client\modules\impl\movement\SpeedRw.java
-GodWeer\Volon\src\main\java\fun\volon\client\modules\impl\movement\SpeedAres.java
-
-SkyCore: [1.21.4]
-GodWeer\SkyCore\src\main\java\sky\core\modules\impl\movement\Speed.java
-
-Rockstar: [1.21.4]
-GodWeer\Rockstar\src\main\java\moscow\rockstar\module\movement\Speed.java
-
-Private: [1.16.5]
-GodWeer\Private\src\java\org\privates\client\managers\module\impl\movement\Speed.java
-
-Nuclear: [1.16.5]
-GodWeer\Nuclear\src\main\java\nuclear\module\impl\movement\Speed.java
-
-Minced: [1.21.4]
-GodWeer\Minced\src\main\java\minced\module\movement\Speed.java
-
-Expensive: [1.21.4]
-GodWeer\Expensive\src\main\java\aethereal\features\modules\movement\SpeedModule.java
-
-AlphaDLC: [1.21.4]
-GodWeer\AlphaDLC\src\main\java\zov\alphadlc\module\list\movement\Speed.java
-
-Посмотри код этих файлов и сделай лучший под GRIM&MATRIX
+ 
