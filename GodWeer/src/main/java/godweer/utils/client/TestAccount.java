@@ -1,7 +1,5 @@
 package godweer.utils.client;
 
-import com.mojang.authlib.properties.PropertyMap;
-
 import net.minecraft.client.User;
 
 import java.nio.charset.StandardCharsets;
@@ -24,8 +22,7 @@ public final class TestAccount {
                 accessToken != null ? accessToken : FALLBACK_TOKEN,
                 Optional.empty(),
                 Optional.empty(),
-                User.Type.LEGACY,
-                new PropertyMap()
+                User.Type.LEGACY
         );
     }
 }
