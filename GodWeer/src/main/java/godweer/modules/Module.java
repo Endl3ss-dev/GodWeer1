@@ -92,6 +92,10 @@ public abstract class Module {
         return this.name;
     }
 
+    public String getSuffix() {
+        return "";
+    }
+
     public String getDisplayDescription() {
         return this.description;
     }
