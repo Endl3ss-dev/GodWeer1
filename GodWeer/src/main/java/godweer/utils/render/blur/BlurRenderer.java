@@ -136,6 +136,7 @@ public final class BlurRenderer {
         }
 
         BUFFER_A.unbind();
+        BlurFramebuffer.bindMain();
         restoreState();
 
         captured = drawn;

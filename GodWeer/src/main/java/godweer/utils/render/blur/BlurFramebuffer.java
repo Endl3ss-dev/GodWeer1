@@ -1,6 +1,7 @@
 package godweer.utils.render.blur;
 
 import com.mojang.blaze3d.pipeline.RenderTarget;
+import com.mojang.blaze3d.pipeline.TextureTarget;
 
 import godweer.GodWeer;
 
@@ -11,10 +12,14 @@ import org.lwjgl.opengl.GL11;
 /**
  * Обёртка над offscreen-таргетом для blur-цепочки.
  * <p>
- * ВАЖНО: это единственное место в клиенте, где используются члены FBO-API Mojang-маппингов:
- * {@code new RenderTarget(boolean)}, {@code resize(int,int,boolean)}, {@code bindWrite(boolean)},
+ * ВАЖНО: это единственное место в клиенте, где завязан FBO-API Mojang-маппингов:
+ * {@code new TextureTarget(int,int,boolean)}, {@code resize(int,int)}, {@code bindWrite(boolean)},
  * {@code unbindWrite()}, {@code getColorTextureId()}, {@code setFilterMode(int)}, {@code destroyBuffers()}.
- * Если Loom укажет на ошибку компиляции в blur — правится здесь, остальной код blur не зависит от имён.
+ * Если Loom укажет на ошибку компиляции в blur — правится здесь, остальной код blur от имён не зависит.
+ * <p>
+ * Абстрактный {@link RenderTarget} инстанцировать нельзя: конкретный класс для offscreen —
+ * {@link TextureTarget} (его yarn-аналог {@code SimpleFramebuffer(w, h, depth)} используется
+ * в 1.21.4-проектах этого репозитория), окно рисуется в {@code MainTarget}.
  * <p>
  * Ошибки GL/создания не пробрасываются наверх: при неудаче blur просто отключается,
  * GUI отрисуется без размытия.
@@ -36,14 +41,15 @@ public final class BlurFramebuffer {
 
         try {
             if (this.target == null) {
-                this.target = new RenderTarget(false);
+                this.target = new TextureTarget(targetWidth, targetHeight, false);
                 this.target.setFilterMode(GL11.GL_LINEAR);
-                this.width = -1;
-                this.height = -1;
+                this.width = targetWidth;
+                this.height = targetHeight;
+                return true;
             }
 
             if (this.width != targetWidth || this.height != targetHeight) {
-                this.target.resize(targetWidth, targetHeight, false);
+                this.target.resize(targetWidth, targetHeight);
                 this.target.setFilterMode(GL11.GL_LINEAR);
                 this.width = targetWidth;
                 this.height = targetHeight;
@@ -65,8 +71,9 @@ public final class BlurFramebuffer {
             return false;
         }
 
-        // false: viewport не трогаем, квады рисуются в GUI-координатах текущей проекции.
-        this.target.bindWrite(false);
+        // true: viewport выставляется по размеру буфера. С false остаётся оконный viewport,
+        // и при уменьшенном буфере копия кадра ушла бы в угол с зумом.
+        this.target.bindWrite(true);
         return true;
     }
 
