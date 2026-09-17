@@ -26,6 +26,8 @@ public final class ShaderUtils {
     public static final ShaderProgram LIQUID_GLASS = register("liquidglass", "liquid", DefaultVertexFormat.POSITION_TEX_COLOR);
     public static final ShaderProgram KAWASE_DOWN = register("kawase_down", "kawase_down", DefaultVertexFormat.POSITION_TEX_COLOR);
     public static final ShaderProgram KAWASE_UP = register("kawase_up", "kawase_up", DefaultVertexFormat.POSITION_TEX_COLOR);
+    public static final ShaderProgram BLUR_BLIT = register("blur", "blit", DefaultVertexFormat.POSITION_TEX_COLOR);
+    public static final ShaderProgram BLUR_GAUSSIAN = register("blur", "gaussian_blur", DefaultVertexFormat.POSITION_TEX_COLOR);
     public static final ShaderProgram GRADIENT_RECT = register("gradient_rect", "gradient", DefaultVertexFormat.POSITION_TEX_COLOR);
     public static final ShaderProgram GRADIENT6_RECT = register("gradient6", "gradient", DefaultVertexFormat.POSITION_COLOR);
     public static final ShaderProgram SHADOW_RECT = register("shadow_rect", "shadow", DefaultVertexFormat.POSITION_COLOR);

@@ -26,7 +26,35 @@ public enum Fonts {
     Desc("desc"),
     Icon("icon"),
     Icon1("icon1"),
-    Icon2("icon2");
+    Icon2("icon2"),
+
+    // Атласы, перенесённые из клиента Private. Отдельный префикс каталога, потому что
+    // имена файлов (icon, mainmenu, hud) совпадают с уже существующими в этом энуме.
+    PrivateSfBold("private/sf_bold"),
+    PrivateSfLight("private/sf_light"),
+    PrivateSfMedium("private/sf_medium"),
+    PrivateSfRegular("private/sf_regular"),
+    PrivateSfSemibold("private/sf_semibold"),
+    PrivateSerati("private/serati"),
+    PrivateItalic("private/italic"),
+    PrivateClickGui("private/clickgui"),
+    PrivateHud("private/hud"),
+    PrivateDelta("private/delta"),
+    PrivateRockstar("private/rockstar"),
+    PrivateMainMenu("private/mainmenu"),
+    PrivateIconf("private/iconf"),
+    PrivateIcons("private/icons"),
+    PrivateIcoes("private/icoes"),
+    PrivateIconn("private/iconn"),
+    PrivateIconDeshux("private/icon_deshux"),
+    PrivateIconDimas("private/icon_dimas"),
+    PrivateIconNew("private/icon_new"),
+    PrivateIconZ("private/iconZ"),
+    PrivateIcon("private/icon"),
+    PrivateMusicIcons("private/music_icons"),
+    PrivateAccount("private/account"),
+    PrivateIcomoon("private/icomoon"),
+    PrivateEternity("private/eternity");
 
     private static final int MIN_SIZE = 8;
     private static final int MAX_SIZE = 99;
