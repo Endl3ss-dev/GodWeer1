@@ -36,5 +36,5 @@ void main() {
         }
     }
 
-    OutColor = sum / weightSum;
+    OutColor = vec4((sum / weightSum).rgb, 1.0);
 }
