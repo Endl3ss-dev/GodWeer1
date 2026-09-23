@@ -51,7 +51,11 @@ public class ClickGuiScreen extends Screen {
     private long descriptionTextStartTime = 0L;
     private String lastDescription = "";
 
+<<<<<<< HEAD
     private final int accentColor = ColorUtils.getColor(120, 180, 255);
+=======
+    private final int accentColor = ColorUtils.getColor(120, 180, 255, 255);
+>>>>>>> be39d49e669e2142432a36b1bc0484f06041f13b
     private final int backgroundColor = ColorUtils.getColor(10, 10, 15, 140);
 
     public enum ViewMode {
