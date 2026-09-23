@@ -1,6 +1,6 @@
 package godweer.utils.input;
 
-import godweer.ui.MenuPanel;
+import godweer.ui.newgui.ClickGuiScreen;
 import godweer.utils.client.ClientSoundPlayer;
 
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -26,7 +26,7 @@ public final class ClickGuiController {
             }
 
             ClientSoundPlayer.playSound("opengui.wav", 0.6, 1.0f);
-            client.setScreen(new MenuPanel());
+            client.setScreen(new ClickGuiScreen());
         });
     }
 
