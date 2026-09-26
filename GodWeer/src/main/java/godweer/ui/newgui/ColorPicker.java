@@ -203,10 +203,14 @@ public class ColorPicker {
         RenderDraw.Rounded.roundedRect(stack, pickerX, pickerY, pickerW, pickerH,
                 ColorUtils.getColor(0, 0, 0, a1),
 <<<<<<< HEAD
+<<<<<<< HEAD
                 ColorUtils.multAlpha(ColorUtils.getColor(255, 255, 255), fadeAlpha),
 =======
                 ColorUtils.multAlpha(ColorUtils.getColor(255, 255, 255, 255), fadeAlpha),
 >>>>>>> be39d49e669e2142432a36b1bc0484f06041f13b
+=======
+                ColorUtils.multAlpha(ColorUtils.getColor(255, 255, 255, 255), fadeAlpha),
+>>>>>>> 42510f564926933ae9da905274ef1c63749450a2
                 ColorUtils.getColor(0, 0, 0, a1),
                 ColorUtils.multAlpha(hueColor, fadeAlpha), Round.of(7));
     }

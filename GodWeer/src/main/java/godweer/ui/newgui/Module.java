@@ -122,12 +122,17 @@ public class Module extends Builder {
             textXOffset = iconWidth + iconPadding;
             renderIconOffsetV = 1.0f;
 <<<<<<< HEAD
+<<<<<<< HEAD
             textColor = ColorUtils.multAlpha(ColorUtils.getColor(255, 255, 255), alpha);
             iconColor = ColorUtils.multAlpha(ColorUtils.getColor(255, 255, 255), alpha);
 =======
             textColor = ColorUtils.multAlpha(ColorUtils.getColor(255, 255, 255, 255), alpha);
             iconColor = ColorUtils.multAlpha(ColorUtils.getColor(255, 255, 255, 255), alpha);
 >>>>>>> be39d49e669e2142432a36b1bc0484f06041f13b
+=======
+            textColor = ColorUtils.multAlpha(ColorUtils.getColor(255, 255, 255, 255), alpha);
+            iconColor = ColorUtils.multAlpha(ColorUtils.getColor(255, 255, 255, 255), alpha);
+>>>>>>> 42510f564926933ae9da905274ef1c63749450a2
         } else {
             iconXOffset = -3f * sScale * (1f - iconOffsetV);
             textXOffset = (iconWidth + iconPadding) * iconOffsetV;
