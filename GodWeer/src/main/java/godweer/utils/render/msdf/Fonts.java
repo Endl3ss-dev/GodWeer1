@@ -9,6 +9,11 @@ public enum Fonts {
 
     MainMenu("mainmenu"),
     MainMenu2("mainmenu2"),
+    SfBold("sfbold"),
+    SfMedium("sfmedium"),
+    SfRegular("sfregular"),
+    ClickGuiFont("clickguifont"),
+    IconF("iconf"),
     Font("font"),
     Font1("font1"),
     Font2("font2"),

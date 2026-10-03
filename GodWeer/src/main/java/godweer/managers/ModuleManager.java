@@ -7,6 +7,7 @@ import godweer.modules.impl.combat.ItemSwap;
 import godweer.modules.impl.combat.SexAura;
 import godweer.modules.impl.player.DrinkUse;
 import godweer.modules.impl.movement.Speed;
+import godweer.modules.impl.hud.TargetHud;
 import godweer.modules.impl.render.Arrows;
 import godweer.modules.impl.render.ChinaHat;
 import godweer.modules.impl.render.Trails;
@@ -41,6 +42,7 @@ public final class ModuleManager {
         register(new Trails());
         register(new ChinaHat());
         register(new Arrows());
+        register(new TargetHud());
 
         rebuildIndex();
         FriendManager.init();

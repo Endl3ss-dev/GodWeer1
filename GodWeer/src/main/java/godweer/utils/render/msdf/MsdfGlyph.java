@@ -82,6 +82,40 @@ public final class MsdfGlyph {
         return getAdvance(size);
     }
 
+    // Сырые метрики msdf-атласа для newgui: тот клиент рендерит от верхнего края текста
+    // и шагает на advance * size — конвенции, отличные от FontRenderer.
+    public float getSourceAdvance() {
+        return this.advance;
+    }
+
+    public float getTopPosition() {
+        return this.topPosition;
+    }
+
+    public float getPlaneWidth() {
+        return this.width;
+    }
+
+    public float getPlaneHeight() {
+        return this.height;
+    }
+
+    public float getMinU() {
+        return this.minU;
+    }
+
+    public float getMaxU() {
+        return this.maxU;
+    }
+
+    public float getMinV() {
+        return this.minV;
+    }
+
+    public float getMaxV() {
+        return this.maxV;
+    }
+
     public int getCharCode() {
         return this.code;
     }

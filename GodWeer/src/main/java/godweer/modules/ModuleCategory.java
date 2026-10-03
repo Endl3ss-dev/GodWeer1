@@ -6,7 +6,8 @@ public enum ModuleCategory {
     MOVEMENT("Movement", "B"),
     RENDER("Visual", "D"),
     MISC("Util", "E"),
-    PLAYER("Player", "C");
+    PLAYER("Player", "C"),
+    INTERFACE("Interface", "n");
 
     private final String name;
     private final String icons;
