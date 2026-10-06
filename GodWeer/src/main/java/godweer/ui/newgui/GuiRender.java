@@ -101,7 +101,7 @@ public final class GuiRender {
         RenderSystem.defaultBlendFunc();
         RenderSystem.disableCull();
         RenderSystem.disableDepthTest();
-        RenderSystem.setShaderTexture(0, textureId);
+        RenderSystem.setShaderTexture(0, texture);
 
         Matrix4f matrix = stack.last().pose();
         BufferBuilder buffer = Tesselator.getInstance()

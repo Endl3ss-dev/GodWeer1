@@ -3,6 +3,9 @@ package godweer.managers;
 import godweer.GodWeer;
 import godweer.modules.Module;
 import godweer.modules.ModuleCategory;
+import godweer.modules.impl.combat.AutoGApple;
+import godweer.modules.impl.combat.AutoHeal;
+import godweer.modules.impl.combat.AutoPotion;
 import godweer.modules.impl.combat.ItemSwap;
 import godweer.modules.impl.combat.SexAura;
 import godweer.modules.impl.player.DrinkUse;
@@ -11,8 +14,10 @@ import godweer.modules.impl.hud.TargetHud;
 import godweer.modules.impl.render.Arrows;
 import godweer.modules.impl.render.ChinaHat;
 import godweer.modules.impl.render.Trails;
+import godweer.utils.item.ConsumableUseController;
 
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
+import net.minecraft.client.Minecraft;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -32,9 +37,13 @@ public final class ModuleManager {
     }
 
     public static void init() {
+        ConsumableUseController.clearAll();
         MODULES.clear();
         BY_CATEGORY.clear();
 
+        register(new AutoHeal());
+        register(new AutoGApple());
+        register(new AutoPotion());
         register(new SexAura());
         register(new ItemSwap());
         register(new Speed());
@@ -71,6 +80,7 @@ public final class ModuleManager {
     }
 
     public static void tick() {
+        ConsumableUseController.tickDisabledControllers(Minecraft.getInstance());
         for (int i = 0, size = MODULES.size(); i < size; i++) {
             Module module = MODULES.get(i);
             if (!module.isEnable()) {

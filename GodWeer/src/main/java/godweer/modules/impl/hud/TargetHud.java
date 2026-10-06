@@ -1,5 +1,6 @@
 package godweer.modules.impl.hud;
 
+import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 
 import godweer.managers.FriendManager;
@@ -8,18 +9,18 @@ import godweer.managers.ThemeManager;
 import godweer.modules.Module;
 import godweer.modules.ModuleCategory;
 import godweer.modules.api.setting.BooleanSetting;
-import godweer.modules.api.setting.FloatSetting;
+import godweer.modules.api.setting.ModeSetting;
 import godweer.ui.newgui.GuiFonts;
 import godweer.ui.newgui.GuiRender;
-import godweer.ui.newgui.Mathf;
 import godweer.utils.color.ColorUtils;
+import godweer.utils.render.msdf.MsdfFont;
+import godweer.utils.render.msdf.MsdfGlyph;
 
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.player.AbstractClientPlayer;
-import net.minecraft.client.renderer.RenderType;
 import net.minecraft.client.resources.PlayerSkin;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
@@ -30,32 +31,77 @@ import net.minecraft.world.item.ItemStack;
 
 import org.lwjgl.glfw.GLFW;
 
-// TargetHud: компактная панель цели — голова (лицо из скина) и панель одного размера,
-// градиентный фон под цвет темы. Панель перетаскивается ЛКМ; после наведения прицелом
-// держится «Время исчезновения» секунд и плавно гаснет.
 public final class TargetHud extends Module {
+
+    private static final EquipmentSlot[] DISPLAY_SLOTS = {
+            EquipmentSlot.HEAD,
+            EquipmentSlot.CHEST,
+            EquipmentSlot.LEGS,
+            EquipmentSlot.FEET,
+            EquipmentSlot.OFFHAND,
+            EquipmentSlot.MAINHAND
+    };
+
+    private static final String ELLIPSIS = "...";
+    private static final String EMPTY_SLOT_MARK = "×";
+    private static final String QUESTION_MARK = "?";
+    private static final String HEALTH_PREFIX = "HP ";
+    private static final long TARGET_HOLD_TIME_MS = 2_000L;
+    private static final float HUD_SCALE = 0.75f;
+    private static final float HUD_OPACITY = 0.90f;
+    private static final float TEXT_SCALE = HUD_SCALE;
+    private static final float ANIMATION_SPEED = 12.0f;
+    private static final float POSITION_SMOOTHING = 18.0f;
+    private static final int WHITE = ColorUtils.getColor(255, 255, 255, 255);
+    private static final int MUTED_WHITE = ColorUtils.getColor(205, 211, 222, 255);
+    private static final int HEALTH_RED = ColorUtils.rgba(242, 83, 91, 255);
+    private static final int HEALTH_YELLOW = ColorUtils.rgba(255, 194, 76, 255);
+    private static final int HEALTH_GREEN = ColorUtils.rgba(91, 220, 145, 255);
+    private static final int ABSORPTION_COLOR = ColorUtils.rgba(255, 202, 82, 255);
 
     private static boolean eventsRegistered;
 
-    private final BooleanSetting showArmor = new BooleanSetting("Показывать броню", true);
-    private final BooleanSetting showItems = new BooleanSetting("Показывать предметы", true);
-    private final FloatSetting fadeTime = new FloatSetting("Время исчезновения", 3.0f, 1.0f, 10.0f, 0.5f);
-    private final FloatSetting scale = new FloatSetting("Размер", 1.0f, 0.5f, 1.5f, 0.05f);
+    private final BooleanSetting showItems = new BooleanSetting("Предметы", true);
+    private final ModeSetting hpStyle = new ModeSetting("Стиль HP", "Тема", "Тема", "Здоровье");
 
     private LivingEntity target;
+    private LivingEntity cachedTarget;
     private long lastSeen;
+    private long lastFrameNanos;
     private float anim;
-    private float displayHp;
+    private float displayHealth;
 
-    // Позиция панели и перетаскивание (в GUI-пикселях).
     private float posX = -1.0f;
     private float posY = -1.0f;
+    private float renderX = -1.0f;
+    private float renderY = -1.0f;
     private boolean dragging;
-    private float grabX, grabY;
+    private float grabX;
+    private float grabY;
+
+    private String targetName = "";
+    private String displayName = "";
+    private float cachedNameWidth = -1.0f;
+    private float cachedNameSize = -1.0f;
+
+    private int cachedHealthTenths = Integer.MIN_VALUE;
+    private int cachedMaxHealthTenths = Integer.MIN_VALUE;
+    private int cachedAbsorptionTenths = Integer.MIN_VALUE;
+    private String healthText = "";
+    private String absorptionText = "";
+    private float cachedVitalsSize = -1.0f;
+    private float healthPrefixWidth;
+    private float healthTextWidth;
+    private float absorptionTextWidth;
+
+    private float cachedEmptyMarkerSize = -1.0f;
+    private float cachedEmptyMarkerBox = -1.0f;
+    private float emptyMarkerOffsetX;
+    private float emptyMarkerOffsetY;
 
     public TargetHud() {
         super("TargetHud", "Панель с информацией о враге", ModuleCategory.INTERFACE);
-        addSettings(showArmor, showItems, fadeTime, scale);
+        addSettings(showItems, hpStyle);
         registerEvents();
     }
 
@@ -67,203 +113,427 @@ public final class TargetHud extends Module {
         HudRenderCallback.EVENT.register((guiGraphics, deltaTracker) -> {
             TargetHud module = ModuleManager.get(TargetHud.class);
             if (module != null && module.isEnable()) {
-                module.onHudRender(guiGraphics, guiGraphics.pose(),
-                        deltaTracker.getGameTimeDeltaPartialTick(true));
+                module.onHudRender(guiGraphics, guiGraphics.pose());
             }
         });
     }
 
     @Override
     public void onDisable() {
-        target = null;
-        anim = 0.0f;
-        displayHp = 0.0f;
-        dragging = false;
+        resetTargetState();
         super.onDisable();
     }
 
-    private void onHudRender(GuiGraphics context, PoseStack stack, float partialTick) {
+    private void onHudRender(GuiGraphics context, PoseStack stack) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null || mc.options.hideGui) {
-            target = null;
+            resetTargetState();
             return;
         }
 
-        // Цель: живое существо под прицелом (кроме себя и друзей).
+        float frameDelta = nextFrameDelta();
+        long now = System.currentTimeMillis();
         boolean hovered = false;
         Entity picked = mc.crosshairPickEntity;
-        if (picked instanceof LivingEntity living && living != mc.getCameraEntity() && living.isAlive()) {
-            if (!(living instanceof Player player && FriendManager.isFriend(player))) {
-                target = living;
-                lastSeen = System.currentTimeMillis();
-                hovered = true;
-            }
-        }
-        if (target != null && !target.isAlive()) {
-            target = null;
+        if (picked instanceof LivingEntity living && living != mc.getCameraEntity() && living.isAlive()
+                && !(living instanceof Player player && FriendManager.isFriend(player))) {
+            target = living;
+            lastSeen = now;
+            hovered = true;
         }
 
-        boolean visible = target != null
-                && (hovered || System.currentTimeMillis() - lastSeen <= fadeTime.get() * 1000.0f);
-        anim = Mathf.fast(anim, visible ? 1.0f : 0.0f, 16.0f);
-        if (anim < 0.02f || target == null) {
+        boolean targetAlive = target != null && target.isAlive();
+        boolean visible = targetAlive
+                && (hovered || now - lastSeen <= TARGET_HOLD_TIME_MS);
+        anim = Mth.lerp(smoothingFactor(frameDelta, ANIMATION_SPEED), anim, visible ? 1.0f : 0.0f);
+
+        if (target == null || anim <= 0.004f) {
+            if (!visible || target == null) {
+                resetTargetState();
+            }
+            dragging = false;
             return;
         }
 
-        float gs = (float) mc.getWindow().getGuiScale();
-        float s = gs * scale.get();
+        if (target != cachedTarget) {
+            updateTargetCache(target);
+        }
+        displayHealth = Mth.lerp(smoothingFactor(frameDelta, 18.0f), displayHealth,
+                Math.max(0.0f, target.getHealth()));
 
-        // Геометрия: голова и панель одной высоты, всё компактно.
-        float side = 38.0f * s;
-        float gap = 4.0f * s;
-        float panelWidth = 118.0f * s;
-        float radius = 7.0f * s;
-        float totalWidth = side + gap + panelWidth;
+        float width = 154.0f * HUD_SCALE;
+        float cardHeight = 44.0f * HUD_SCALE;
+        float slotSize = 20.0f * HUD_SCALE;
+        float slotGap = 3.0f * HUD_SCALE;
+        float equipmentGap = 4.0f * HUD_SCALE;
+        float padding = 6.0f * HUD_SCALE;
+        boolean drawItems = showItems.get();
+        int slotCount = drawItems ? 6 : 4;
+        float totalHeight = cardHeight + equipmentGap + slotSize;
 
+        int scaledWidth = mc.getWindow().getGuiScaledWidth();
+        int scaledHeight = mc.getWindow().getGuiScaledHeight();
         if (posX < 0.0f || posY < 0.0f) {
-            posX = 22.0f * gs;
-            posY = mc.getWindow().getGuiScaledHeight() * 0.3f;
+            posX = 20.0f;
+            posY = scaledHeight * 0.32f;
+        }
+        if (renderX < 0.0f || renderY < 0.0f) {
+            renderX = posX;
+            renderY = posY;
         }
 
-        // Перетаскивание ЛКМ: опрос состояния мыши — HUD-колбэк не получает события ввода.
-        double mouseX = mc.mouseHandler.xpos() / gs;
-        double mouseY = mc.mouseHandler.ypos() / gs;
-        boolean pressed = GLFW.glfwGetMouseButton(mc.getWindow().getWindow(),
+        double windowScale = Math.max(1.0, mc.getWindow().getGuiScale());
+        double mouseX = mc.mouseHandler.xpos() / windowScale;
+        double mouseY = mc.mouseHandler.ypos() / windowScale;
+        boolean mouseDown = GLFW.glfwGetMouseButton(mc.getWindow().getWindow(),
                 GLFW.GLFW_MOUSE_BUTTON_LEFT) == GLFW.GLFW_PRESS;
-        if (pressed && !dragging && anim > 0.5f
-                && mouseX >= posX && mouseX <= posX + totalWidth
-                && mouseY >= posY && mouseY <= posY + side) {
+
+        if (mouseDown && !dragging && anim > 0.5f
+                && mouseX >= renderX && mouseX <= renderX + width
+                && mouseY >= renderY && mouseY <= renderY + totalHeight) {
             dragging = true;
-            grabX = (float) mouseX - posX;
-            grabY = (float) mouseY - posY;
+            grabX = (float) mouseX - renderX;
+            grabY = (float) mouseY - renderY;
         }
-        if (!pressed) {
+        if (!mouseDown) {
             dragging = false;
         }
+
+        float maxX = Math.max(2.0f, scaledWidth - width - 2.0f);
+        float maxY = Math.max(2.0f, scaledHeight - totalHeight - 2.0f);
         if (dragging) {
-            posX = Mth.clamp((float) mouseX - grabX, 2.0f,
-                    mc.getWindow().getGuiScaledWidth() - totalWidth - 2.0f);
-            posY = Mth.clamp((float) mouseY - grabY, 2.0f,
-                    mc.getWindow().getGuiScaledHeight() - side - 2.0f);
-        }
-
-        float x = posX;
-        float y = posY;
-        float bodyX = x + side + gap;
-
-        // Фон — градиент, тонированный цветом темы (тёмный, панели не сливаются с миром).
-        int theme = ThemeManager.getColor();
-        int bgTop = ColorUtils.multAlpha(ColorUtils.multDark(theme, 0.30f), anim);
-        int bgBottom = ColorUtils.multAlpha(ColorUtils.multDark(theme, 0.14f), anim);
-        int track = ColorUtils.multAlpha(ColorUtils.multDark(theme, 0.08f), anim);
-        int ink = ColorUtils.multAlpha(ColorUtils.getColor(255, 255, 255, 255), anim);
-        int outline = ColorUtils.multAlpha(ColorUtils.getColor(255, 255, 255, 255), 0.20f * anim);
-
-        // Голова: подложка + лицо игрока, обрезанное по радиусу шейдером.
-        GuiRender.roundedWithOutline(stack, x, y, side, side, 1.5f * s, bgTop, outline, radius);
-        if (target instanceof AbstractClientPlayer player) {
-            PlayerSkin skin = player.getSkin();
-            float inset = 1.5f * s;
-            float u0 = 8.0f / 64.0f;
-            float u1 = 16.0f / 64.0f;
-            float vTop = 1.0f - 16.0f / 64.0f;
-            float vBottom = 1.0f - 8.0f / 64.0f;
-            GuiRender.roundedTexture(stack, skin.texture(),
-                    x + inset, y + inset, side - inset * 2.0f, side - inset * 2.0f,
-                    radius - inset, u0, vTop, u1, vBottom, ColorUtils.getColor(255, 255, 255, (int) (255.0f * anim)));
+            posX = Mth.clamp((float) mouseX - grabX, 2.0f, maxX);
+            posY = Mth.clamp((float) mouseY - grabY, 2.0f, maxY);
         } else {
-            drawCross(stack, x, y, side, ink, 14.0f * s);
+            posX = Mth.clamp(posX, 2.0f, maxX);
+            posY = Mth.clamp(posY, 2.0f, maxY);
         }
 
-        // Панель информации: тот же размер по высоте, градиент сверху вниз.
-        GuiRender.drawGradientRound(stack, bodyX, y, panelWidth, side, radius, bgTop, bgBottom, bgBottom, bgTop);
-        GuiRender.roundedOutline(stack, bodyX, y, panelWidth, side, 1.5f * s, outline, radius);
+        float positionFactor = smoothingFactor(frameDelta, POSITION_SMOOTHING);
+        renderX = Mth.lerp(positionFactor, renderX, posX);
+        renderY = Mth.lerp(positionFactor, renderY, posY);
 
-        float textX = bodyX + 8.0f * s;
-        float labelSize = 6.5f * s;
+        float x = renderX;
+        float y = renderY;
+        float animationAlpha = smoothStep(anim);
+        float opacityFactor = animationAlpha * HUD_OPACITY;
+        float visualScale = 0.96f + 0.04f * anim;
+        float centerX = x + width * 0.5f;
+        float centerY = y + totalHeight * 0.5f;
+        stack.pushPose();
+        stack.translate(centerX, centerY, 0.0f);
+        stack.scale(visualScale, visualScale, 1.0f);
+        stack.translate(-centerX, -centerY, 0.0f);
 
-        String nick = clip(target.getName().getString(),
-                panelWidth - 14.0f * s - GuiFonts.SF_BOLD.getWidth("Nick: ", labelSize), labelSize);
-        GuiFonts.SF_BOLD.draw(stack, "Nick: " + nick, textX, y + 6.5f * s, ink, labelSize);
+        float healthRatio = Mth.clamp(displayHealth / Math.max(1.0f, target.getMaxHealth()), 0.0f, 1.0f);
+        int themeColor = ThemeManager.getColor();
+        int accentColor = getAccentColor(healthRatio, themeColor);
+        int accent = ColorUtils.multAlpha(accentColor, opacityFactor);
+        int panelTop = ColorUtils.multAlpha(ColorUtils.multDark(themeColor, 0.30f), opacityFactor);
+        int panelBottom = ColorUtils.multAlpha(ColorUtils.multDark(themeColor, 0.14f), opacityFactor);
+        int outline = ColorUtils.multAlpha(WHITE, 0.12f * opacityFactor);
+        int slotBackground = ColorUtils.multAlpha(WHITE, 0.045f * opacityFactor);
+        int textColor = ColorUtils.multAlpha(WHITE, opacityFactor);
+        int mutedColor = ColorUtils.multAlpha(MUTED_WHITE, opacityFactor);
+        int trackColor = ColorUtils.multAlpha(WHITE, 0.12f * opacityFactor);
+        float cardRadius = 8.0f * HUD_SCALE;
 
-        displayHp = Mathf.fast(displayHp, target.getHealth(), 12.0f);
-        float maxHealth = Math.max(1.0f, target.getMaxHealth());
-        GuiFonts.SF_BOLD.draw(stack, "HP: " + String.format(java.util.Locale.US, "%.1f", target.getHealth()),
-                textX, y + 16.0f * s, ink, labelSize);
+        GuiRender.drawGradientRound(stack, x, y, width, cardHeight, cardRadius,
+                panelTop, panelBottom, panelTop, panelBottom);
+        GuiRender.roundedOutline(stack, x, y, width, cardHeight,
+                0.8f * HUD_SCALE, outline, cardRadius);
 
-        // Полоска здоровья — без подчёркиваний под текстом.
-        float barX = bodyX + 6.0f * s;
-        float barY = y + side - 12.0f * s;
-        float barWidth = panelWidth - 12.0f * s;
-        float barHeight = 7.0f * s;
-        GuiRender.roundedRect(stack, barX, barY, barWidth, barHeight, 3.0f * s, track);
-        float progress = Mth.clamp(displayHp / maxHealth, 0.0f, 1.0f);
-        float fillWidth = (barWidth - 2.0f * s) * progress;
-        if (fillWidth > 0.5f) {
-            GuiRender.roundedRect(stack, barX + s, barY + s, fillWidth, barHeight - 2.0f * s,
-                    2.0f * s, ink);
+        float markerWidth = 30.0f * HUD_SCALE;
+        GuiRender.roundedRect(stack, x + (width - markerWidth) * 0.5f,
+                y + cardHeight - 2.0f * HUD_SCALE, markerWidth, 1.5f * HUD_SCALE,
+                HUD_SCALE, accent);
+
+        float headSize = 32.0f * HUD_SCALE;
+        float headX = x + padding;
+        float headY = y + (cardHeight - headSize) * 0.5f;
+        float headRadius = 7.0f * HUD_SCALE;
+        int headBackground = ColorUtils.multAlpha(ColorUtils.multDark(themeColor, 0.12f), opacityFactor);
+        GuiRender.roundedWithOutline(stack, headX, headY, headSize, headSize,
+                0.8f * HUD_SCALE, headBackground, outline, headRadius);
+        drawHead(stack, target, headX, headY, headSize, headRadius, opacityFactor, textColor);
+
+        float infoX = headX + headSize + 7.0f * HUD_SCALE;
+        float infoRight = x + width - padding;
+        float infoWidth = infoRight - infoX;
+        float nameSize = 8.0f * TEXT_SCALE;
+        float healthSize = 7.0f * TEXT_SCALE;
+        updateDisplayName(infoWidth, nameSize);
+        if (!displayName.isEmpty()) {
+            GuiFonts.SF_MEDIUM.draw(stack, displayName, infoX, y + 7.0f * HUD_SCALE,
+                    textColor, nameSize);
         }
 
-        // Слоты: броня слева, предметы справа.
-        float rowY = y + side + gap;
-        float box = 20.0f * s;
-        float boxGap = 3.0f * s;
-        float boxRadius = 5.0f * s;
+        updateVitalsText(healthSize);
+        float detailsY = y + 20.5f * HUD_SCALE;
+        float textX = infoX;
+        GuiFonts.SF_MEDIUM.draw(stack, HEALTH_PREFIX, textX, detailsY, mutedColor, healthSize);
+        textX += healthPrefixWidth;
+        GuiFonts.SF_MEDIUM.draw(stack, healthText, textX, detailsY, textColor, healthSize);
+        textX += healthTextWidth + 3.0f * HUD_SCALE;
+        if (cachedAbsorptionTenths > 0 && textX + absorptionTextWidth <= infoRight) {
+            GuiFonts.SF_MEDIUM.draw(stack, absorptionText, textX, detailsY,
+                    ColorUtils.multAlpha(ABSORPTION_COLOR, opacityFactor), healthSize);
+        }
 
-        if (showArmor.get()) {
-            EquipmentSlot[] slots = {
-                    EquipmentSlot.HEAD, EquipmentSlot.CHEST, EquipmentSlot.LEGS, EquipmentSlot.FEET
-            };
-            float currentX = x;
-            for (EquipmentSlot slot : slots) {
-                drawSlot(context, stack, currentX, rowY, box, target.getItemBySlot(slot),
-                        bgTop, outline, ink, boxRadius, s);
-                currentX += box + boxGap;
+        float barX = infoX;
+        float barY = y + cardHeight - 10.0f * HUD_SCALE;
+        float barWidth = infoWidth;
+        float barHeight = 4.5f * HUD_SCALE;
+        float innerWidth = Math.max(0.0f, barWidth - 2.0f * HUD_SCALE);
+        float innerHeight = Math.max(0.0f, barHeight - 2.0f * HUD_SCALE);
+        float barRadius = barHeight * 0.5f;
+        GuiRender.roundedRect(stack, barX, barY, barWidth, barHeight, barRadius, trackColor);
+
+        float healthWidth = innerWidth * healthRatio;
+        float innerX = barX + HUD_SCALE;
+        float innerY = barY + HUD_SCALE;
+        if (healthWidth > 0.5f && innerHeight > 0.0f) {
+            GuiRender.roundedRect(stack, innerX, innerY, healthWidth, innerHeight,
+                    innerHeight * 0.5f, accent);
+        }
+
+        float absorption = Math.max(0.0f, target.getAbsorptionAmount());
+        if (innerWidth > healthWidth && innerHeight > 0.0f) {
+            float absorptionWidth = Math.min(innerWidth - healthWidth,
+                    innerWidth * absorption / Math.max(1.0f, target.getMaxHealth()));
+            if (absorptionWidth > 0.5f) {
+                int absorptionColor = ColorUtils.multAlpha(ABSORPTION_COLOR, opacityFactor);
+                GuiRender.roundedRect(stack, innerX + healthWidth, innerY, absorptionWidth, innerHeight,
+                        innerHeight * 0.5f, absorptionColor);
             }
         }
 
-        if (showItems.get()) {
-            float mainHandX = bodyX + panelWidth - box;
-            float offHandX = mainHandX - box - boxGap;
-            drawSlot(context, stack, offHandX, rowY, box, target.getItemBySlot(EquipmentSlot.OFFHAND),
-                    bgTop, outline, ink, boxRadius, s);
-            drawSlot(context, stack, mainHandX, rowY, box, target.getItemBySlot(EquipmentSlot.MAINHAND),
-                    bgTop, outline, ink, boxRadius, s);
+        float rowWidth = slotCount * slotSize + (slotCount - 1) * slotGap;
+        float rowX = x + (width - rowWidth) * 0.5f;
+        float rowY = y + cardHeight + equipmentGap;
+        float slotRadius = 5.0f * HUD_SCALE;
+        float emptyMarkerSize = 9.5f * TEXT_SCALE;
+        updateEmptyMarkerMetrics(emptyMarkerSize, slotSize);
+        int slotOutline = ColorUtils.multAlpha(WHITE, 0.10f * opacityFactor);
+        int emptyMarkerColor = ColorUtils.multAlpha(MUTED_WHITE, 0.72f * opacityFactor);
+        int slotIndex = 0;
+
+        for (int i = 0; i < DISPLAY_SLOTS.length; i++) {
+            if (i >= 4 && !drawItems) {
+                continue;
+            }
+            float slotX = rowX + slotIndex * (slotSize + slotGap);
+            drawSlot(context, stack, slotX, rowY, slotSize, target.getItemBySlot(DISPLAY_SLOTS[i]),
+                    slotBackground, slotOutline, slotRadius, emptyMarkerColor, emptyMarkerSize,
+                    opacityFactor);
+            slotIndex++;
+        }
+
+        stack.popPose();
+    }
+
+    private float nextFrameDelta() {
+        long now = System.nanoTime();
+        if (lastFrameNanos == 0L) {
+            lastFrameNanos = now;
+            return 1.0f / 60.0f;
+        }
+        float delta = (now - lastFrameNanos) / 1_000_000_000.0f;
+        lastFrameNanos = now;
+        return Mth.clamp(delta, 0.0f, 0.05f);
+    }
+
+    private static float smoothingFactor(float delta, float speed) {
+        return 1.0f - (float) Math.exp(-delta * speed);
+    }
+
+    private static float smoothStep(float value) {
+        float clamped = Mth.clamp(value, 0.0f, 1.0f);
+        return clamped * clamped * (3.0f - 2.0f * clamped);
+    }
+
+    private void updateTargetCache(LivingEntity currentTarget) {
+        cachedTarget = currentTarget;
+        targetName = currentTarget.getName().getString();
+        displayName = targetName;
+        cachedNameWidth = -1.0f;
+        cachedNameSize = -1.0f;
+        cachedHealthTenths = Integer.MIN_VALUE;
+        cachedMaxHealthTenths = Integer.MIN_VALUE;
+        cachedAbsorptionTenths = Integer.MIN_VALUE;
+        cachedVitalsSize = -1.0f;
+        displayHealth = Math.max(0.0f, currentTarget.getHealth());
+    }
+
+    private void updateDisplayName(float maxWidth, float size) {
+        if (cachedNameWidth == maxWidth && cachedNameSize == size) {
+            return;
+        }
+        displayName = fitName(targetName, maxWidth, size);
+        cachedNameWidth = maxWidth;
+        cachedNameSize = size;
+    }
+
+    private String fitName(String value, float maxWidth, float size) {
+        if (GuiFonts.SF_MEDIUM.getWidth(value, size) <= maxWidth) {
+            return value;
+        }
+        if (GuiFonts.SF_MEDIUM.getWidth(ELLIPSIS, size) > maxWidth) {
+            return "";
+        }
+
+        int end = value.length();
+        while (end > 0) {
+            end = value.offsetByCodePoints(end, -1);
+            String candidate = value.substring(0, end) + ELLIPSIS;
+            if (GuiFonts.SF_MEDIUM.getWidth(candidate, size) <= maxWidth) {
+                return candidate;
+            }
+        }
+        return ELLIPSIS;
+    }
+
+    private void updateVitalsText(float size) {
+        int healthTenths = Math.max(0, Math.round(target.getHealth() * 10.0f));
+        int maxHealthTenths = Math.max(10, Math.round(target.getMaxHealth() * 10.0f));
+        int absorptionTenths = Math.max(0, Math.round(target.getAbsorptionAmount() * 10.0f));
+
+        if (cachedHealthTenths != healthTenths || cachedMaxHealthTenths != maxHealthTenths
+                || cachedAbsorptionTenths != absorptionTenths) {
+            cachedHealthTenths = healthTenths;
+            cachedMaxHealthTenths = maxHealthTenths;
+            cachedAbsorptionTenths = absorptionTenths;
+            healthText = formatTenths(healthTenths) + " / " + formatTenths(maxHealthTenths);
+            absorptionText = absorptionTenths > 0 ? "+" + formatTenths(absorptionTenths) : "";
+            cachedVitalsSize = -1.0f;
+        }
+
+        if (cachedVitalsSize != size) {
+            healthPrefixWidth = GuiFonts.SF_MEDIUM.getWidth(HEALTH_PREFIX, size);
+            healthTextWidth = GuiFonts.SF_MEDIUM.getWidth(healthText, size);
+            absorptionTextWidth = GuiFonts.SF_MEDIUM.getWidth(absorptionText, size);
+            cachedVitalsSize = size;
+        }
+    }
+
+    private static String formatTenths(int value) {
+        return value / 10 + "." + value % 10;
+    }
+
+    private int getAccentColor(float healthRatio, int themeColor) {
+        if (!hpStyle.is("Здоровье")) {
+            return themeColor;
+        }
+        if (healthRatio >= 0.5f) {
+            return ColorUtils.interpolateColor(HEALTH_YELLOW, HEALTH_GREEN, (healthRatio - 0.5f) * 2.0f);
+        }
+        return ColorUtils.interpolateColor(HEALTH_RED, HEALTH_YELLOW, healthRatio * 2.0f);
+    }
+
+    private void drawHead(PoseStack stack, LivingEntity target, float x, float y, float size,
+                          float radius, float opacityFactor, int textColor) {
+        if (target instanceof AbstractClientPlayer player) {
+            PlayerSkin skin = player.getSkin();
+            float inset = 1.5f * HUD_SCALE;
+            float overlayInset = 0.9f * HUD_SCALE;
+            int faceColor = ColorUtils.multAlpha(WHITE, opacityFactor);
+            GuiRender.roundedTexture(stack, skin.texture(),
+                    x + inset, y + inset, size - inset * 2.0f, size - inset * 2.0f,
+                    radius - inset, 8.0f / 64.0f, 8.0f / 64.0f,
+                    16.0f / 64.0f, 16.0f / 64.0f, faceColor);
+            GuiRender.roundedTexture(stack, skin.texture(),
+                    x + overlayInset, y + overlayInset,
+                    size - overlayInset * 2.0f, size - overlayInset * 2.0f,
+                    radius - overlayInset, 40.0f / 64.0f, 8.0f / 64.0f,
+                    48.0f / 64.0f, 16.0f / 64.0f, faceColor);
+        } else {
+            drawCenteredGlyph(stack, QUESTION_MARK, '?', x, y, size, 11.0f * TEXT_SCALE, textColor);
         }
     }
 
     private void drawSlot(GuiGraphics context, PoseStack stack, float x, float y, float box,
-                          ItemStack item, int bg, int outline, int ink, float radius, float s) {
-        GuiRender.roundedWithOutline(stack, x, y, box, box, s, bg, outline, radius);
-        if (!item.isEmpty()) {
-            float itemSize = box - 5.0f * s;
-            float itemScale = itemSize / 16.0f;
-            stack.pushPose();
-            stack.translate(x + (box - itemSize) / 2.0f, y + (box - itemSize) / 2.0f, 0.0f);
+                          ItemStack item, int background, int outline, float radius, int emptyColor,
+                          float emptyMarkerSize, float opacityFactor) {
+        GuiRender.roundedWithOutline(stack, x, y, box, box, 0.75f * HUD_SCALE,
+                background, outline, radius);
+        if (item.isEmpty()) {
+            GuiFonts.SF_MEDIUM.draw(stack, EMPTY_SLOT_MARK,
+                    x + emptyMarkerOffsetX, y + emptyMarkerOffsetY,
+                    emptyColor, emptyMarkerSize);
+            return;
+        }
+
+        float itemSize = box - 6.0f * HUD_SCALE;
+        float itemScale = itemSize / 16.0f;
+        stack.pushPose();
+        try {
+            stack.translate(x + (box - itemSize) * 0.5f, y + (box - itemSize) * 0.5f, 0.0f);
             stack.scale(itemScale, itemScale, 1.0f);
-            context.renderItem(item, 0, 0);
+            RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, opacityFactor);
+            try {
+                context.renderItem(item, 0, 0);
+            } finally {
+                RenderSystem.setShaderColor(1.0f, 1.0f, 1.0f, 1.0f);
+            }
+        } finally {
             stack.popPose();
-        } else {
-            drawCross(stack, x, y, box, ColorUtils.multAlpha(ink, 0.55f), 9.0f * s);
         }
     }
 
-    // Крестик-заглушка, как «X» в референсе.
-    private void drawCross(PoseStack stack, float x, float y, float box, int ink, float markSize) {
-        String mark = "X";
-        float markWidth = GuiFonts.SF_BOLD.getWidth(mark, markSize);
-        float markHeight = GuiFonts.SF_BOLD.getHeight(mark, markSize);
-        GuiFonts.SF_BOLD.draw(stack, mark, x + (box - markWidth) / 2.0f, y + (box - markHeight) / 2.0f,
-                ink, markSize);
+    private void updateEmptyMarkerMetrics(float size, float box) {
+        if (cachedEmptyMarkerSize == size && cachedEmptyMarkerBox == box) {
+            return;
+        }
+        cachedEmptyMarkerSize = size;
+        cachedEmptyMarkerBox = box;
+        MsdfFont font = GuiFonts.SF_MEDIUM.atlas();
+        MsdfGlyph glyph = font == null ? null : font.getGlyph(EMPTY_SLOT_MARK.codePointAt(0));
+        if (glyph == null) {
+            float markerWidth = GuiFonts.SF_MEDIUM.getWidth(EMPTY_SLOT_MARK, size);
+            float markerHeight = GuiFonts.SF_MEDIUM.getHeight(EMPTY_SLOT_MARK, size);
+            emptyMarkerOffsetX = (box - markerWidth) * 0.5f;
+            emptyMarkerOffsetY = (box - markerHeight) * 0.5f;
+            return;
+        }
+        float markerWidth = glyph.getPlaneWidth() * size;
+        float markerHeight = glyph.getPlaneHeight() * size;
+        emptyMarkerOffsetX = (box - markerWidth) * 0.5f;
+        emptyMarkerOffsetY = (box - markerHeight) * 0.5f
+                - (font.getBaselineHeight() - glyph.getTopPosition()) * size;
     }
 
-    private String clip(String value, float maxWidth, float size) {
-        if (GuiFonts.SF_BOLD.getWidth(value, size) <= maxWidth) {
-            return value;
+    private void drawCenteredGlyph(PoseStack stack, String text, int codePoint,
+                                   float x, float y, float box, float size, int color) {
+        MsdfFont font = GuiFonts.SF_MEDIUM.atlas();
+        MsdfGlyph glyph = font == null ? null : font.getGlyph(codePoint);
+        if (glyph == null) {
+            return;
         }
-        while (value.length() > 1 && GuiFonts.SF_BOLD.getWidth(value + "...", size) > maxWidth) {
-            value = value.substring(0, value.length() - 1);
-        }
-        return value + "...";
+        float glyphWidth = glyph.getPlaneWidth() * size;
+        float glyphHeight = glyph.getPlaneHeight() * size;
+        float glyphX = x + (box - glyphWidth) * 0.5f;
+        float glyphY = y + (box - glyphHeight) * 0.5f
+                - (font.getBaselineHeight() - glyph.getTopPosition()) * size;
+        GuiFonts.SF_MEDIUM.draw(stack, text, glyphX, glyphY, color, size);
+    }
+
+    private void resetTargetState() {
+        target = null;
+        cachedTarget = null;
+        lastSeen = 0L;
+        lastFrameNanos = 0L;
+        anim = 0.0f;
+        displayHealth = 0.0f;
+        dragging = false;
+        targetName = "";
+        displayName = "";
+        cachedNameWidth = -1.0f;
+        cachedNameSize = -1.0f;
+        cachedHealthTenths = Integer.MIN_VALUE;
+        cachedMaxHealthTenths = Integer.MIN_VALUE;
+        cachedAbsorptionTenths = Integer.MIN_VALUE;
+        healthText = "";
+        absorptionText = "";
+        cachedVitalsSize = -1.0f;
     }
 }
