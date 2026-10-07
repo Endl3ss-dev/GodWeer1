@@ -9,6 +9,7 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.inventory.ClickType;
+import net.minecraft.world.item.Item;
 import net.minecraft.world.item.ItemStack;
 
 import java.util.ArrayList;
@@ -17,7 +18,10 @@ import java.util.List;
 public final class ConsumableUseController {
 
     private static final int NO_SLOT = -1;
-    private static final List<ConsumableUseController> CONTROLLERS = new ArrayList<>(3);
+    private static final int EAT_FINISH_TICKS = 30;
+    private static final int MAX_RESUME_ATTEMPTS = 5;
+    private static final long RESTART_COOLDOWN_MS = 250L;
+    private static final List<ConsumableUseController> CONTROLLERS = new ArrayList<>(4);
 
     private static Object lastLevel;
     private static Object lastOwner;
@@ -30,6 +34,14 @@ public final class ConsumableUseController {
     private int restoreButton = NO_SLOT;
     private int restoreSelectedSlot = NO_SLOT;
     private int temporarySelectedSlot = NO_SLOT;
+
+    private Item holdItem;
+    private InteractionHand holdHand = InteractionHand.MAIN_HAND;
+    private int holdHotbarSlot = NO_SLOT;
+    private boolean holdSwing;
+    private int holdElapsed;
+    private int resumeAttempts;
+    private long nextStartTimeMs;
 
     public ConsumableUseController(Object owner) {
         this.owner = owner;
@@ -61,8 +73,25 @@ public final class ConsumableUseController {
         }
     }
 
+    public static boolean isAnyActive() {
+        for (int index = 0, size = CONTROLLERS.size(); index < size; index++) {
+            if (CONTROLLERS.get(index).active) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    public boolean isActive() {
+        return active;
+    }
+
+    public boolean isLockedByOther() {
+        return !active && isAnyActive();
+    }
+
     public boolean useInstant(Minecraft minecraft, LocalPlayer player, int inventorySlot, boolean swing) {
-        if (active || !canStart(minecraft, player) || !claimUseTick(minecraft)) {
+        if (active || isLockedByOther() || !canStart(minecraft, player) || !claimUseTick(minecraft)) {
             return false;
         }
 
@@ -83,7 +112,8 @@ public final class ConsumableUseController {
     }
 
     public boolean useAndHold(Minecraft minecraft, LocalPlayer player, int inventorySlot, boolean swing) {
-        if (active || !canStart(minecraft, player) || !claimUseTick(minecraft)) {
+        if (active || isLockedByOther() || !canStart(minecraft, player)
+                || System.currentTimeMillis() < nextStartTimeMs || !claimUseTick(minecraft)) {
             return false;
         }
 
@@ -102,6 +132,12 @@ public final class ConsumableUseController {
             boolean accepted = result.consumesAction() || player.isUsingItem();
             if (accepted && player.isUsingItem()) {
                 active = true;
+                holdItem = sourceItem(player, inventorySlot);
+                holdHand = hand;
+                holdHotbarSlot = hand == InteractionHand.OFF_HAND ? NO_SLOT : player.getInventory().selected;
+                holdSwing = swing;
+                holdElapsed = 0;
+                resumeAttempts = 0;
                 keepPrepared = true;
             }
             return accepted;
@@ -116,9 +152,28 @@ public final class ConsumableUseController {
         if (!active) {
             return false;
         }
-        if (player.isUsingItem()
-                || restoreMenuSlot != NO_SLOT && player.containerMenu != player.inventoryMenu) {
+        if (player.isUsingItem()) {
+            holdElapsed++;
             return true;
+        }
+        if (restoreMenuSlot != NO_SLOT && player.containerMenu != player.inventoryMenu) {
+            return true;
+        }
+
+        if (shouldResume(minecraft, player)) {
+            resumeAttempts++;
+            if (claimUseTick(minecraft) && minecraft.gameMode != null
+                    && minecraft.gameMode.useItem(player, holdHand).consumesAction() && holdSwing) {
+                player.swing(holdHand);
+            }
+            if (player.isUsingItem()) {
+                holdElapsed = 0;
+                resumeAttempts = 0;
+            }
+            return true;
+        }
+        if (resumeAttempts > 0) {
+            nextStartTimeMs = System.currentTimeMillis() + RESTART_COOLDOWN_MS;
         }
 
         restore(minecraft, player);
@@ -126,6 +181,7 @@ public final class ConsumableUseController {
     }
 
     public void cancel(Minecraft minecraft, LocalPlayer player) {
+        nextStartTimeMs = 0L;
         if (!active && restoreMenuSlot == NO_SLOT && restoreSelectedSlot == NO_SLOT) {
             return;
         }
@@ -137,7 +193,39 @@ public final class ConsumableUseController {
     }
 
     public void reset() {
+        nextStartTimeMs = 0L;
         clearState();
+    }
+
+    // Ванила доедает любой расходник за 32 тика: остановка раньше — внешнее прерывание, а не финал.
+    private boolean shouldResume(Minecraft minecraft, LocalPlayer player) {
+        return holdItem != null
+                && holdElapsed < EAT_FINISH_TICKS
+                && resumeAttempts < MAX_RESUME_ATTEMPTS
+                && isOwnerEnabled()
+                && minecraft.gameMode != null
+                && player.isAlive()
+                && player.containerMenu == player.inventoryMenu
+                && stillHolding(player);
+    }
+
+    private boolean stillHolding(LocalPlayer player) {
+        if (holdHand == InteractionHand.OFF_HAND) {
+            return player.getOffhandItem().is(holdItem);
+        }
+        Inventory inventory = player.getInventory();
+        return inventory.selected == holdHotbarSlot && inventory.getItem(inventory.selected).is(holdItem);
+    }
+
+    private boolean isOwnerEnabled() {
+        return !(owner instanceof Module module) || module.isEnable();
+    }
+
+    private static Item sourceItem(LocalPlayer player, int inventorySlot) {
+        ItemStack stack = inventorySlot == ConsumableItemUtil.OFFHAND_SLOT
+                ? player.getOffhandItem()
+                : player.getInventory().getItem(inventorySlot);
+        return stack.getItem();
     }
 
     private boolean canStart(Minecraft minecraft, LocalPlayer player) {
@@ -235,5 +323,11 @@ public final class ConsumableUseController {
         restoreButton = NO_SLOT;
         restoreSelectedSlot = NO_SLOT;
         temporarySelectedSlot = NO_SLOT;
+        holdItem = null;
+        holdHand = InteractionHand.MAIN_HAND;
+        holdHotbarSlot = NO_SLOT;
+        holdSwing = false;
+        holdElapsed = 0;
+        resumeAttempts = 0;
     }
 }

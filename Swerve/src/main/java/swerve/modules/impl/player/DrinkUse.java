@@ -63,7 +63,7 @@ public final class DrinkUse extends Module {
 
     @Override
     public void onDisable() {
-        resetState();
+        abortState(Minecraft.getInstance(), Minecraft.getInstance().player);
     }
 
     @Override
@@ -72,6 +72,11 @@ public final class DrinkUse extends Module {
         LocalPlayer player = minecraft.player;
         if (player == null || minecraft.gameMode == null || minecraft.level == null) {
             resetState();
+            return;
+        }
+
+        if (player.isUsingItem()) {
+            abortState(minecraft, player);
             return;
         }
 
@@ -275,6 +280,17 @@ public final class DrinkUse extends Module {
         restoreButton = NO_SLOT;
         pendingHand = InteractionHand.MAIN_HAND;
         bindDown = false;
+    }
+
+    private void abortState(Minecraft minecraft, LocalPlayer player) {
+        if (state == State.IDLE) {
+            return;
+        }
+        if (player != null && restoreMenuSlot != NO_SLOT && restoreButton != NO_SLOT
+                && player.containerMenu == player.inventoryMenu) {
+            clickSwap(minecraft, player, restoreMenuSlot, restoreButton);
+        }
+        resetState();
     }
 
     private enum State {

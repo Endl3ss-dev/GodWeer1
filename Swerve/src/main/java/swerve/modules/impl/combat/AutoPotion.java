@@ -21,7 +21,6 @@ import net.minecraft.world.item.Items;
 public final class AutoPotion extends Module {
 
     private static final int NO_SLOT = -1;
-    private static final int ROTATION_STEP = 25;
     private static final int MAX_BURST_USES = 3;
     private static final long EFFECT_REFRESH_GUARD_MS = 1500L;
     private static final long INVENTORY_SCAN_INTERVAL_MS = 250L;
@@ -40,6 +39,8 @@ public final class AutoPotion extends Module {
     private final FloatSetting useDelay = new FloatSetting("Задержка между использованием (мс)", 250.0F, 0.0F, 2000.0F, 25.0F)
             .visible(() -> eachSeparately.get());
     private final ModeSetting rotationMode = new ModeSetting("Повороты камеры", "Плавные", "Плавные", "Резкие", "Пакетные");
+    private final FloatSetting smoothTime = new FloatSetting("Время поворота (мс)", 500.0F, 50.0F, 1000.0F, 25.0F)
+            .visible(() -> rotationMode.is("Плавные"));
     private final BooleanSetting clientLock = new BooleanSetting("Client lock", false)
             .visible(() -> !rotationMode.is("Пакетные"));
     private final BooleanSetting disableAfterUse = new BooleanSetting("Выключать после использования", false);
@@ -51,6 +52,7 @@ public final class AutoPotion extends Module {
     private boolean sequenceUsedAny;
     private boolean rotationReady;
     private int pendingMask;
+    private int rotationTick;
     private long nextUseTime;
     private long nextScanTime;
     private float startYaw;
@@ -64,7 +66,7 @@ public final class AutoPotion extends Module {
         super("AutoPotion", "Автоматически кидает выбранные бафы", ModuleCategory.COMBAT);
         useController = new ConsumableUseController(this);
         addSettings(potions, throwTarget, throughHand, eachSeparately, useDelay,
-                rotationMode, clientLock, disableAfterUse);
+                rotationMode, smoothTime, clientLock, disableAfterUse);
     }
 
     @Override
@@ -107,6 +109,9 @@ public final class AutoPotion extends Module {
         }
         if (minecraft.screen != null || player.isUsingItem() || !player.isAlive()
                 || player.isCreative() || player.isSpectator()) {
+            return;
+        }
+        if (useController.isLockedByOther()) {
             return;
         }
 
@@ -184,6 +189,7 @@ public final class AutoPotion extends Module {
         sequenceActive = true;
         sequenceUsedAny = false;
         rotationReady = false;
+        rotationTick = 0;
         nextUseTime = now;
         startYaw = player.getYRot();
         startPitch = player.getXRot();
@@ -220,8 +226,11 @@ public final class AutoPotion extends Module {
             return true;
         }
 
-        rotationYaw = approachAngle(rotationYaw, targetYaw, ROTATION_STEP);
-        rotationPitch = approach(rotationPitch, targetPitch, ROTATION_STEP);
+        rotationTick++;
+        float time = Math.min(1.0F, (float) rotationTick / (float) smoothTicks());
+        float eased = easeInOutCubic(time);
+        rotationYaw = startYaw + Mth.wrapDegrees(targetYaw - startYaw) * eased;
+        rotationPitch = startPitch + (targetPitch - startPitch) * eased;
         if (clientLock.get()) {
             player.setYRot(rotationYaw);
             player.setXRot(rotationPitch);
@@ -229,8 +238,7 @@ public final class AutoPotion extends Module {
             sendRotation(player, rotationYaw, rotationPitch);
         }
 
-        if (Math.abs(Mth.wrapDegrees(targetYaw - rotationYaw)) <= 0.5F
-                && Math.abs(targetPitch - rotationPitch) <= 0.5F) {
+        if (time >= 1.0F) {
             rotationReady = true;
         }
         return rotationReady;
@@ -285,6 +293,7 @@ public final class AutoPotion extends Module {
         sequenceUsedAny = false;
         rotationReady = false;
         pendingMask = 0;
+        rotationTick = 0;
         nextUseTime = 0L;
         startYaw = 0.0F;
         startPitch = 0.0F;
@@ -294,20 +303,17 @@ public final class AutoPotion extends Module {
         targetPitch = 0.0F;
     }
 
-    private static float approachAngle(float current, float target, float step) {
-        float difference = Mth.wrapDegrees(target - current);
-        if (Math.abs(difference) <= step) {
-            return target;
-        }
-        return current + Math.copySign(step, difference);
+    private int smoothTicks() {
+        return Math.max(1, Math.round(smoothTime.get() / 50.0F));
     }
 
-    private static float approach(float current, float target, float step) {
-        float difference = target - current;
-        if (Math.abs(difference) <= step) {
-            return target;
+    // Разгон в начале и торможение в конце — как движение мыши живого игрока.
+    private static float easeInOutCubic(float time) {
+        if (time < 0.5F) {
+            return 4.0F * time * time * time;
         }
-        return current + Math.copySign(step, difference);
+        float mirrored = -2.0F * time + 2.0F;
+        return 1.0F - mirrored * mirrored * mirrored * 0.5F;
     }
 
     private enum PotionType {

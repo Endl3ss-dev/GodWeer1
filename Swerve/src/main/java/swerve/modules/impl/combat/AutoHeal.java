@@ -54,7 +54,7 @@ public final class AutoHeal extends Module {
             return;
         }
 
-        if (useController.tick(minecraft, player)) {
+        if (useController.tick(minecraft, player) && useController.isActive()) {
             return;
         }
         if (minecraft.screen != null || player.isUsingItem() || !player.isAlive()
