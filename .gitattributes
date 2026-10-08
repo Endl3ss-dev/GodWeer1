@@ -1,2 +1,22 @@
 # Auto detect text files and perform LF normalization
 * text=auto
+
+# Явно бинарные: * text=auto полагается на эвристику, а она может
+# испортить эти файлы при checkout на другой ОС.
+*.jar   binary
+*.dll   binary
+*.so    binary
+*.dylib binary
+*.png   binary
+*.jpg   binary
+*.ttf   binary
+*.otf   binary
+*.zip   binary
+*.dat   binary
+
+# Gradle Wrapper: скрипты должны сохранять LF на всех платформах
+gradlew      text eol=lf
+gradlew.bat  text eol=crlf
+
+# PowerShell-скрипты: CRLF, иначе here-строки могут поехать в Windows PowerShell 5.1
+*.ps1        text eol=crlf
