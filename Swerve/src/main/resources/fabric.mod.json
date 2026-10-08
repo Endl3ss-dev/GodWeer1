@@ -1,30 +1,30 @@
 {
-	"schemaVersion": 1,
-	"id": "swerve",
-	"version": "${version}",
-	"name": "Swerve",
-	"description": "Swerve — Minecraft 1.21.4 Fabric client.",
-	"authors": [
-		"Swerve"
-	],
-	"contact": {
-		"sources": "https://github.com/Endl3ss-dev/GodWeer"
-	},
-	"license": "CC0-1.0",
-	"icon": "assets/swerve/icon.png",
-	"environment": "client",
-	"entrypoints": {
-		"client": [
-			"swerve.Swerve"
-		]
-	},
-	"mixins": [
-		"swerve.mixins.json"
-	],
-	"depends": {
-		"fabricloader": ">=0.19.3",
-		"minecraft": "~1.21.4",
-		"java": ">=21",
-		"fabric-api": "*"
-	}
+  "schemaVersion": 1,
+  "id": "n2ver",
+  "version": "${version}",
+  "name": "Endless",
+  "description": "Endless client for Minecraft 1.21.1 (Fabric)",
+  "authors": [
+    "n2ver"
+  ],
+  "license": "All Rights Reserved",
+  "icon": "assets/n2ver/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "never.lose.NeverLose"
+    ]
+  },
+  "mixins": [
+    "n2ver.mixins.json"
+  ],
+  "depends": {
+    "fabricloader": ">=0.16.10",
+    "minecraft": "~1.21.1",
+    "java": ">=21",
+    "fabric-api": "*"
+  },
+  "suggests": {
+    "figura": ">=0.1.5"
+  }
 }
