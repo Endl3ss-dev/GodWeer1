@@ -13,6 +13,7 @@ import swerve.modules.impl.movement.Speed;
 import swerve.modules.impl.hud.TargetHud;
 import swerve.modules.impl.render.Arrows;
 import swerve.modules.impl.render.ChinaHat;
+import swerve.modules.impl.render.SwingAnimation;
 import swerve.modules.impl.render.Trails;
 import swerve.utils.item.ConsumableUseController;
 
@@ -51,6 +52,7 @@ public final class ModuleManager {
         register(new Trails());
         register(new ChinaHat());
         register(new Arrows());
+        register(new SwingAnimation());
         register(new TargetHud());
 
         rebuildIndex();

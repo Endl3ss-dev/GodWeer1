@@ -3,11 +3,11 @@
 	"package": "swerve.mixins",
 	"compatibilityLevel": "JAVA_21",
 	"minVersion": "0.8",
-	"mixins": [
-	],
+	"mixins": [],
 	"client": [
 		"client.MixinKeyboardHandler",
-		"client.MixinMouseHandler"
+		"client.MixinMouseHandler",
+		"client.MixinItemInHandRenderer"
 	],
 	"injectors": {
 		"defaultRequire": 1
