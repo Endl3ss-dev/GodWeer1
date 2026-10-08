@@ -44,14 +44,6 @@ dependencies {
     implementation "io.github.llamalad7:mixinextras-fabric:0.5.3"
     include "io.github.llamalad7:mixinextras-fabric:0.5.3"
 
-    // NightConfig (TOML & Core)
-    implementation "com.electronwill.night-config:core:3.8.3"
-    implementation "com.electronwill.night-config:toml:3.8.3"
-    include "com.electronwill.night-config:core:3.8.3"
-    include "com.electronwill.night-config:toml:3.8.3"
-
-    // Local libraries from libs/
-    implementation fileTree(dir: 'libs', include: ['*.jar'])
 }
 
 tasks.withType(JavaCompile).configureEach {

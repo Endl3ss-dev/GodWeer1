@@ -21,7 +21,6 @@ import rtx.kimiko.api.modules.ModuleManager;
 import rtx.kimiko.api.modules.impl.Visuals.custompet.CustomPetWarmup;
 import rtx.kimiko.api.party.PartyClient;
 import rtx.kimiko.utils.animations.AnimationUtil;
-import rtx.kimiko.utils.discord.rpc.DiscordRPCManager;
 import rtx.kimiko.utils.input.GuiMovementHandler;
 import rtx.kimiko.utils.render.render2d.Render2D;
 import rtx.kimiko.utils.render.render2d.gif.GifRenderer;
@@ -62,9 +61,6 @@ public final class Manager {
         ShulkerViewMod.init();
         ChatHeads.init();
         ChatAnimationMod.init();
-        Thread thread = new Thread(DiscordRPCManager::start, "Kimiko-Discord-RPC-Init");
-        thread.setDaemon(true);
-        thread.start();
         MinecraftClient minecraftClient2 = MinecraftClient.getInstance();
         Runnable runnable = () -> {
             GifRenderer.preload("kimiko:gif/kity.gif");

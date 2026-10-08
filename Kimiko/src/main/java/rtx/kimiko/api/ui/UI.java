@@ -57,7 +57,6 @@ import rtx.kimiko.mixin.accessor.GuiGraphicsExtractorAccessor;
 import rtx.kimiko.utils.animations.Decelerate;
 import rtx.kimiko.utils.animations.Direction;
 import rtx.kimiko.utils.animations.GuiMotionAnimation;
-import rtx.kimiko.utils.discord.rpc.DiscordRPCManager;
 import rtx.kimiko.utils.key.KeyBind;
 import rtx.kimiko.utils.render.fonts.Fonts;
 import rtx.kimiko.utils.render.others.RectUtil;
@@ -1526,10 +1525,6 @@ implements GuiCapture.Source {
         String string = Profile.getUsername();
         if (string != null && !string.isBlank()) {
             return string;
-        }
-        String string2 = DiscordRPCManager.username();
-        if (string2 != null && !string2.isBlank()) {
-            return string2;
         }
         try {
             if (IMinecraft.mc.getSession() != null && IMinecraft.mc.getSession().getUsername() != null && !IMinecraft.mc.getSession().getUsername().isBlank()) {

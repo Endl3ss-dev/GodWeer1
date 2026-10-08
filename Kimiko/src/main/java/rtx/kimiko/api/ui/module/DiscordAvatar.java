@@ -14,7 +14,6 @@ import net.minecraft.client.texture.AbstractTexture;
 import net.minecraft.client.texture.NativeImage;
 import net.minecraft.resource.ResourceManager;
 import net.minecraft.util.Identifier;
-import rtx.kimiko.utils.discord.rpc.DiscordRPCManager;
 import rtx.kimiko.utils.profile.ProfileIdentity;
 
 public final class DiscordAvatar {
@@ -92,10 +91,6 @@ public final class DiscordAvatar {
 
     public static String currentUrl() {
         String avatar = ProfileIdentity.avatarUrl();
-        if (avatar != null) {
-            return avatar;
-        }
-        avatar = DiscordRPCManager.avatarUrl();
         if (avatar == null) {
             return null;
         }
