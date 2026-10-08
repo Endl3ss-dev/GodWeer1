@@ -1,0 +1,30 @@
+{
+	"schemaVersion": 1,
+	"id": "swerve",
+	"version": "${version}",
+	"name": "Swerve",
+	"description": "Swerve — Minecraft 1.21.4 Fabric client.",
+	"authors": [
+		"Swerve"
+	],
+	"contact": {
+		"sources": "https://github.com/Endl3ss-dev/GodWeer"
+	},
+	"license": "CC0-1.0",
+	"icon": "assets/swerve/icon.png",
+	"environment": "client",
+	"entrypoints": {
+		"client": [
+			"swerve.Swerve"
+		]
+	},
+	"mixins": [
+		"swerve.mixins.json"
+	],
+	"depends": {
+		"fabricloader": ">=0.19.3",
+		"minecraft": "~1.21.4",
+		"java": ">=21",
+		"fabric-api": "*"
+	}
+}
