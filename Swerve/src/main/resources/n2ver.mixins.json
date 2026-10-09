@@ -12,6 +12,7 @@
     "client.MouseMixin",
     "client.ModuleTickMixin",
     "client.ModuleRenderMixin",
+    "client.HeldItemRendererMixin",
     "client.GameRendererMixin",
     "client.ClientPlayNetworkHandlerMixin",
     "render.WorldRendererSkyMixin"

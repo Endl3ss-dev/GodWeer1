@@ -17,6 +17,7 @@ import never.lose.modules.impl.Render.ClickGui;
 import never.lose.modules.impl.Render.Ambience;
 import never.lose.modules.impl.Render.FreeLook;
 import never.lose.modules.impl.Render.Box3D;
+import never.lose.modules.impl.Render.CustomSwing;
 import never.lose.modules.impl.Render.Hands;
 import never.lose.modules.impl.Render.ItemPhysic;
 import never.lose.modules.impl.Render.Trails;
@@ -50,6 +51,7 @@ public final class ModuleManager {
         modules.add(new Trails());
         modules.add(new Ambience());
         modules.add(new Hands());
+        modules.add(new CustomSwing());
         modules.add(new ChatPlus());
         modules.add(new AutoAuth());
         modules.add(new TapeMouse());
