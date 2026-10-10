@@ -1,0 +1,12 @@
+{
+  "vertex": "swerve:core/handoutline/outline",
+  "fragment": "swerve:core/handoutline/dt_h",
+  "samplers": [
+    { "name": "Sampler0" }
+  ],
+  "uniforms": [
+    { "name": "TexelSize", "type": "float", "count": 2, "values": [0.001, 0.001] },
+    { "name": "MaxDist", "type": "float", "count": 1, "values": [20.0] },
+    { "name": "Radius", "type": "float", "count": 1, "values": [20.0] }
+  ]
+}

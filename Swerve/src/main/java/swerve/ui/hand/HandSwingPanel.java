@@ -107,6 +107,10 @@ final class HandSwingPanel {
         return this.open;
     }
 
+    InteractionHand getHand() {
+        return this.open ? this.hand : null;
+    }
+
     boolean isVisible() {
         return this.open || this.openAnim.getValue() > 0.01F;
     }

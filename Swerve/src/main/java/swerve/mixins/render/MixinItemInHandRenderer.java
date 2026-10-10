@@ -7,6 +7,7 @@ import com.mojang.math.Axis;
 
 import swerve.modules.impl.render.SwingAnimation;
 import swerve.modules.impl.render.ViewModel;
+import swerve.utils.render.HandOutline;
 
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.player.LocalPlayer;
@@ -15,7 +16,9 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.HumanoidArm;
+import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.item.ItemDisplayContext;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.ItemUseAnimation;
 
@@ -110,6 +113,42 @@ public abstract class MixinItemInHandRenderer {
             return;
         }
         original.call(instance, poseStack, partialTick, arm, stack, player);
+    }
+
+    // Силуэт для обводки: тот же предмет повторно в отдельный FBO, до основной отрисовки.
+    @WrapOperation(method = "renderArmWithItem", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/client/renderer/ItemInHandRenderer;renderItem(Lnet/minecraft/world/entity/LivingEntity;Lnet/minecraft/world/item/ItemStack;Lnet/minecraft/world/item/ItemDisplayContext;ZLcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;I)V"))
+    private void swerve$renderItem(ItemInHandRenderer instance, LivingEntity entity, ItemStack stack, ItemDisplayContext context,
+                                   boolean leftHand, PoseStack poseStack, MultiBufferSource buffer, int light, Operation<Void> original) {
+        MultiBufferSource silhouette = HandOutline.begin(swerve$hand);
+        if (silhouette != null) {
+            poseStack.pushPose();
+            try {
+                original.call(instance, entity, stack, context, leftHand, poseStack, silhouette, light);
+            } finally {
+                poseStack.popPose();
+                HandOutline.end();
+            }
+        }
+        original.call(instance, entity, stack, context, leftHand, poseStack, buffer, light);
+    }
+
+    // renderPlayerArm крутит PoseStack без push/pop, поэтому проход силуэта изолируем отдельным уровнем стека.
+    @WrapOperation(method = "renderArmWithItem", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/client/renderer/ItemInHandRenderer;renderPlayerArm(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;IFFLnet/minecraft/world/entity/HumanoidArm;)V"))
+    private void swerve$renderPlayerArm(ItemInHandRenderer instance, PoseStack poseStack, MultiBufferSource buffer, int light,
+                                        float equippedProgress, float swingProgress, HumanoidArm arm, Operation<Void> original) {
+        MultiBufferSource silhouette = HandOutline.begin(swerve$hand);
+        if (silhouette != null) {
+            poseStack.pushPose();
+            try {
+                original.call(instance, poseStack, silhouette, light, equippedProgress, swingProgress, arm);
+            } finally {
+                poseStack.popPose();
+                HandOutline.end();
+            }
+        }
+        original.call(instance, poseStack, buffer, light, equippedProgress, swingProgress, arm);
     }
 
     @ModifyVariable(method = "applyItemArmTransform", at = @At("HEAD"), argsOnly = true)

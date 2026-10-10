@@ -12,6 +12,7 @@ import swerve.modules.Module;
 import swerve.modules.ModuleCategory;
 import swerve.utils.animation.AnimationUtils;
 import swerve.utils.animation.Easings;
+import swerve.utils.render.HandOutline;
 import swerve.utils.render.HandProjection;
 
 import net.fabricmc.loader.api.FabricLoader;
@@ -38,8 +39,13 @@ public final class ViewModel extends Module {
     private static final float SCALE_MIN = 0.2F;
     private static final float SCALE_MAX = 5.0F;
     private static final float SCALE_ANIM_SPEED = 10.0F;
-    private static final float FOLLOW_SPEED = 24.0F;
+    private static final float FOLLOW_SPEED = 10.0F;
     private static final float MAX_FRAME_DELTA = 0.1F;
+    private static final float LIFT_SCALE = 1.12F;
+    private static final float LIFT_ANIM_SPEED = 8.0F;
+    private static final float OUTLINE_IN_SPEED = 2.0F / 0.22F;
+    private static final float OUTLINE_OUT_SPEED = 2.0F / 0.3F;
+    private static final float OUTLINE_MIN_ALPHA = 0.001F;
 
     private static ViewModel instance;
 
@@ -47,6 +53,7 @@ public final class ViewModel extends Module {
     private final HandTransform off = new HandTransform();
     private final Matrix4f grabInverse = new Matrix4f();
     private final float[] hit = new float[3];
+    private final AnimationUtils outlineAnim = new AnimationUtils(0.0F, OUTLINE_IN_SPEED, Easings.CUBIC_OUT);
 
     private boolean loaded;
     private boolean editing;
@@ -54,6 +61,7 @@ public final class ViewModel extends Module {
     private long lastFrameNanos;
 
     private InteractionHand dragHand;
+    private InteractionHand outlineHand;
     private float grabPlaneZ;
     private float grabHitX;
     private float grabHitY;
@@ -64,7 +72,7 @@ public final class ViewModel extends Module {
     private float grabPivotY;
 
     public ViewModel() {
-        super("ViewModel", "Чат: 2×ЛКМ по руке — перетащить и настроить взмах, колесо — размер, ПКМ — анимация", ModuleCategory.RENDER);
+        super("ViewModel", "Чат: 2×ЛКМ по руке — режим расположения. В нём: зажать ЛКМ — двигать руку, колесо — размер, ПКМ — анимация", ModuleCategory.RENDER);
         instance = this;
     }
 
@@ -79,6 +87,7 @@ public final class ViewModel extends Module {
 
     public static void beginHandFrame() {
         HandProjection.beginFrame();
+        HandOutline.beginFrame();
         ViewModel module = instance;
         if (module != null && module.isEnable()) {
             module.onFrame();
@@ -90,6 +99,7 @@ public final class ViewModel extends Module {
         if (module != null && module.isEnable() && module.editing) {
             HandProjection.probe();
         }
+        HandOutline.composite();
     }
 
     public static void applyOffset(PoseStack poseStack, InteractionHand hand) {
@@ -114,7 +124,7 @@ public final class ViewModel extends Module {
         if (module.editing) {
             HandProjection.capturePivot(hand, poseStack);
         }
-        float scale = module.transform(hand).scale.getValue();
+        float scale = module.transform(hand).effectiveScale();
         if (scale != 1.0F) {
             poseStack.scale(scale, scale, scale);
         }
@@ -124,11 +134,21 @@ public final class ViewModel extends Module {
         return isActive();
     }
 
+    public static float outlineAlpha(InteractionHand hand) {
+        ViewModel module = instance;
+        if (module == null || !module.isEnable() || hand == null || module.outlineHand != hand) {
+            return 0.0F;
+        }
+        return Mth.clamp(module.outlineAnim.getValue(), 0.0F, 1.0F);
+    }
+
     @Override
     public void onEnable() {
         super.onEnable();
         load();
         lastFrameNanos = 0L;
+        outlineHand = null;
+        outlineAnim.setValue(0.0F);
     }
 
     @Override
@@ -156,21 +176,30 @@ public final class ViewModel extends Module {
             updateDrag();
         }
 
+        // Экспоненциальное догоняние цели: рука отстаёт от курсора и плавно доезжает после отпускания.
         float follow = 1.0F - (float) Math.exp(-FOLLOW_SPEED * delta);
-        follow(main, dragHand == InteractionHand.MAIN_HAND, follow);
-        follow(off, dragHand == InteractionHand.OFF_HAND, follow);
+        main.follow(follow);
+        off.follow(follow);
         main.scale.update(main.scaleTarget);
         off.scale.update(off.scaleTarget);
+        main.lift.update(dragHand == InteractionHand.MAIN_HAND ? LIFT_SCALE : 1.0F);
+        off.lift.update(dragHand == InteractionHand.OFF_HAND ? LIFT_SCALE : 1.0F);
+        updateOutline();
     }
 
-    private static void follow(HandTransform transform, boolean instant, float factor) {
-        if (instant) {
-            transform.offsetX = transform.targetX;
-            transform.offsetY = transform.targetY;
-            return;
+    private void updateOutline() {
+        boolean holding = dragHand != null;
+        if (holding) {
+            outlineHand = dragHand;
         }
-        transform.offsetX += (transform.targetX - transform.offsetX) * factor;
-        transform.offsetY += (transform.targetY - transform.offsetY) * factor;
+        float target = holding ? 1.0F : 0.0F;
+        if (outlineAnim.getTarget() != target) {
+            outlineAnim.setSpeed(holding ? OUTLINE_IN_SPEED : OUTLINE_OUT_SPEED);
+        }
+        outlineAnim.update(target);
+        if (!holding && outlineAnim.getValue() <= OUTLINE_MIN_ALPHA) {
+            outlineHand = null;
+        }
     }
 
     // Захваченная точка должна остаться под курсором и при смене масштаба во время перетаскивания:
@@ -180,7 +209,7 @@ public final class ViewModel extends Module {
             return;
         }
         HandTransform transform = transform(dragHand);
-        float ratio = grabScale > 1.0E-4F ? transform.scale.getValue() / grabScale : 1.0F;
+        float ratio = grabScale > 1.0E-4F ? transform.effectiveScale() / grabScale : 1.0F;
         float pivotX = grabPivotX - grabOffsetX;
         float pivotY = grabPivotY - grabOffsetY;
         transform.targetX = hit[0] - pivotX - ratio * (grabHitX - grabOffsetX - pivotX);
@@ -206,7 +235,7 @@ public final class ViewModel extends Module {
         transform.targetY = transform.offsetY;
         grabOffsetX = transform.offsetX;
         grabOffsetY = transform.offsetY;
-        grabScale = transform.scale.getValue();
+        grabScale = transform.effectiveScale();
 
         if (HandProjection.pivotLocal(hand, hit)) {
             grabPivotX = hit[0];
@@ -337,6 +366,7 @@ public final class ViewModel extends Module {
     private static final class HandTransform {
 
         private final AnimationUtils scale = new AnimationUtils(1.0F, SCALE_ANIM_SPEED, Easings.CUBIC_OUT);
+        private final AnimationUtils lift = new AnimationUtils(1.0F, LIFT_ANIM_SPEED, Easings.CUBIC_OUT);
 
         private float offsetX;
         private float offsetY;
@@ -351,6 +381,15 @@ public final class ViewModel extends Module {
             this.targetY = y;
             this.scaleTarget = scaleValue;
             this.scale.setValue(scaleValue);
+        }
+
+        private float effectiveScale() {
+            return this.scale.getValue() * this.lift.getValue();
+        }
+
+        private void follow(float factor) {
+            this.offsetX += (this.targetX - this.offsetX) * factor;
+            this.offsetY += (this.targetY - this.offsetY) * factor;
         }
     }
 }

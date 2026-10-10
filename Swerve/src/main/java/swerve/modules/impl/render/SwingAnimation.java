@@ -23,23 +23,16 @@ import net.minecraft.world.phys.EntityHitResult;
 public final class SwingAnimation extends Module {
 
     public static final String[] MODES = {
-            "Взмах", "Взмах 2", "Сдвиг", "Слом", "Выпад", "Копьё", "Вниз",
-            "Желе", "Шлепок", "Бонк", "Круг", "Реализм", "Стандарт"
+            "Взмах", "Сдвиг", "Слом", "Выпад", "Вниз", "Бонк", "Круг"
     };
 
     private static final int SWING = 0;
-    private static final int SWING_2 = 1;
-    private static final int SHIFT = 2;
-    private static final int BREAK = 3;
-    private static final int LUNGE = 4;
-    private static final int SPEAR = 5;
-    private static final int DOWN = 6;
-    private static final int JELLY = 7;
-    private static final int SLAP = 8;
-    private static final int BONK = 9;
-    private static final int CIRCLE = 10;
-    private static final int REALISM = 11;
-    private static final int VANILLA = 12;
+    private static final int SHIFT = 1;
+    private static final int BREAK = 2;
+    private static final int LUNGE = 3;
+    private static final int DOWN = 4;
+    private static final int BONK = 5;
+    private static final int CIRCLE = 6;
 
     private static final int VANILLA_SWING_TICKS = 6;
     private static final long MIN_PREVIEW_INTERVAL_MS = 1000L;
@@ -52,8 +45,6 @@ public final class SwingAnimation extends Module {
     private final BooleanSetting onlyOnTarget = new BooleanSetting("Только при наводке", false);
     private final BooleanSetting preview = new BooleanSetting("Превью в чате", true);
 
-    private int realismSide = -1;
-    private boolean realismReady = true;
     private long nextPreviewAt;
     private long previewUntil;
 
@@ -107,7 +98,7 @@ public final class SwingAnimation extends Module {
 
     public static int modifySwingDuration(int vanillaTicks) {
         SwingAnimation module = instance;
-        if (module == null || !module.isEnable() || module.type.getIndex() == VANILLA) {
+        if (module == null || !module.isEnable()) {
             return vanillaTicks;
         }
         return Math.max(1, Math.round(vanillaTicks / module.speed.get()));
@@ -116,7 +107,7 @@ public final class SwingAnimation extends Module {
     // Локальный взмах для превью: только клиентские поля, пакет на сервер не уходит.
     public static void previewTick() {
         SwingAnimation module = instance;
-        if (module == null || !module.isEnable() || !module.preview.get() || module.type.getIndex() == VANILLA) {
+        if (module == null || !module.isEnable() || !module.preview.get()) {
             return;
         }
         LocalPlayer player = Minecraft.getInstance().player;
@@ -136,11 +127,6 @@ public final class SwingAnimation extends Module {
     }
 
     private boolean applyAnimation(PoseStack poseStack, float progress) {
-        int mode = type.getIndex();
-        if (mode == VANILLA) {
-            return false;
-        }
-
         Minecraft mc = Minecraft.getInstance();
         LocalPlayer player = mc.player;
         if (player == null) {
@@ -167,11 +153,7 @@ public final class SwingAnimation extends Module {
 
         poseStack.translate(side * 0.56F, -0.52F, -0.72F);
 
-        switch (mode) {
-            case SWING_2 -> {
-                poseStack.scale(1.0F, 1.0F, sin + 1.0F);
-                poseStack.mulPose(Axis.XP.rotationDegrees(-90.0F * sin * (power * 0.3F)));
-            }
+        switch (type.getIndex()) {
             case SHIFT -> {
                 poseStack.mulPose(Axis.YP.rotationDegrees(side * 90.0F));
                 poseStack.mulPose(Axis.ZP.rotationDegrees(side * -60.0F));
@@ -192,27 +174,10 @@ public final class SwingAnimation extends Module {
                 poseStack.mulPose(Axis.XP.rotationDegrees(-80.0F));
                 poseStack.mulPose(Axis.YP.rotationDegrees(side * 60.0F));
             }
-            case SPEAR -> {
-                poseStack.translate(0.0F, 0.0F, -sin * 0.2F);
-                poseStack.scale(1.0F, 1.0F, sin * (power * 0.35F) + 1.0F);
-                poseStack.mulPose(Axis.XP.rotationDegrees(-90.0F));
-            }
             case DOWN -> {
                 poseStack.translate(-sin * 0.5F, sin * 0.25F, 0.0F);
                 poseStack.mulPose(Axis.YP.rotationDegrees(side * 65.0F));
                 poseStack.mulPose(Axis.XP.rotationDegrees(-110.0F - 80.0F * sin));
-            }
-            case JELLY -> {
-                poseStack.translate(0.0F, 0.0F, -sin * 0.2F);
-                poseStack.mulPose(Axis.YP.rotationDegrees(side * 35.0F));
-                poseStack.scale(1.0F, 1.0F, sin * (progress * 0.65F * power * 0.2F) + 1.0F);
-                poseStack.mulPose(Axis.XP.rotationDegrees(-90.0F));
-            }
-            case SLAP -> {
-                poseStack.mulPose(Axis.XN.rotationDegrees(rootSin * 55.0F));
-                poseStack.mulPose(Axis.XP.rotationDegrees(rootSin * squareSin * -120.0F * power));
-                poseStack.mulPose(Axis.YP.rotationDegrees(side * (rootSin * 60.0F)));
-                poseStack.mulPose(Axis.XP.rotationDegrees(rootSin * 55.0F));
             }
             case BONK -> {
                 poseStack.mulPose(Axis.YP.rotationDegrees(15.0F * side));
@@ -223,7 +188,6 @@ public final class SwingAnimation extends Module {
                 float eased = easeOutBack(Mth.lerp(1.0F - progress, progress, progress * 0.5F));
                 poseStack.mulPose(Axis.XN.rotationDegrees(360.0F * eased + 45.0F));
             }
-            case REALISM -> applyRealism(poseStack, side, progress, sin, power);
             default -> {
                 poseStack.mulPose(Axis.YP.rotationDegrees(side * (45.0F + squareSin * -20.0F)));
                 poseStack.mulPose(Axis.ZP.rotationDegrees(side * rootSin * -20.0F));
@@ -232,23 +196,6 @@ public final class SwingAnimation extends Module {
             }
         }
         return true;
-    }
-
-    // Чередует сторону удара на каждом новом взмахе (переключение в начале, взвод в конце).
-    private void applyRealism(PoseStack poseStack, int side, float progress, float sin, float power) {
-        if (progress < 0.12F && realismReady) {
-            realismSide = -realismSide;
-            realismReady = false;
-        } else if (progress > 0.78F) {
-            realismReady = true;
-        }
-        float roll = side * realismSide * 22.0F * sin * Mth.clamp(power, 0.5F, 2.0F);
-        float pitch = -90.0F * sin * (power * 0.3F);
-        float kick = 45.0F * easeOutElastic(progress * progress) * sin;
-        poseStack.scale(1.0F, 1.0F, sin + 1.0F);
-        poseStack.mulPose(Axis.ZP.rotationDegrees(roll));
-        poseStack.mulPose(Axis.XP.rotationDegrees(pitch));
-        poseStack.mulPose(Axis.XN.rotationDegrees(kick));
     }
 
     private static float easeOutBack(float value) {

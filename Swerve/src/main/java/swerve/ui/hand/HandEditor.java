@@ -19,8 +19,9 @@ import net.minecraft.world.InteractionHand;
 
 import org.lwjgl.glfw.GLFW;
 
-// Редактор рук в чате: 2×ЛКМ — захват руки + панель взмаха над ней, ПКМ — меню анимаций,
-// колесо — масштаб. Работает через Fabric Screen API, поэтому миксины в ChatScreen не нужны.
+// Редактор рук в чате. 2×ЛКМ по руке включает режим расположения (панель взмаха над рукой).
+// В режиме: зажатая ЛКМ двигает руку, колесо — масштаб, ПКМ — меню анимаций.
+// Выход: Esc, ЛКМ мимо руки или закрытие чата. Работает через Fabric Screen API.
 public final class HandEditor {
 
     static final int BACKGROUND = ColorUtils.rgba(16, 16, 20, 235);
@@ -38,6 +39,7 @@ public final class HandEditor {
     private static final HandSwingPanel PANEL = new HandSwingPanel(MENU);
 
     private static boolean initialized;
+    private static boolean placement;
     private static long lastHandClickMs;
     private static long lastFrameNanos;
 
@@ -96,8 +98,8 @@ public final class HandEditor {
         }
 
         if (!onHand) {
-            if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
-                PANEL.close();
+            if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT && placement) {
+                exitPlacement();
             }
             lastHandClickMs = 0L;
             return consumed;
@@ -105,11 +107,22 @@ public final class HandEditor {
 
         InteractionHand hand = HandProjection.pickHand(mouseX, mouseY);
         if (button == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
+            if (!placement) {
+                return consumed;
+            }
             MENU.open(mouseX, mouseY);
             return true;
         }
         if (button != GLFW.GLFW_MOUSE_BUTTON_LEFT) {
             return consumed;
+        }
+
+        if (placement) {
+            lastHandClickMs = 0L;
+            if (viewModel.beginDrag(hand) && PANEL.getHand() != hand) {
+                PANEL.open(hand, mouseX, mouseY);
+            }
+            return true;
         }
 
         long now = System.currentTimeMillis();
@@ -119,7 +132,7 @@ public final class HandEditor {
             return consumed;
         }
 
-        viewModel.beginDrag(hand);
+        placement = true;
         PANEL.open(hand, mouseX, mouseY);
         return true;
     }
@@ -137,7 +150,7 @@ public final class HandEditor {
 
     private static boolean mouseScrolled(float mouseX, float mouseY, double amount) {
         ViewModel viewModel = ViewModel.get();
-        if (viewModel == null || !viewModel.isEnable() || amount == 0.0) {
+        if (!placement || viewModel == null || !viewModel.isEnable() || amount == 0.0) {
             return false;
         }
         if (MENU.contains(mouseX, mouseY)) {
@@ -160,12 +173,28 @@ public final class HandEditor {
     }
 
     private static boolean keyPressed(int key) {
-        if (key != GLFW.GLFW_KEY_ESCAPE || (!MENU.isOpen() && !PANEL.isOpen())) {
+        if (key != GLFW.GLFW_KEY_ESCAPE) {
             return false;
         }
+        if (MENU.isOpen()) {
+            MENU.close();
+            return true;
+        }
+        if (placement) {
+            exitPlacement();
+            return true;
+        }
+        return false;
+    }
+
+    private static void exitPlacement() {
+        placement = false;
         MENU.close();
         PANEL.close();
-        return true;
+        ViewModel viewModel = ViewModel.get();
+        if (viewModel != null) {
+            viewModel.endDrag();
+        }
     }
 
     private static void render(GuiGraphics graphics, int mouseX, int mouseY) {
@@ -173,14 +202,13 @@ public final class HandEditor {
         float delta = nextFrameDelta();
 
         ViewModel viewModel = ViewModel.get();
-        if (viewModel == null || !viewModel.isEnable()) {
-            MENU.close();
-            PANEL.close();
+        if (placement && (viewModel == null || !viewModel.isEnable())) {
+            exitPlacement();
         }
         if (!MENU.isVisible() && !PANEL.isVisible()) {
             return;
         }
-        if (MENU.isOpen() || PANEL.isOpen()) {
+        if (placement) {
             SwingAnimation.previewTick();
         }
 
@@ -197,6 +225,7 @@ public final class HandEditor {
     }
 
     private static void close() {
+        placement = false;
         MENU.reset();
         PANEL.reset();
         lastHandClickMs = 0L;
