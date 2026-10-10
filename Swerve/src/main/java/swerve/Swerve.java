@@ -1,6 +1,7 @@
 package swerve;
 
 import swerve.managers.ModuleManager;
+import swerve.ui.hand.HandEditor;
 import swerve.utils.input.ClickGuiController;
 
 import net.fabricmc.api.ClientModInitializer;
@@ -32,6 +33,7 @@ public class Swerve implements ClientModInitializer {
 		// Шрифты грузятся лениво при первом обращении: на этом этапе GL-контекст ещё не готов.
 		ModuleManager.init();
 		ClickGuiController.init();
+		HandEditor.init();
 
 		LOGGER.info("{} v{} loaded in {} ms", MOD_NAME, MOD_VERSION, (System.nanoTime() - start) / 1_000_000L);
 	}

@@ -7,7 +7,9 @@
 	],
 	"client": [
 		"client.MixinKeyboardHandler",
-		"client.MixinMouseHandler"
+		"client.MixinLivingEntity",
+		"client.MixinMouseHandler",
+		"render.MixinItemInHandRenderer"
 	],
 	"injectors": {
 		"defaultRequire": 1
