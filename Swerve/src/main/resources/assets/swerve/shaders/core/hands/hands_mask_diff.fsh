@@ -18,8 +18,8 @@ void main() {
 
     // В RG пакуется глубина руки (16 бит): по ней перетаскивание понимает, за какую точку
     // руки схватили, и масштаб меняет руку вокруг неё, а не вокруг точки крепления.
-    float packed = clamp(depthAfter, 0.0, 1.0) * 65535.0;
-    float hi = floor(packed / 256.0) / 255.0;
-    float lo = mod(packed, 256.0) / 255.0;
+    float packedDepth = clamp(depthAfter, 0.0, 1.0) * 65535.0;
+    float hi = floor(packedDepth / 256.0) / 255.0;
+    float lo = mod(packedDepth, 256.0) / 255.0;
     OutColor = vec4(hi, lo, mask, mask);
 }

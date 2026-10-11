@@ -11,18 +11,6 @@ import net.minecraft.world.InteractionHand;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
 
-// Экранная привязка рук от первого лица: точка руки, цена мирового юнита и матрица руки —
-// в GUI-единицах (тех же, в которых живёт курсор и HUD). Нужно ViewModel для наведения,
-// двойного клика, перетаскивания и запасного варианта обводки.
-//
-// Два снимка на руку: базовый (до смещений и масштаба) — по нему считается, сколько мировых
-// юнитов стоит один пиксель курсора, иначе рука при перетаскивании «плыла» бы не за мышью;
-// и видимый (после смещений) — точка, по которой выбирается рука и рисуется запасная рамка.
-// Пиксель-точный ответ «курсор над рукой?» даёт не проекция, а маска силуэта (HandOutline).
-//
-// NDC -> GUI напрямую, без пикселей фреймбуфера: иначе на HiDPI (screenWidth != getWidth)
-// курсор и рука оказывались в разных системах координат и клик по руке не проходил.
-// Матрицы и временные массивы переиспользуются: ноль аллокаций в кадре.
 public final class HandViewport {
 
     private static final int MAIN = 0;
@@ -58,7 +46,6 @@ public final class HandViewport {
     private HandViewport() {
     }
 
-    // Снимки нужны только пока открыт чат: в игре они считаются впустую каждый кадр.
     public static void setWanted(boolean value) {
         wanted = value;
     }
@@ -67,8 +54,6 @@ public final class HandViewport {
         return wanted;
     }
 
-    // Базовая матрица руки: проекция * modelview * поза руки до смещений ViewModel,
-    // плюс глубина точки крепления в пространстве глаза (для цены пикселя в юнитах).
     public static void captureBase(InteractionHand hand, PoseStack poseStack, float handX, float handY, float handZ) {
         int slot = slot(hand);
         if (slot < 0 || poseStack == null) {
@@ -86,12 +71,11 @@ public final class HandViewport {
         BASE_MATRIX[slot].set(COMBINED);
 
         VIEW.set(modelView).mul(pose.pose());
-        float depth = -(VIEW.m20() * handX + VIEW.m21() * handY + VIEW.m22() * handZ + VIEW.m23());
+        float depth = -(VIEW.m02() * handX + VIEW.m12() * handY + VIEW.m22() * handZ + VIEW.m32());
         BASE_DEPTH[slot] = depth > MIN_DEPTH ? depth : 0.0F;
         baseCaptured[slot] = true;
     }
 
-    // Вызывается из renderArmWithItem после того, как смещения и масштаб руки уже в матрице.
     public static void capture(InteractionHand hand, PoseStack poseStack, float handX, float handY, float handZ) {
         int slot = slot(hand);
         if (slot < 0 || poseStack == null) {
@@ -172,13 +156,11 @@ public final class HandViewport {
         return isReady(InteractionHand.MAIN_HAND) || isReady(InteractionHand.OFF_HAND);
     }
 
-    // Матрица руки без смещений — для пересчёта пикселей курсора в мировые юниты.
     public static Matrix4fc matrix(InteractionHand hand) {
         int slot = slot(hand);
         return slot < 0 ? null : BASE_MATRIX[slot];
     }
 
-    // Глубина точки крепления руки в юнитах (0.72 у ванильной руки).
     public static float depth(InteractionHand hand) {
         int slot = slot(hand);
         return slot < 0 ? 0.0F : BASE_DEPTH[slot];
@@ -199,30 +181,26 @@ public final class HandViewport {
         return slot < 0 ? 0.0F : unitY[slot];
     }
 
-    // Курсор в GUI-единицах: учитывает и guiScale, и соотношение окно/фреймбуфер (HiDPI).
     public static float mouseGuiX(Minecraft minecraft) {
-        return (float) (minecraft.mouseHandler.xpos() * frameRatio(minecraft) / guiScale(minecraft));
+        int screenWidth = minecraft.getWindow().getScreenWidth();
+        if (screenWidth <= 0) {
+            return 0.0F;
+        }
+        return (float) (minecraft.mouseHandler.xpos() * (double) minecraft.getWindow().getGuiScaledWidth() / (double) screenWidth);
     }
 
     public static float mouseGuiY(Minecraft minecraft) {
-        return (float) (minecraft.mouseHandler.ypos() * frameRatio(minecraft) / guiScale(minecraft));
+        int screenHeight = minecraft.getWindow().getScreenHeight();
+        if (screenHeight <= 0) {
+            return 0.0F;
+        }
+        return (float) (minecraft.mouseHandler.ypos() * (double) minecraft.getWindow().getGuiScaledHeight() / (double) screenHeight);
     }
 
     public static double guiScale(Minecraft minecraft) {
         return Math.max(1.0D, minecraft.getWindow().getGuiScale());
     }
 
-    private static double frameRatio(Minecraft minecraft) {
-        int screenWidth = minecraft.getWindow().getScreenWidth();
-        int frameWidth = minecraft.getWindow().getWidth();
-        if (screenWidth <= 0 || frameWidth <= 0) {
-            return 1.0D;
-        }
-        return (double) frameWidth / (double) screenWidth;
-    }
-
-    // HUD рисуется сразу после рук: сбрасываем привязки в конце кадра, чтобы обводка не
-    // оставалась висеть там, где руки в этом кадре уже не рисовались (F5, прицел, hideGui).
     public static void consume() {
         captured[MAIN] = false;
         captured[OFF] = false;
@@ -245,8 +223,6 @@ public final class HandViewport {
         lastFailure = "";
     }
 
-    // Один раз в 5 секунд сообщает, почему привязка не снялась — иначе «обводка не работает»
-    // выглядит как магия без признаков жизни.
     public static void reportStale() {
         long now = System.currentTimeMillis();
         if (now - lastFailureLog < 5_000L) {
@@ -270,10 +246,9 @@ public final class HandViewport {
     }
 
     private static boolean project(Matrix4fc matrix, float x, float y, float z, float[] out, int width, int height) {
-        float clipX = matrix.m00() * x + matrix.m01() * y + matrix.m02() * z + matrix.m03();
-        float clipY = matrix.m10() * x + matrix.m11() * y + matrix.m12() * z + matrix.m13();
-        float clipW = matrix.m30() * x + matrix.m31() * y + matrix.m32() * z + matrix.m33();
-        // w <= 0 — точка за камерой: проекция вывернулась бы наизнанку и обводка улетела бы в другой край.
+        float clipX = matrix.m00() * x + matrix.m10() * y + matrix.m20() * z + matrix.m30();
+        float clipY = matrix.m01() * x + matrix.m11() * y + matrix.m21() * z + matrix.m31();
+        float clipW = matrix.m03() * x + matrix.m13() * y + matrix.m23() * z + matrix.m33();
         if (clipW <= 1.0E-6F) {
             return false;
         }
