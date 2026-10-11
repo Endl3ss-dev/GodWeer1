@@ -1,6 +1,7 @@
 package swerve.modules;
 
 import swerve.modules.api.setting.Setting;
+import swerve.utils.client.NotificationManager;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -55,6 +56,16 @@ public abstract class Module {
             this.enable = false;
             onDisable();
         }
+
+        // Единственная точка тоглов: сюда приходят и бинд, и клик в ClickGui.
+        if (lastState != this.enable) {
+            NotificationManager.toggle(this, this.enable);
+        }
+    }
+
+    // Модуль, который сам показывает уведомления, может не сообщать о своём выключении.
+    public boolean notifiesOnToggle() {
+        return true;
     }
 
     public void addSettings(Setting... settings) {

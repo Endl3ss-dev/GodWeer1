@@ -29,6 +29,12 @@ public final class GuiFonts {
     public static final Face SF_REGULAR = new Face(Fonts.SfRegular);
     public static final Face CLICKGUI = new Face(Fonts.ClickGuiFont);
     public static final Face ICONF = new Face(Fonts.IconF);
+    // Иконки HUD (уведомления и элементы интерфейса): глифы 'A'..'J'.
+    public static final Face HUD_ICONS = new Face(Fonts.HudIcons);
+    // Стилизованные глифы 'A'..'E' (крест-логотип, планета, искра и т.д.).
+    public static final Face ICON = new Face(Fonts.Icon);
+    // Декоративные иконки HUD: e=IP, n=ник, d=FPS, c=ping, q=BPS, r=IP/coord, m=спавн.
+    public static final Face ICON1 = new Face(Fonts.Icon1);
 
     private static boolean shaderWarned;
 

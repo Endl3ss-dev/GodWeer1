@@ -8,6 +8,9 @@ import swerve.modules.impl.combat.AutoHeal;
 import swerve.modules.impl.combat.AutoPotion;
 import swerve.modules.impl.combat.ItemSwap;
 import swerve.modules.impl.combat.SexAura;
+import swerve.modules.impl.hud.ArrayListHud;
+import swerve.modules.impl.hud.Notifications;
+import swerve.modules.impl.hud.Watermark;
 import swerve.modules.impl.player.DrinkUse;
 import swerve.modules.impl.movement.Speed;
 import swerve.modules.impl.hud.TargetHud;
@@ -15,6 +18,7 @@ import swerve.modules.impl.render.Arrows;
 import swerve.modules.impl.render.ChinaHat;
 import swerve.modules.impl.render.Trails;
 import swerve.modules.impl.render.ViewModel;
+import swerve.ui.hud.HudManager;
 import swerve.utils.item.ConsumableUseController;
 
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -42,6 +46,9 @@ public final class ModuleManager {
         MODULES.clear();
         BY_CATEGORY.clear();
 
+        // Слой HUD инициализируется до модулей: элементы регистрируются в HudManager из своего конструктора.
+        HudManager.init();
+
         register(new AutoHeal());
         register(new AutoGApple());
         register(new AutoPotion());
@@ -54,6 +61,9 @@ public final class ModuleManager {
         register(new Arrows());
         register(new ViewModel());
         register(new TargetHud());
+        register(new ArrayListHud());
+        register(new Watermark());
+        register(new Notifications());
 
         rebuildIndex();
         FriendManager.init();

@@ -190,6 +190,31 @@ public final class GuiRender {
         }
     }
 
+    // Мягкое свечение вокруг прямоугольника. Замена Shadow-шейдеру исходного клиента:
+    // в Swerve шейдеры shadow_rect/shadow6 зарегистрированы под POSITION_COLOR, тогда как
+    // их вершинный шейдер читает UV0, поэтому собран слой из вложенных скруглений с
+    // падающей альфой — визуально то же перо, но без риска неверного формата вершины.
+    public static void drawGlow(PoseStack stack, float x, float y, float width, float height,
+                                float radius, float spread, int layers, int color) {
+        int baseAlpha = ColorUtils.alpha(color);
+        if (layers <= 0 || spread <= 0.0f || width <= 0.0f || height <= 0.0f || baseAlpha == 0) {
+            return;
+        }
+
+        for (int i = layers; i >= 1; i--) {
+            float step = i / (float) layers;
+            float inset = spread * step;
+            float falloff = 1.0f - step;
+            int layerColor = ColorUtils.setAlphaColor(color,
+                    (int) (baseAlpha * falloff * falloff * 2.0f / layers));
+            if ((layerColor >>> 24) == 0) {
+                continue;
+            }
+            roundedRect(stack, x - inset, y - inset,
+                    width + inset * 2.0f, height + inset * 2.0f, radius + inset, layerColor);
+        }
+    }
+
     private static void drawQuad(PoseStack stack, float x, float y, float width, float height,
                                  ShaderProgram program) {
         RenderSystem.enableBlend();
