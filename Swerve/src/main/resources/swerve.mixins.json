@@ -7,7 +7,10 @@
 	],
 	"client": [
 		"client.MixinKeyboardHandler",
-		"client.MixinMouseHandler"
+		"client.MixinMinecraft",
+		"client.MixinMouseHandler",
+		"client.MixinUser",
+		"render.MixinItemInHandRenderer"
 	],
 	"injectors": {
 		"defaultRequire": 1

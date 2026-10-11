@@ -14,6 +14,7 @@ import swerve.modules.impl.hud.TargetHud;
 import swerve.modules.impl.render.Arrows;
 import swerve.modules.impl.render.ChinaHat;
 import swerve.modules.impl.render.Trails;
+import swerve.modules.impl.render.ViewModel;
 import swerve.utils.item.ConsumableUseController;
 
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
@@ -51,6 +52,7 @@ public final class ModuleManager {
         register(new Trails());
         register(new ChinaHat());
         register(new Arrows());
+        register(new ViewModel());
         register(new TargetHud());
 
         rebuildIndex();

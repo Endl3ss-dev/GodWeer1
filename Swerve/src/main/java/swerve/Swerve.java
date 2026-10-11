@@ -15,6 +15,9 @@ public class Swerve implements ClientModInitializer {
 	public static final String MOD_NAME = "Swerve";
 	public static final String MOD_VERSION = "0.1";
 
+	// Ник, с которым клиент всегда заходит в мир (см. MixinUser / MixinMinecraft).
+	public static final String CLIENT_NICKNAME = "SwerveClientTest";
+
 	public static final Logger LOGGER = LoggerFactory.getLogger(MOD_NAME);
 
 	private static Swerve instance;

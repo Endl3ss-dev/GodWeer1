@@ -2,8 +2,10 @@ package swerve.ui.newgui;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 
+import swerve.managers.ModuleManager;
 import swerve.modules.Module;
 import swerve.modules.ModuleCategory;
+import swerve.modules.impl.render.ViewModel;
 import swerve.utils.color.ColorUtils;
 
 import net.minecraft.client.Minecraft;
@@ -44,7 +46,7 @@ public class ClickGuiScreen extends Screen {
     private ViewMode currentViewMode = ViewMode.UI;
 
     public enum ViewMode {
-        UI, CLIENT, HUD, INTERFACE
+        UI, CLIENT, HANDS, INTERFACE
     }
 
     // Категории, показывающиеся рядом в режиме UI (INTERFACE — отдельная вкладка).
@@ -195,6 +197,10 @@ public class ClickGuiScreen extends Screen {
         }
     }
 
+    public boolean isHandsTab() {
+        return currentViewMode == ViewMode.HANDS;
+    }
+
     public void onTabChanged(DynamicIsland.IslandTab tab) {
         Minecraft client = Minecraft.getInstance();
 
@@ -236,8 +242,8 @@ public class ClickGuiScreen extends Screen {
                     interfacePanel.setX(-1000.0f);
                 }
             }
-            case HUD -> {
-                currentViewMode = ViewMode.HUD;
+            case HANDS -> {
+                currentViewMode = ViewMode.HANDS;
                 for (Panel panel : panels) {
                     panel.setX(-1000.0f);
                 }
@@ -322,8 +328,8 @@ public class ClickGuiScreen extends Screen {
             renderUIPanels(stack, mouseX, mouseY, currentTime);
         } else if (currentViewMode == ViewMode.CLIENT) {
             renderClientPanel(stack, mouseX, mouseY, currentTime);
-        } else if (currentViewMode == ViewMode.HUD) {
-            renderHUDSettings(stack);
+        } else if (currentViewMode == ViewMode.HANDS) {
+            renderHandsHint(stack);
         } else if (currentViewMode == ViewMode.INTERFACE) {
             renderInterfacePanel(stack, mouseX, mouseY, currentTime);
         }
@@ -414,27 +420,25 @@ public class ClickGuiScreen extends Screen {
         }
     }
 
-    // Вкладка HUD в исходнике — заглушка «Coming soon», у Swerve HUD-системы пока нет.
-    private void renderHUDSettings(PoseStack stack) {
+    // Вкладка Hands — живой редактор: панели нет, руки таскаются прямо за экраном.
+    private void renderHandsHint(PoseStack stack) {
         float sScale = getResolutionScale();
-        float centerX = Minecraft.getInstance().getWindow().getGuiScaledWidth() / 2.0f;
-        float centerY = Minecraft.getInstance().getWindow().getGuiScaledHeight() / 2.0f;
+        Minecraft client = Minecraft.getInstance();
 
-        String text = "HUD Settings";
-        float textSize = 14.0f * sScale;
-        float textWidth = GuiFonts.SF_BOLD.getWidth(text, textSize);
-        int textColor = ColorUtils.multAlpha(GuiTheme.textColor(), 0.8f);
+        String text = "ЛКМ по руке — перетащить · Колесо — размер · ПКМ — сброс · Островок вверх — сила и скорость";
+        float textSize = 8.0f * sScale;
+        float textWidth = GuiFonts.SF_REGULAR.getWidth(text, textSize);
+        float padding = 10.0f * sScale;
+        float plateW = textWidth + padding * 2.0f;
+        float plateH = textSize + padding * 1.4f;
+        float plateX = client.getWindow().getGuiScaledWidth() / 2.0f - plateW / 2.0f;
+        float plateY = client.getWindow().getGuiScaledHeight() - plateH - 18.0f * sScale;
 
-        GuiFonts.SF_BOLD.draw(stack, text, centerX - textWidth / 2.0f, centerY - textSize / 2.0f,
-                textColor, textSize);
-
-        String subText = "Coming soon...";
-        float subSize = 9.0f * sScale;
-        float subWidth = GuiFonts.SF_REGULAR.getWidth(subText, subSize);
-        int subColor = ColorUtils.multAlpha(GuiTheme.textColor(), 0.5f);
-
-        GuiFonts.SF_REGULAR.draw(stack, subText, centerX - subWidth / 2.0f, centerY + 10.0f * sScale,
-                subColor, subSize);
+        GuiRender.roundedRect(stack, plateX, plateY, plateW, plateH, plateH / 2.0f,
+                ColorUtils.getColor(0, 0, 0, (int) (0.45 * 255 * guiFadeAlpha)));
+        GuiFonts.SF_REGULAR.draw(stack, text, plateX + padding,
+                plateY + plateH / 2.0f - textSize / 2.0f,
+                ColorUtils.multAlpha(GuiTheme.textColor(), 0.75f * guiFadeAlpha), textSize);
     }
 
     private float descriptionWidthAnim = 0.0f;
@@ -496,8 +500,21 @@ public class ClickGuiScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (GuiStyle.showIsland()) {
-            dynamicIsland.mouseClicked((int) mouseX, (int) mouseY, button);
+        if (GuiStyle.showIsland() && dynamicIsland.mouseClicked((int) mouseX, (int) mouseY, button)) {
+            return true;
+        }
+
+        if (currentViewMode == ViewMode.HANDS) {
+            ViewModel viewModel = ModuleManager.get(ViewModel.class);
+            if (viewModel != null) {
+                if (viewModel.editorReset(button)) {
+                    return true;
+                }
+                if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT
+                        && viewModel.editorGrab((float) mouseX, (float) mouseY)) {
+                    return true;
+                }
+            }
         }
 
         if (currentViewMode == ViewMode.CLIENT && themePanel != null) {
@@ -515,11 +532,18 @@ public class ClickGuiScreen extends Screen {
 
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
+        if (GuiStyle.showIsland() && dynamicIsland.mouseDragged((int) mouseX, (int) mouseY)) {
+            return true;
+        }
         return super.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
     }
 
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (GuiStyle.showIsland()) {
+            dynamicIsland.mouseReleased();
+        }
+
         if (currentViewMode == ViewMode.CLIENT && themePanel != null) {
             themePanel.mouse((float) mouseX, (float) mouseY, button, GLFW.GLFW_RELEASE);
         } else if (currentViewMode == ViewMode.INTERFACE && interfacePanel != null) {
