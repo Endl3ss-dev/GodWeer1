@@ -2,7 +2,6 @@ package swerve.utils.render;
 
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.pipeline.TextureTarget;
-import com.mojang.blaze3d.systems.ProjectionType;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.BufferBuilder;
 import com.mojang.blaze3d.vertex.BufferUploader;
@@ -21,7 +20,7 @@ import net.minecraft.client.renderer.CoreShaders;
 import net.minecraft.client.renderer.ShaderProgram;
 
 import org.joml.Matrix4f;
-import org.joml.Matrix4fStack;
+import org.joml.Vector4f;
 import org.lwjgl.BufferUtils;
 import org.lwjgl.opengl.GL11;
 
@@ -51,7 +50,11 @@ public final class HandOutline {
     private static final long STALE_NANOS = 250_000_000L;
 
     private static final PoseStack QUAD_STACK = new PoseStack();
-    private static final Matrix4f ORTHO = new Matrix4f();
+    private static final Matrix4f INVERSE = new Matrix4f();
+    private static final Vector4f CORNER = new Vector4f();
+    private static final float[] CORNER_X = new float[4];
+    private static final float[] CORNER_Y = new float[4];
+    private static final float[] CORNER_Z = new float[4];
     private static final byte[] GRID_PIXELS = new byte[GRID_WIDTH * GRID_HEIGHT * 4];
 
     private static TextureTarget depthBefore;
@@ -63,8 +66,7 @@ public final class HandOutline {
     private static RenderTarget bloom;
 
     private static ByteBuffer gridBuffer;
-    private static Matrix4f savedProjection;
-    private static ProjectionType savedType;
+    private static boolean cornersValid;
 
     private static int frameWidth = -1;
     private static int frameHeight = -1;
@@ -415,46 +417,76 @@ public final class HandOutline {
         gridBuffer.position(0);
     }
 
-    // Все проходы рисуются в NDC: своя орто-проекция и нулевой modelview, иначе квад
-    // уехал бы по перспективной матрице рук, которая в этот момент активна.
+    // Проходы рисуются полноэкранным квадом, но матрицы трогать нельзя: в 1.21.4 у
+    // RenderSystem нет ProjectionType, а активны сейчас перспектива рук и матрица камеры.
+    // Поэтому углы квада берутся обратной матрицей (Proj * ModelView)^-1 из NDC-углов:
+    // шейдер умножит их обратно теми же матрицами, и квад ляжет ровно на весь viewport
+    // любого буфера — своего (маска, блюр, сетка) или главного (свечение).
     private static void beginPasses() {
-        savedProjection = RenderSystem.getProjectionMatrix();
-        savedType = RenderSystem.getProjectionType();
-        ORTHO.setOrtho(-1.0F, 1.0F, -1.0F, 1.0F, -1.0F, 1.0F);
-        RenderSystem.setProjectionMatrix(ORTHO, ProjectionType.ORTHOGRAPHIC);
+        Matrix4f projection = RenderSystem.getProjectionMatrix();
+        Matrix4f modelView = RenderSystem.getModelViewMatrix();
+        if (projection == null || modelView == null) {
+            cornersValid = false;
+            return;
+        }
 
-        Matrix4fStack stack = RenderSystem.getModelViewStack();
-        stack.pushMatrix();
-        stack.identity();
+        INVERSE.set(projection).mul(modelView);
+        cornersValid = Math.abs(INVERSE.determinant()) > 1.0E-12F;
+        if (!cornersValid) {
+            return;
+        }
+
+        INVERSE.invert();
+        corner(0, -1.0F, -1.0F);
+        corner(1, -1.0F, 1.0F);
+        corner(2, 1.0F, 1.0F);
+        corner(3, 1.0F, -1.0F);
 
         RenderSystem.disableDepthTest();
+        // Обратная матрица может поменять обход вершин — с включённым отсечением квад бы исчез.
         RenderSystem.disableCull();
+    }
+
+    private static void corner(int index, float ndcX, float ndcY) {
+        CORNER.set(ndcX, ndcY, 0.0F, 1.0F);
+        INVERSE.transform(CORNER);
+        CORNER_X[index] = CORNER.x();
+        CORNER_Y[index] = CORNER.y();
+        CORNER_Z[index] = CORNER.z();
     }
 
     private static void endPasses() {
         RenderSystem.enableCull();
         RenderSystem.enableDepthTest();
         RenderSystem.depthMask(true);
-        RenderSystem.getModelViewStack().popMatrix();
-        RenderSystem.setProjectionMatrix(savedProjection, savedType);
         RenderSystem.setShaderTexture(0, 0);
         RenderSystem.setShaderTexture(1, 0);
     }
 
     private static void quad() {
+        if (!cornersValid) {
+            return;
+        }
+
         Matrix4f matrix = QUAD_STACK.last().pose();
         BufferBuilder buffer = Tesselator.getInstance()
                 .begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_TEX_COLOR);
 
-        buffer.addVertex(matrix, -1.0F, -1.0F, 0.0F).setUv(0.0F, 0.0F).setColor(1.0F, 1.0F, 1.0F, 1.0F);
-        buffer.addVertex(matrix, -1.0F, 1.0F, 0.0F).setUv(0.0F, 1.0F).setColor(1.0F, 1.0F, 1.0F, 1.0F);
-        buffer.addVertex(matrix, 1.0F, 1.0F, 0.0F).setUv(1.0F, 1.0F).setColor(1.0F, 1.0F, 1.0F, 1.0F);
-        buffer.addVertex(matrix, 1.0F, -1.0F, 0.0F).setUv(1.0F, 0.0F).setColor(1.0F, 1.0F, 1.0F, 1.0F);
+        vertex(buffer, matrix, 0, 0.0F, 0.0F);
+        vertex(buffer, matrix, 1, 0.0F, 1.0F);
+        vertex(buffer, matrix, 2, 1.0F, 1.0F);
+        vertex(buffer, matrix, 3, 1.0F, 0.0F);
 
         MeshData mesh = buffer.build();
         if (mesh != null) {
             BufferUploader.drawWithShader(mesh);
         }
+    }
+
+    private static void vertex(BufferBuilder buffer, Matrix4f matrix, int index, float u, float v) {
+        buffer.addVertex(matrix, CORNER_X[index], CORNER_Y[index], CORNER_Z[index])
+                .setUv(u, v)
+                .setColor(1.0F, 1.0F, 1.0F, 1.0F);
     }
 
     private static float channel(int argb, int shift) {
