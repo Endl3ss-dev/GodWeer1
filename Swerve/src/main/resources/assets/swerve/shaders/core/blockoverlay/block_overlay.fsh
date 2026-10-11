@@ -60,35 +60,31 @@ float ridged(vec2 p) {
 }
 
 float getEdge(vec2 uv, float s) {
-    float a0 = texture(Sampler0, uv).a;
     float ax1 = texture(Sampler0, uv + vec2(texelSize.x * s, 0.0)).a;
     float ax2 = texture(Sampler0, uv - vec2(texelSize.x * s, 0.0)).a;
     float ay1 = texture(Sampler0, uv + vec2(0.0, texelSize.y * s)).a;
     float ay2 = texture(Sampler0, uv - vec2(0.0, texelSize.y * s)).a;
-    float edge = abs(a0 - ax1) + abs(a0 - ax2) + abs(a0 - ay1) + abs(a0 - ay2);
-
-    float diag1 = texture(Sampler0, uv + vec2(texelSize.x * s, texelSize.y * s)).a;
-    float diag2 = texture(Sampler0, uv + vec2(-texelSize.x * s, texelSize.y * s)).a;
-    float diag3 = texture(Sampler0, uv + vec2(texelSize.x * s, -texelSize.y * s)).a;
-    float diag4 = texture(Sampler0, uv + vec2(-texelSize.x * s, -texelSize.y * s)).a;
-    edge += 0.7 * (abs(a0 - diag1) + abs(a0 - diag2) + abs(a0 - diag3) + abs(a0 - diag4));
-
-    return clamp(edge * 1.9, 0.0, 1.0);
+    float minN = min(min(ax1, ax2), min(ay1, ay2));
+    float maxN = max(max(ax1, ax2), max(ay1, ay2));
+    return clamp(maxN - minN, 0.0, 1.0);
 }
 
 void main() {
     vec2 uv = TexCoord;
     float mask = texture(Sampler0, uv).a;
-    if (mask <= 0.0) discard;
 
-    float edge = getEdge(uv, outline);
-    float edgeBand = smoothstep(0.02, 0.42, edge);
     if (outlineOnly > 0.5) {
-        float edgeAlpha = clamp(edgeBand * alpha, 0.0, 1.0) * mask;
+        float edge = getEdge(uv, outline);
+        float edgeAlpha = clamp(edge * alpha, 0.0, 1.0);
         if (edgeAlpha <= 0.001) discard;
         OutColor = vec4(mix(color, color2, 0.35), edgeAlpha);
         return;
     }
+
+    if (mask <= 0.0) discard;
+
+    float edge = getEdge(uv, outline);
+    float edgeBand = smoothstep(0.02, 0.42, edge);
 
     float t = time * max(speed, 0.001);
     vec2 flow = uv * mix(1.2, 3.2, clamp(scale / 3.0, 0.0, 1.0));
