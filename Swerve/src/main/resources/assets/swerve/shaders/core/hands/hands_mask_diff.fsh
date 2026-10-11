@@ -2,18 +2,18 @@
 
 uniform sampler2D Sampler0;
 uniform sampler2D Sampler1;
-uniform sampler2D Sampler2;
-uniform sampler2D Sampler3;
+uniform float uThreshold;
 
 in vec2 TexCoord;
 out vec4 OutColor;
 
 void main() {
     vec2 uv = TexCoord;
-    float depthBefore = texture(Sampler2, uv).r;
-    float depthAfter = texture(Sampler3, uv).r;
+    float depthBefore = texture(Sampler0, uv).r;
+    float depthAfter = texture(Sampler1, uv).r;
 
-    // Keep mask stable: only pixels that became closer after rendering hands/items.
-    float result = step(0.0001, depthBefore - depthAfter);
-    OutColor = vec4(result, result, result, result);
+    // Силуэт рук: пиксели, где рука закрыла мир (глубина стала ближе).
+    // Там, где рука оказалась ЗА миром, её не видно — маски там и не должно быть.
+    float mask = smoothstep(uThreshold * 0.5, uThreshold * 1.5, depthBefore - depthAfter);
+    OutColor = vec4(mask, mask, mask, mask);
 }

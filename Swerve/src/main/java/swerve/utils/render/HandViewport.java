@@ -11,13 +11,18 @@ import net.minecraft.world.InteractionHand;
 import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
 
-// Экранная привязка рук от первого лица: точка руки и цена мирового юнита — в GUI-единицах
-// (тех же, в которых живёт курсор и HUD). Нужно ViewModel для наведения, двойного клика,
-// перетаскивания и обводки.
+// Экранная привязка рук от первого лица: точка руки, цена мирового юнита и матрица руки —
+// в GUI-единицах (тех же, в которых живёт курсор и HUD). Нужно ViewModel для наведения,
+// двойного клика, перетаскивания и запасного варианта обводки.
+//
+// Два снимка на руку: базовый (до смещений и масштаба) — по нему считается, сколько мировых
+// юнитов стоит один пиксель курсора, иначе рука при перетаскивании «плыла» бы не за мышью;
+// и видимый (после смещений) — точка, по которой выбирается рука и рисуется запасная рамка.
+// Пиксель-точный ответ «курсор над рукой?» даёт не проекция, а маска силуэта (HandOutline).
 //
 // NDC -> GUI напрямую, без пикселей фреймбуфера: иначе на HiDPI (screenWidth != getWidth)
 // курсор и рука оказывались в разных системах координат и клик по руке не проходил.
-// Матрица и временные массивы переиспользуются: три проекции на руку, ноль аллокаций в кадре.
+// Матрицы и временные массивы переиспользуются: ноль аллокаций в кадре.
 public final class HandViewport {
 
     private static final int MAIN = 0;
@@ -27,11 +32,17 @@ public final class HandViewport {
     private static final float BASIS_STEP = 0.25F;
     private static final long STALE_NANOS = 250_000_000L;
     private static final float MIN_UNITS = 1.0E-3F;
+    private static final float MIN_DEPTH = 1.0E-4F;
 
     private static final Matrix4f COMBINED = new Matrix4f();
+    private static final Matrix4f VIEW = new Matrix4f();
     private static final float[] POINT = new float[2];
     private static final float[] BASIS_X = new float[2];
     private static final float[] BASIS_Y = new float[2];
+
+    private static final Matrix4f[] BASE_MATRIX = {new Matrix4f(), new Matrix4f()};
+    private static final float[] BASE_DEPTH = new float[SLOTS];
+    private static final boolean[] baseCaptured = new boolean[SLOTS];
 
     private static final boolean[] captured = new boolean[SLOTS];
     private static final long[] capturedAt = new long[SLOTS];
@@ -40,10 +51,44 @@ public final class HandViewport {
     private static final float[] unitX = new float[SLOTS];
     private static final float[] unitY = new float[SLOTS];
 
+    private static boolean wanted;
     private static String lastFailure = "";
     private static long lastFailureLog;
 
     private HandViewport() {
+    }
+
+    // Снимки нужны только пока открыт чат: в игре они считаются впустую каждый кадр.
+    public static void setWanted(boolean value) {
+        wanted = value;
+    }
+
+    public static boolean isWanted() {
+        return wanted;
+    }
+
+    // Базовая матрица руки: проекция * modelview * поза руки до смещений ViewModel,
+    // плюс глубина точки крепления в пространстве глаза (для цены пикселя в юнитах).
+    public static void captureBase(InteractionHand hand, PoseStack poseStack, float handX, float handY, float handZ) {
+        int slot = slot(hand);
+        if (slot < 0 || poseStack == null) {
+            return;
+        }
+
+        PoseStack.Pose pose = poseStack.last();
+        Matrix4fc projection = RenderSystem.getProjectionMatrix();
+        Matrix4fc modelView = RenderSystem.getModelViewMatrix();
+        if (pose == null || projection == null || modelView == null) {
+            return;
+        }
+
+        COMBINED.set(projection).mul(modelView).mul(pose.pose());
+        BASE_MATRIX[slot].set(COMBINED);
+
+        VIEW.set(modelView).mul(pose.pose());
+        float depth = -(VIEW.m20() * handX + VIEW.m21() * handY + VIEW.m22() * handZ + VIEW.m23());
+        BASE_DEPTH[slot] = depth > MIN_DEPTH ? depth : 0.0F;
+        baseCaptured[slot] = true;
     }
 
     // Вызывается из renderArmWithItem после того, как смещения и масштаб руки уже в матрице.
@@ -118,34 +163,25 @@ public final class HandViewport {
         return true;
     }
 
+    public static boolean isBaseReady(InteractionHand hand) {
+        int slot = slot(hand);
+        return slot >= 0 && baseCaptured[slot] && BASE_DEPTH[slot] > MIN_DEPTH;
+    }
+
     public static boolean isAnyReady() {
         return isReady(InteractionHand.MAIN_HAND) || isReady(InteractionHand.OFF_HAND);
     }
 
-    // Ближайшая к курсору рука в пределах radiusUnits мировых юнитов её собственного масштаба.
-    // Координаты курсора — в GUI-единицах.
-    public static InteractionHand nearest(double mouseX, double mouseY, float radiusUnits) {
-        InteractionHand best = null;
-        double bestDistance = Double.MAX_VALUE;
+    // Матрица руки без смещений — для пересчёта пикселей курсора в мировые юниты.
+    public static Matrix4fc matrix(InteractionHand hand) {
+        int slot = slot(hand);
+        return slot < 0 ? null : BASE_MATRIX[slot];
+    }
 
-        for (int slot = 0; slot < SLOTS; slot++) {
-            if (!captured[slot] || System.nanoTime() - capturedAt[slot] > STALE_NANOS) {
-                continue;
-            }
-
-            double radius = Math.max(12.0D, radiusUnits * Math.max(unitX[slot], unitY[slot]));
-            double deltaX = mouseX - anchorX[slot];
-            double deltaY = mouseY - anchorY[slot];
-            double distance = Math.sqrt(deltaX * deltaX + deltaY * deltaY);
-            if (distance > radius || distance >= bestDistance) {
-                continue;
-            }
-
-            bestDistance = distance;
-            best = slot == MAIN ? InteractionHand.MAIN_HAND : InteractionHand.OFF_HAND;
-        }
-
-        return best;
+    // Глубина точки крепления руки в юнитах (0.72 у ванильной руки).
+    public static float depth(InteractionHand hand) {
+        int slot = slot(hand);
+        return slot < 0 ? 0.0F : BASE_DEPTH[slot];
     }
 
     public static float anchorX(InteractionHand hand) {
@@ -156,11 +192,6 @@ public final class HandViewport {
     public static float anchorY(InteractionHand hand) {
         int slot = slot(hand);
         return slot < 0 ? 0.0F : anchorY[slot];
-    }
-
-    public static float pixelsPerUnitX(InteractionHand hand) {
-        int slot = slot(hand);
-        return slot < 0 ? 0.0F : unitX[slot];
     }
 
     public static float pixelsPerUnitY(InteractionHand hand) {
@@ -199,6 +230,10 @@ public final class HandViewport {
 
     public static void reset() {
         consume();
+        baseCaptured[MAIN] = false;
+        baseCaptured[OFF] = false;
+        BASE_DEPTH[MAIN] = 0.0F;
+        BASE_DEPTH[OFF] = 0.0F;
         anchorX[MAIN] = 0.0F;
         anchorY[MAIN] = 0.0F;
         anchorX[OFF] = 0.0F;

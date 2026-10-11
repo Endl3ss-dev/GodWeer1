@@ -20,6 +20,7 @@ import swerve.ui.newgui.GuiRender;
 import swerve.utils.animation.AnimationUtils;
 import swerve.utils.animation.Easings;
 import swerve.utils.color.ColorUtils;
+import swerve.utils.render.HandOutline;
 import swerve.utils.render.HandViewport;
 
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
@@ -34,6 +35,8 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.entity.LivingEntity;
 
+import org.joml.Matrix4f;
+import org.joml.Matrix4fc;
 import org.lwjgl.glfw.GLFW;
 
 import java.nio.charset.StandardCharsets;
@@ -52,12 +55,14 @@ import java.nio.file.Path;
 // mojmap 1.21.4. Постоянные повороты пресетов умножены на огибающую sin(f*PI): без неё
 // рука на первом кадре взмаха «выстреливала» в позу и щёлкала обратно на последнем.
 //
-// Смещения и масштаб применяются сразу после единственного pushPose в renderArmWithItem,
-// то есть до ветвления: предмет, пустая рука, карта в одной/двух руках, арбалет, блок,
-// лук, еда/питьё, brush и riptide получают одну и ту же позицию.
+// Перемещение — только перетаскиванием, ползунков координат нет (как в референсе):
+// двойной клик по руке в чате, движение мыши, колесо — масштаб руки, ПКМ — сброс.
+// Пиксели курсора переводятся в мировые юниты через якобиан проекции руки, поэтому
+// рука идёт ровно под курсором на любом fov, масштабе и позиции. Сама рука при этом
+// догоняет курсор экспоненциальным сглаживанием — скользит с небольшим отставанием.
 //
-// Наведение и двойной клик по руке в чате: захват, перетаскивание, колесо — масштаб,
-// ПКМ — сброс руки. Обводка рисуется по спроецированной точке руки (см. HandViewport).
+// Обводка рисуется по силуэту руки (HandOutline: разница глубины до и после рук) и
+// видна только пока рука в перетаскивании.
 public final class ViewModel extends Module {
 
     private static final String ANIM_IN_PLACE = "На месте";
@@ -87,12 +92,23 @@ public final class ViewModel extends Module {
 
     private static final float SCALE_MIN = 0.2F;
     private static final float SCALE_MAX = 5.0F;
-    private static final float SCALE_STEP = 0.1F;
-    private static final float GRAB_RADIUS_UNITS = 0.14F;
-    private static final float OUTLINE_THICKNESS = 1.4F;
-    private static final float OUTLINE_FILL = 0.10F;
+    private static final float SCALE_STEP = 0.22F;
+    private static final float SCALE_ANIM_SPEED = 10.0F;
+    // Предел смещения: при 0.8 юнитах рука никогда не уходит за экран целиком — её
+    // всегда можно схватить снова, а ПКМ без ползунков координат остаётся запасным выходом.
+    private static final float OFFSET_LIMIT = 0.8F;
+    private static final float FALLBACK_DEPTH = 0.72F;
+    private static final float DRAG_UNITS_PER_PIXEL = 3.2F;
+
+    // Скольжение за курсором: 1/с. Меньше — сильнее отставание, больше — резче следует.
+    private static final float FOLLOW_RATE = 18.0F;
+    private static final float MAX_FRAME_DELTA = 0.05F;
+
+    private static final float OUTLINE_IN_SPEED = 9.1F;
+    private static final float OUTLINE_OUT_SPEED = 6.7F;
+    private static final float OUTLINE_RECT_FILL = 0.10F;
+    private static final float OUTLINE_RECT_THICKNESS = 1.4F;
     private static final long DOUBLE_CLICK_MS = 300L;
-    private static final float OUTLINE_SPEED = 10.0F;
 
     private static final double C1 = 1.70158D;
     private static final double C3 = 2.70158D;
@@ -100,6 +116,9 @@ public final class ViewModel extends Module {
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path FILE = FabricLoader.getInstance().getConfigDir().resolve("swerve/viewmodel.json");
+
+    // Переиспользуемый результат якобиана: перетаскивание идёт каждый кадр.
+    private static final float[] JACOBIAN = new float[4];
 
     private static boolean eventsRegistered;
     private static ViewModel instance;
@@ -111,43 +130,60 @@ public final class ViewModel extends Module {
             .visible(() -> !anim.is(ANIM_STATIC));
     private final BooleanSetting onlyOnTarget = new BooleanSetting("Только при наводке", false);
 
-    private final FloatSetting mainX = new FloatSetting("Основная X", 0.0F, -1.5F, 1.5F, 0.01F);
-    private final FloatSetting mainY = new FloatSetting("Основная Y", 0.0F, -1.5F, 1.5F, 0.01F);
-    private final FloatSetting mainZ = new FloatSetting("Основная Z", 0.0F, -1.5F, 1.5F, 0.01F);
-    private final FloatSetting offX = new FloatSetting("Вторая X", 0.0F, -1.5F, 1.5F, 0.01F);
-    private final FloatSetting offY = new FloatSetting("Вторая Y", 0.0F, -1.5F, 1.5F, 0.01F);
-    private final FloatSetting offZ = new FloatSetting("Вторая Z", 0.0F, -1.5F, 1.5F, 0.01F);
-    private final FloatSetting scale = new FloatSetting("Масштаб", 1.0F, SCALE_MIN, SCALE_MAX, 0.05F);
-
     private final BooleanSetting dragInChat = new BooleanSetting("Перетаскивание в чате", true);
-    private final BooleanSetting outline = new BooleanSetting("Обводка", true);
-    private final FloatSetting outlineSize = new FloatSetting("Размер обводки", 0.11F, 0.02F, 0.30F, 0.01F)
+    private final BooleanSetting outline = new BooleanSetting("Обводка при перетаскивании", true);
+    private final FloatSetting outlineSize = new FloatSetting("Размер обводки", 3.0F, 1.0F, 8.0F, 0.5F)
             .visible(outline::get);
 
-    private final AnimationUtils outlineAnim = new AnimationUtils(0.0F, OUTLINE_SPEED, Easings.CUBIC_OUT);
+    private final AnimationUtils mainScaleAnim = new AnimationUtils(1.0F, SCALE_ANIM_SPEED, Easings.CUBIC_OUT);
+    private final AnimationUtils offScaleAnim = new AnimationUtils(1.0F, SCALE_ANIM_SPEED, Easings.CUBIC_OUT);
+    private final AnimationUtils outlineAnim = new AnimationUtils(0.0F, OUTLINE_IN_SPEED, Easings.CUBIC_OUT);
+
+    // Целевые значения — то, что даёт перетаскивание и что сохраняется;
+    // offset* — сглаженные, именно они попадают в матрицу руки.
+    private float mainTargetX;
+    private float mainTargetY;
+    private float offTargetX;
+    private float offTargetY;
+    private float mainOffsetX;
+    private float mainOffsetY;
+    private float offOffsetX;
+    private float offOffsetY;
+    private float mainScaleTarget = 1.0F;
+    private float offScaleTarget = 1.0F;
 
     private boolean loaded;
-    private boolean wasMouseDown;
     private boolean wasRightDown;
     private long lastClickMs;
+    private long lastFrameNanos;
+
     private boolean holding;
     private InteractionHand grabbed;
-    private InteractionHand outlineHand;
+    private final Matrix4f grabMatrix = new Matrix4f();
+    private boolean grabMatrixValid;
     private float grabCursorX;
     private float grabCursorY;
+    private float grabNdcX;
+    private float grabNdcY;
     private float grabOffsetX;
     private float grabOffsetY;
+    private float grabScale = 1.0F;
+    private float grabPivotX;
+    private float grabPivotY;
+    private boolean grabPivotValid;
+    private float grabDepth = FALLBACK_DEPTH;
+
+    private InteractionHand outlineHand;
+    private HumanoidArm lastMainArm;
 
     private int realismSide = -1;
     private boolean realismReady = true;
 
     public ViewModel() {
-        super("ViewModel", "Позиция, масштаб и анимации рук. Двойной клик по руке в чате — перетащить, колесо — размер.",
+        super("ViewModel", "Позиция и анимации рук. Двойной клик по руке в чате — перетащить, колесо — размер, ПКМ — сброс.",
                 ModuleCategory.RENDER);
         instance = this;
-        addSettings(anim, strength, onlyOnTarget,
-                mainX, mainY, mainZ, offX, offY, offZ, scale,
-                dragInChat, outline, outlineSize);
+        addSettings(anim, strength, onlyOnTarget, dragInChat, outline, outlineSize);
         load();
         registerEvents();
     }
@@ -187,13 +223,33 @@ public final class ViewModel extends Module {
         outlineAnim.setValue(0.0F);
         realismSide = -1;
         realismReady = true;
+        HandViewport.setWanted(false);
         HandViewport.reset();
+        HandOutline.setWanted(false);
+        HandOutline.setOutline(0.0F, outlineSize.get());
         super.onDisable();
     }
 
     // ------------------------------------------------------------------
     // Точки входа из MixinItemInHandRenderer — статические, без аллокаций.
     // ------------------------------------------------------------------
+
+    // HEAD renderHandsWithItems: решает, нужны ли в этом кадре снимки рук и маска.
+    public static void beginFrame() {
+        ViewModel module = instance;
+        Minecraft minecraft = Minecraft.getInstance();
+        if (module == null || !module.isEnable() || minecraft.player == null) {
+            HandViewport.setWanted(false);
+            HandOutline.setWanted(false);
+            return;
+        }
+
+        module.load();
+        boolean inChat = minecraft.screen instanceof ChatScreen;
+        boolean wanted = inChat && (module.dragInChat.get() || module.outline.get());
+        HandViewport.setWanted(wanted);
+        HandOutline.setWanted(inChat && module.dragInChat.get());
+    }
 
     public static void applyTransform(PoseStack poseStack, AbstractClientPlayer player, InteractionHand hand) {
         ViewModel module = instance;
@@ -204,10 +260,14 @@ public final class ViewModel extends Module {
 
         boolean main = hand == InteractionHand.MAIN_HAND;
         HumanoidArm arm = main ? player.getMainArm() : player.getMainArm().getOpposite();
-        int side = arm == HumanoidArm.RIGHT ? 1 : -1;
-        float anchorX = ARM_X * (float) side;
+        float side = arm == HumanoidArm.RIGHT ? 1.0F : -1.0F;
+        float anchorX = ARM_X * side;
 
-        float scaleValue = Mth.clamp(module.scale.get(), SCALE_MIN, SCALE_MAX);
+        if (HandViewport.isWanted()) {
+            HandViewport.captureBase(hand, poseStack, anchorX, ARM_Y, ARM_Z);
+        }
+
+        float scaleValue = main ? module.mainScaleAnim.getValue() : module.offScaleAnim.getValue();
         if (scaleValue != 1.0F) {
             // Масштаб вокруг точки крепления: рука растёт на месте, а не уезжает к камере.
             poseStack.translate(anchorX, ARM_Y, ARM_Z);
@@ -215,14 +275,13 @@ public final class ViewModel extends Module {
             poseStack.translate(-anchorX, -ARM_Y, -ARM_Z);
         }
 
-        float offsetX = main ? module.mainX.get() : module.offX.get();
-        float offsetY = main ? module.mainY.get() : module.offY.get();
-        float offsetZ = main ? module.mainZ.get() : module.offZ.get();
-        if (offsetX != 0.0F || offsetY != 0.0F || offsetZ != 0.0F) {
-            poseStack.translate(offsetX, offsetY, offsetZ);
+        float offsetX = main ? module.mainOffsetX : module.offOffsetX;
+        float offsetY = main ? module.mainOffsetY : module.offOffsetY;
+        if (offsetX != 0.0F || offsetY != 0.0F) {
+            poseStack.translate(offsetX, offsetY, 0.0F);
         }
 
-        if (module.dragInChat.get() || module.outline.get()) {
+        if (HandViewport.isWanted()) {
             HandViewport.capture(hand, poseStack, anchorX, ARM_Y, ARM_Z);
         }
     }
@@ -235,16 +294,16 @@ public final class ViewModel extends Module {
         }
         module.load();
 
-        int side = arm == HumanoidArm.RIGHT ? 1 : -1;
+        float side = arm == HumanoidArm.RIGHT ? 1.0F : -1.0F;
         // equippedProgress сюда намеренно не передаётся: опускания руки больше нет.
-        poseStack.translate((float) side * ARM_X, ARM_Y, ARM_Z);
+        poseStack.translate(side * ARM_X, ARM_Y, ARM_Z);
 
         float progress = Mth.clamp(swingProgress, 0.0F, 1.0F);
         if (progress <= 0.0F || module.anim.is(ANIM_STATIC) || !module.targetAllows()) {
             return true;
         }
 
-        module.applyPreset(poseStack, side, progress, module.strength.get());
+        module.applyPreset(poseStack, (int) side, progress, module.strength.get());
         return true;
     }
 
@@ -285,7 +344,7 @@ public final class ViewModel extends Module {
     // ------------------------------------------------------------------
 
     private void applyPreset(PoseStack poseStack, int side, float f, float power) {
-        // f2/f3/f4 — те же величины, что в референсе; env == f4 гасит постоянные повороты.
+        // f2/f3 — те же величины, что в референсе; env гасит постоянные повороты.
         float env = Mth.sin(f * (float) Math.PI);
         float f2 = Mth.sin(f * f * (float) Math.PI);
         float f3 = Mth.sin(Mth.sqrt(f) * (float) Math.PI);
@@ -402,102 +461,207 @@ public final class ViewModel extends Module {
     }
 
     // ------------------------------------------------------------------
-    // Наведение, двойной клик, перетаскивание, обводка.
+    // Ввод: двойной клик по руке, перетаскивание, колесо, ПКМ.
     // ------------------------------------------------------------------
 
-    private void onHudRender(GuiGraphics graphics) {
+    // Вызывается из MixinMouseHandler.onPress. true — событие съедено, чат его не получит.
+    public boolean onMousePress(int button, int action) {
+        if (!isEnable() || action != GLFW.GLFW_PRESS) {
+            return false;
+        }
+
         Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.player == null || minecraft.level == null || !isEnable()) {
-            release(false);
-            outlineHand = null;
-            outlineAnim.update(0.0F);
-            return;
+        if (!(minecraft.screen instanceof ChatScreen) || !dragInChat.get()) {
+            return false;
         }
         load();
 
-        boolean inChat = minecraft.screen instanceof ChatScreen;
-        boolean canDrag = inChat && dragInChat.get();
-        if (!canDrag) {
-            release(false);
+        // ПКМ сбрасывает руку, которая сейчас в перетаскивании. Чужие клики не съедаются.
+        if (button == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
+            if (!holding || grabbed == null) {
+                return false;
+            }
+            resetHand(grabbed);
+            release(true);
+            return true;
+        }
+
+        if (button != GLFW.GLFW_MOUSE_BUTTON_LEFT) {
+            return false;
+        }
+
+        long now = System.currentTimeMillis();
+        boolean doubleClick = now - lastClickMs <= DOUBLE_CLICK_MS;
+        lastClickMs = now;
+        if (!doubleClick) {
+            return false;
         }
 
         float mouseX = HandViewport.mouseGuiX(minecraft);
         float mouseY = HandViewport.mouseGuiY(minecraft);
-        long window = minecraft.getWindow().getWindow();
-
-        // Наведение считается до обработки клика: второй клик двойного клика уже видит руку.
-        InteractionHand hovered = canDrag ? HandViewport.nearest(mouseX, mouseY, GRAB_RADIUS_UNITS) : null;
-
-        boolean mouseDown = GLFW.glfwGetMouseButton(window, GLFW.GLFW_MOUSE_BUTTON_LEFT) == GLFW.GLFW_PRESS;
-        if (mouseDown && !wasMouseDown) {
-            long now = System.currentTimeMillis();
-            if (canDrag && hovered != null && now - lastClickMs <= DOUBLE_CLICK_MS) {
-                grab(hovered, mouseX, mouseY);
-            }
-            lastClickMs = now;
-        }
-        wasMouseDown = mouseDown;
-
-        boolean rightDown = GLFW.glfwGetMouseButton(window, GLFW.GLFW_MOUSE_BUTTON_RIGHT) == GLFW.GLFW_PRESS;
-        if (rightDown && !wasRightDown && holding && grabbed != null) {
-            resetHand(grabbed);
-            release(true);
-        }
-        wasRightDown = rightDown;
-
-        if (!mouseDown && holding) {
-            release(true);
-        }
-        if (holding && grabbed != null) {
-            drag(mouseX, mouseY);
+        // Хватать можно только пиксели руки: маска силуэта, а не квадрат вокруг точки.
+        if (!HandOutline.isHandCoveredAt(mouseX, mouseY)) {
+            return false;
         }
 
-        InteractionHand focus = holding && grabbed != null ? grabbed : hovered;
-        if (focus != null) {
-            outlineHand = focus;
+        InteractionHand hand = pickHand(mouseX, mouseY);
+        if (hand == null) {
+            return false;
         }
-        outlineAnim.update(focus != null ? 1.0F : 0.0F);
-        drawOutline(graphics.pose());
 
-        if (canDrag && !HandViewport.isAnyReady()) {
-            HandViewport.reportStale();
+        grab(hand, mouseX, mouseY);
+        return true;
+    }
+
+    // Колесо мыши, пока рука схвачена, — масштаб этой руки. true — событие съедено.
+    public boolean onScroll(double yOffset) {
+        if (!isEnable() || yOffset == 0.0D || !holding || grabbed == null) {
+            return false;
         }
+        if (!(Minecraft.getInstance().screen instanceof ChatScreen)) {
+            return false;
+        }
+
+        load();
+        float step = yOffset > 0.0D ? SCALE_STEP : -SCALE_STEP;
+        if (grabbed == InteractionHand.MAIN_HAND) {
+            mainScaleTarget = Mth.clamp(mainScaleTarget + step, SCALE_MIN, SCALE_MAX);
+            mainScaleAnim.setSpeed(SCALE_ANIM_SPEED);
+            mainScaleAnim.update(mainScaleTarget);
+        } else {
+            offScaleTarget = Mth.clamp(offScaleTarget + step, SCALE_MIN, SCALE_MAX);
+            offScaleAnim.setSpeed(SCALE_ANIM_SPEED);
+            offScaleAnim.update(offScaleTarget);
+        }
+
+        save();
+        return true;
     }
 
     private void grab(InteractionHand hand, float mouseX, float mouseY) {
+        Minecraft minecraft = Minecraft.getInstance();
+        int guiWidth = minecraft.getWindow().getGuiScaledWidth();
+        int guiHeight = minecraft.getWindow().getGuiScaledHeight();
+
         grabbed = hand;
         outlineHand = hand;
         holding = true;
         grabCursorX = mouseX;
         grabCursorY = mouseY;
+        grabNdcX = guiWidth > 0 ? mouseX / (float) guiWidth * 2.0F - 1.0F : 0.0F;
+        grabNdcY = guiHeight > 0 ? 1.0F - mouseY / (float) guiHeight * 2.0F : 0.0F;
 
         boolean main = hand == InteractionHand.MAIN_HAND;
-        grabOffsetX = main ? mainX.get() : offX.get();
-        grabOffsetY = main ? mainY.get() : offY.get();
+        grabOffsetX = main ? mainTargetX : offTargetX;
+        grabOffsetY = main ? mainTargetY : offTargetY;
+        grabScale = main ? mainScaleTarget : offScaleTarget;
+        grabPivotValid = HandViewport.isReady(hand);
+        grabPivotX = HandViewport.anchorX(hand);
+        grabPivotY = HandViewport.anchorY(hand);
+
+        Matrix4fc matrix = HandViewport.matrix(hand);
+        grabMatrixValid = matrix != null && HandViewport.isBaseReady(hand);
+        if (grabMatrixValid) {
+            grabMatrix.set(matrix);
+            grabDepth = HandViewport.depth(hand);
+        } else {
+            grabDepth = FALLBACK_DEPTH;
+        }
+
+        outlineAnim.setSpeed(OUTLINE_IN_SPEED);
+        outlineAnim.update(1.0F);
+        HandOutline.setOutline(outline.get() ? outlineAnim.getValue() : 0.0F, outlineSize.get());
     }
 
     private void drag(float mouseX, float mouseY) {
-        InteractionHand hand = grabbed;
-        if (!HandViewport.isReady(hand)) {
+        Minecraft minecraft = Minecraft.getInstance();
+        int guiWidth = minecraft.getWindow().getGuiScaledWidth();
+        int guiHeight = minecraft.getWindow().getGuiScaledHeight();
+        if (guiWidth <= 0 || guiHeight <= 0) {
             return;
         }
 
-        float pixelsX = HandViewport.pixelsPerUnitX(hand);
-        float pixelsY = HandViewport.pixelsPerUnitY(hand);
-        if (pixelsX <= 1.0E-3F || pixelsY <= 1.0E-3F) {
-            return;
+        boolean main = grabbed == InteractionHand.MAIN_HAND;
+        float scaleNow = main ? mainScaleAnim.getValue() : offScaleAnim.getValue();
+        float targetX = 0.0F;
+        float targetY = 0.0F;
+        boolean solved = false;
+
+        // Якобиан проекции руки: сколько экранных пикселей стоит один мировой юнит
+        // в точке захвата. Без него рука тянулась бы с разной скоростью по осям.
+        if (grabMatrixValid && grabDepth > 1.0E-4F) {
+            jacobian(grabMatrix, grabDepth, grabNdcX, grabNdcY, guiWidth, guiHeight);
+            float determinant = JACOBIAN[0] * JACOBIAN[3] - JACOBIAN[2] * JACOBIAN[1];
+            if (Math.abs(determinant) > 1.0E-4F) {
+                float ratio = grabScale > 1.0E-4F ? scaleNow / grabScale : 1.0F;
+                float pivotX = grabPivotValid ? grabPivotX : grabCursorX;
+                float pivotY = grabPivotValid ? grabPivotY : grabCursorY;
+                // Масштаб меняется вокруг точки крепления: пиксель под курсором должен
+                // оставаться тем же пикселем руки, иначе рука уезжает при колёсике.
+                float deltaX = mouseX - pivotX - ratio * (grabCursorX - pivotX);
+                float deltaY = mouseY - pivotY - ratio * (grabCursorY - pivotY);
+                targetX = grabOffsetX + (JACOBIAN[3] * deltaX - JACOBIAN[2] * deltaY) / determinant;
+                targetY = grabOffsetY + (-JACOBIAN[1] * deltaX + JACOBIAN[0] * deltaY) / determinant;
+                solved = true;
+            }
         }
 
-        float deltaX = (mouseX - grabCursorX) / pixelsX;
-        float deltaY = -(mouseY - grabCursorY) / pixelsY;
-
-        if (hand == InteractionHand.MAIN_HAND) {
-            mainX.setValue(grabOffsetX + deltaX);
-            mainY.setValue(grabOffsetY + deltaY);
-        } else {
-            offX.setValue(grabOffsetX + deltaX);
-            offY.setValue(grabOffsetY + deltaY);
+        if (!solved) {
+            // Запасной вариант: цена пикселя от высоты экрана, как в референсе.
+            float unitsPerPixel = DRAG_UNITS_PER_PIXEL / (float) guiHeight;
+            targetX = grabOffsetX + (mouseX - grabCursorX) * unitsPerPixel;
+            targetY = grabOffsetY - (mouseY - grabCursorY) * unitsPerPixel;
         }
+
+        setTarget(grabbed, Mth.clamp(targetX, -OFFSET_LIMIT, OFFSET_LIMIT),
+                Mth.clamp(targetY, -OFFSET_LIMIT, OFFSET_LIMIT));
+    }
+
+    // d(экран)/d(юнит) в точке захвата; знак по Y перевёрнут — экранный Y смотрит вниз.
+    private static void jacobian(Matrix4fc matrix, float depth, float ndcX, float ndcY, int width, int height) {
+        float m00 = matrix.m00();
+        float m01 = matrix.m01();
+        float m03 = matrix.m03();
+        float m10 = matrix.m10();
+        float m11 = matrix.m11();
+        float m13 = matrix.m13();
+        float halfWidth = (float) width * 0.5F;
+        float halfHeight = (float) height * 0.5F;
+
+        JACOBIAN[0] = (m00 - ndcX * m03) / depth * halfWidth;
+        JACOBIAN[1] = -(m01 - ndcY * m03) / depth * halfHeight;
+        JACOBIAN[2] = (m10 - ndcX * m13) / depth * halfWidth;
+        JACOBIAN[3] = -(m11 - ndcY * m13) / depth * halfHeight;
+    }
+
+    private InteractionHand pickHand(float mouseX, float mouseY) {
+        boolean mainReady = HandViewport.isReady(InteractionHand.MAIN_HAND);
+        boolean offReady = HandViewport.isReady(InteractionHand.OFF_HAND);
+        if (mainReady && offReady) {
+            return distance(mouseX, mouseY, HandViewport.anchorX(InteractionHand.MAIN_HAND),
+                    HandViewport.anchorY(InteractionHand.MAIN_HAND))
+                    <= distance(mouseX, mouseY, HandViewport.anchorX(InteractionHand.OFF_HAND),
+                    HandViewport.anchorY(InteractionHand.OFF_HAND))
+                    ? InteractionHand.MAIN_HAND : InteractionHand.OFF_HAND;
+        }
+        if (mainReady) {
+            return InteractionHand.MAIN_HAND;
+        }
+        if (offReady) {
+            return InteractionHand.OFF_HAND;
+        }
+
+        // Точки рук не снялись: половина экрана и сторона основной руки.
+        Minecraft minecraft = Minecraft.getInstance();
+        HumanoidArm arm = minecraft.player != null ? minecraft.player.getMainArm() : HumanoidArm.RIGHT;
+        boolean rightHalf = mouseX >= (float) minecraft.getWindow().getGuiScaledWidth() * 0.5F;
+        return rightHalf == (arm == HumanoidArm.RIGHT) ? InteractionHand.MAIN_HAND : InteractionHand.OFF_HAND;
+    }
+
+    private static float distance(float mouseX, float mouseY, float x, float y) {
+        float deltaX = mouseX - x;
+        float deltaY = mouseY - y;
+        return deltaX * deltaX + deltaY * deltaY;
     }
 
     private void release(boolean saveLayout) {
@@ -510,57 +674,178 @@ public final class ViewModel extends Module {
 
     private void resetHand(InteractionHand hand) {
         if (hand == InteractionHand.MAIN_HAND) {
-            mainX.setValue(0.0F);
-            mainY.setValue(0.0F);
-            mainZ.setValue(0.0F);
+            mainTargetX = 0.0F;
+            mainTargetY = 0.0F;
+            mainScaleTarget = 1.0F;
+            mainScaleAnim.setSpeed(SCALE_ANIM_SPEED);
+            mainScaleAnim.update(mainScaleTarget);
         } else {
-            offX.setValue(0.0F);
-            offY.setValue(0.0F);
-            offZ.setValue(0.0F);
+            offTargetX = 0.0F;
+            offTargetY = 0.0F;
+            offScaleTarget = 1.0F;
+            offScaleAnim.setSpeed(SCALE_ANIM_SPEED);
+            offScaleAnim.update(offScaleTarget);
         }
-        scale.setValue(1.0F);
+        save();
     }
 
-    // Колесо мыши, пока рука схвачена, — масштаб. true — событие съедено.
-    public boolean onScroll(double yOffset) {
-        if (!isEnable() || !holding || grabbed == null || yOffset == 0.0D) {
-            return false;
+    private void setTarget(InteractionHand hand, float x, float y) {
+        if (hand == InteractionHand.MAIN_HAND) {
+            mainTargetX = x;
+            mainTargetY = y;
+        } else {
+            offTargetX = x;
+            offTargetY = y;
         }
-        if (!(Minecraft.getInstance().screen instanceof ChatScreen)) {
-            return false;
+    }
+
+    // Смена основной руки зеркалит раскладку, иначе руки меняются местами.
+    private void handleMainHandSwap() {
+        Minecraft minecraft = Minecraft.getInstance();
+        if (minecraft.player == null) {
+            return;
+        }
+
+        HumanoidArm arm = minecraft.player.getMainArm();
+        if (lastMainArm == null) {
+            lastMainArm = arm;
+            return;
+        }
+        if (arm == lastMainArm) {
+            return;
+        }
+
+        lastMainArm = arm;
+        mainTargetX = -mainTargetX;
+        mainOffsetX = -mainOffsetX;
+        offTargetX = -offTargetX;
+        offOffsetX = -offOffsetX;
+        save();
+    }
+
+    // ------------------------------------------------------------------
+    // Кадр HUD: сглаживание, обводка, состояние для HandOutline.
+    // ------------------------------------------------------------------
+
+    private void onHudRender(GuiGraphics graphics) {
+        Minecraft minecraft = Minecraft.getInstance();
+        float delta = frameDelta();
+
+        if (minecraft.player == null || minecraft.level == null || !isEnable()) {
+            release(false);
+            outlineHand = null;
+            outlineAnim.update(0.0F);
+            HandOutline.setWanted(false);
+            HandOutline.setOutline(0.0F, outlineSize.get());
+            return;
         }
 
         load();
-        scale.setValue(scale.get() + (yOffset > 0.0D ? SCALE_STEP : -SCALE_STEP));
-        save();
-        return true;
-    }
+        handleMainHandSwap();
 
-    private void drawOutline(PoseStack stack) {
+        boolean canDrag = minecraft.screen instanceof ChatScreen && dragInChat.get();
+        if (!canDrag) {
+            release(false);
+        }
+
+        long window = minecraft.getWindow().getWindow();
+        boolean leftDown = GLFW.glfwGetMouseButton(window, GLFW.GLFW_MOUSE_BUTTON_LEFT) == GLFW.GLFW_PRESS;
+        boolean rightDown = GLFW.glfwGetMouseButton(window, GLFW.GLFW_MOUSE_BUTTON_RIGHT) == GLFW.GLFW_PRESS;
+        if (rightDown && !wasRightDown && holding && grabbed != null) {
+            resetHand(grabbed);
+            release(true);
+        }
+        wasRightDown = rightDown;
+
+        if (holding && grabbed != null && canDrag && leftDown) {
+            drag(HandViewport.mouseGuiX(minecraft), HandViewport.mouseGuiY(minecraft));
+        }
+        if (!leftDown && holding) {
+            // Отпустили кнопку вне чата или чат закрылся: рука доезжает до цели сама.
+            release(true);
+        }
+
+        smooth(delta);
+        mainScaleAnim.update(mainScaleTarget);
+        offScaleAnim.update(offScaleTarget);
+
+        // Обводка — только пока рука в перетаскивании.
+        boolean dragging = holding && grabbed != null && outline.get();
+        if (dragging) {
+            outlineHand = grabbed;
+        }
+        float target = dragging ? 1.0F : 0.0F;
+        if (outlineAnim.getTarget() != target) {
+            outlineAnim.setSpeed(dragging ? OUTLINE_IN_SPEED : OUTLINE_OUT_SPEED);
+        }
+        outlineAnim.update(target);
+
         float alpha = outlineAnim.getValue();
-        InteractionHand hand = outlineHand;
-
         if (alpha <= 0.004F) {
             outlineHand = null;
-            return;
+            alpha = 0.0F;
         }
-        if (!outline.get() || hand == null || !HandViewport.isReady(hand)) {
+
+        HandOutline.setWanted(canDrag);
+        HandOutline.setOutline(alpha, outlineSize.get());
+
+        if (!HandOutline.isShaderReady() && outlineHand != null) {
+            drawRectOutline(graphics.pose());
+        }
+
+        boolean noMask = HandOutline.wantedFor() > 2_000_000_000L && !HandOutline.isMaskReady();
+        if (canDrag && (noMask || !HandOutline.isHooked())) {
+            HandOutline.reportStale();
+        }
+        if (canDrag && !HandViewport.isAnyReady()) {
+            HandViewport.reportStale();
+        }
+    }
+
+    // Экспоненциальное сглаживание, не зависящее от частоты кадров: рука скользит за
+    // курсором с небольшим отставанием и так же плавно доезжает после отпускания.
+    private void smooth(float delta) {
+        float factor = 1.0F - (float) Math.exp(-FOLLOW_RATE * delta);
+        mainOffsetX = follow(mainOffsetX, mainTargetX, factor);
+        mainOffsetY = follow(mainOffsetY, mainTargetY, factor);
+        offOffsetX = follow(offOffsetX, offTargetX, factor);
+        offOffsetY = follow(offOffsetY, offTargetY, factor);
+    }
+
+    private static float follow(float current, float target, float factor) {
+        float delta = target - current;
+        if (Math.abs(delta) < 1.0E-4F) {
+            return target;
+        }
+        return current + delta * factor;
+    }
+
+    private float frameDelta() {
+        long now = System.nanoTime();
+        float delta = lastFrameNanos == 0L ? 1.0F / 60.0F : (float) (now - lastFrameNanos) * 1.0E-9F;
+        lastFrameNanos = now;
+        return Mth.clamp(delta, 0.0F, MAX_FRAME_DELTA);
+    }
+
+    // Запасной вариант на случай, если шейдеры обводки не собрались: рамка по точке руки.
+    private void drawRectOutline(PoseStack stack) {
+        InteractionHand hand = outlineHand;
+        if (hand == null || !HandViewport.isReady(hand)) {
             return;
         }
 
+        float alpha = outlineAnim.getValue();
         float centerX = HandViewport.anchorX(hand);
         float centerY = HandViewport.anchorY(hand);
-        float half = Math.max(8.0F, outlineSize.get() * HandViewport.pixelsPerUnitY(hand));
+        float half = Math.max(10.0F, HandViewport.pixelsPerUnitY(hand) * outlineSize.get() * 0.04F);
         float radius = half * 0.35F;
         float size = half * 2.0F;
 
         int theme = ThemeManager.getColor();
         GuiRender.roundedRect(stack, centerX - half, centerY - half, size, size, radius,
-                ColorUtils.multAlpha(theme, alpha * OUTLINE_FILL));
+                ColorUtils.multAlpha(theme, alpha * OUTLINE_RECT_FILL));
         GuiRender.roundedOutline(stack, centerX - half, centerY - half, size, size,
-                OUTLINE_THICKNESS, ColorUtils.multAlpha(theme, alpha), radius);
-        GuiRender.roundedOutline(stack, centerX - half - 2.0F, centerY - half - 2.0F, size + 4.0F, size + 4.0F,
-                0.7F, ColorUtils.multAlpha(ThemeManager.getColor(1), alpha * 0.5F), radius + 2.0F);
+                OUTLINE_RECT_THICKNESS, ColorUtils.multAlpha(theme, alpha), radius);
     }
 
     // ------------------------------------------------------------------
@@ -584,13 +869,14 @@ public final class ViewModel extends Module {
             }
 
             JsonObject json = root.getAsJsonObject();
-            mainX.setValue(readFloat(json, "mainX", 0.0F));
-            mainY.setValue(readFloat(json, "mainY", 0.0F));
-            mainZ.setValue(readFloat(json, "mainZ", 0.0F));
-            offX.setValue(readFloat(json, "offX", 0.0F));
-            offY.setValue(readFloat(json, "offY", 0.0F));
-            offZ.setValue(readFloat(json, "offZ", 0.0F));
-            scale.setValue(readFloat(json, "scale", 1.0F));
+            mainTargetX = mainOffsetX = readFloat(json, "mainX", 0.0F);
+            mainTargetY = mainOffsetY = readFloat(json, "mainY", 0.0F);
+            offTargetX = offOffsetX = readFloat(json, "offX", 0.0F);
+            offTargetY = offOffsetY = readFloat(json, "offY", 0.0F);
+            mainScaleTarget = Mth.clamp(readFloat(json, "mainScale", 1.0F), SCALE_MIN, SCALE_MAX);
+            offScaleTarget = Mth.clamp(readFloat(json, "offScale", 1.0F), SCALE_MIN, SCALE_MAX);
+            mainScaleAnim.setValue(mainScaleTarget);
+            offScaleAnim.setValue(offScaleTarget);
         } catch (Exception exception) {
             Swerve.LOGGER.warn("Failed to load viewmodel layout", exception);
         }
@@ -599,13 +885,12 @@ public final class ViewModel extends Module {
     private void save() {
         try {
             JsonObject json = new JsonObject();
-            json.addProperty("mainX", mainX.get());
-            json.addProperty("mainY", mainY.get());
-            json.addProperty("mainZ", mainZ.get());
-            json.addProperty("offX", offX.get());
-            json.addProperty("offY", offY.get());
-            json.addProperty("offZ", offZ.get());
-            json.addProperty("scale", scale.get());
+            json.addProperty("mainX", mainTargetX);
+            json.addProperty("mainY", mainTargetY);
+            json.addProperty("offX", offTargetX);
+            json.addProperty("offY", offTargetY);
+            json.addProperty("mainScale", mainScaleTarget);
+            json.addProperty("offScale", offScaleTarget);
 
             Files.createDirectories(FILE.getParent());
             Files.writeString(FILE, GSON.toJson(json), StandardCharsets.UTF_8);

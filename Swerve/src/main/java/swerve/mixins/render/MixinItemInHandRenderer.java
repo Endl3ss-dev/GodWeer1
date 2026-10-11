@@ -6,6 +6,7 @@ import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 import com.mojang.blaze3d.vertex.PoseStack;
 
 import swerve.modules.impl.render.ViewModel;
+import swerve.utils.render.HandOutline;
 
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.renderer.ItemInHandRenderer;
@@ -20,10 +21,24 @@ import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 // Руки от первого лица: смещения/масштаб ViewModel, полная замена взмаха (без опускания
-// руки) и гашение сдвига пустой руки. Цели — renderArmWithItem, swingArm,
-// applyItemArmTransform, renderPlayerArm; сигнатуры — mojmap 1.21.4.
+// руки), гашение сдвига пустой руки и маска рук для обводки. Цели — renderHandsWithItems,
+// renderArmWithItem, swingArm, applyItemArmTransform, renderPlayerArm; сигнатуры — mojmap 1.21.4.
 @Mixin(ItemInHandRenderer.class)
 public class MixinItemInHandRenderer {
+
+    // Границы отрисовки рук: здесь снимается глубина до и после, из разницы получается
+    // силуэт рук для обводки и для точного ответа «курсор над рукой?».
+    // require = 0: если имя метода в сборке другое, клиент живёт без обводки, но не падает.
+    @Inject(method = "renderHandsWithItems", at = @At("HEAD"), require = 0)
+    private void swerve$beginHands(CallbackInfo ci) {
+        ViewModel.beginFrame();
+        HandOutline.beforeHands();
+    }
+
+    @Inject(method = "renderHandsWithItems", at = @At("RETURN"), require = 0)
+    private void swerve$endHands(CallbackInfo ci) {
+        HandOutline.afterHands();
+    }
 
     // Единственный pushPose в renderArmWithItem: здесь ещё не применена ни одна ветка
     // анимации, поэтому смещения одинаковы для предмета, пустой руки, карты, арбалета,

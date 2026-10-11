@@ -13,12 +13,17 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 @Mixin(MouseHandler.class)
 public class MixinMouseHandler {
 
-    @Inject(method = "onPress", at = @At("HEAD"))
+    // Двойной клик по руке в чате съедается: иначе чат двигает курсор текста и выделяет слово
+    // ровно в тот момент, когда пользователь тащит руку.
+    @Inject(method = "onPress", at = @At("HEAD"), cancellable = true)
     private void swerve$onMousePress(long window, int button, int action, int modifiers, CallbackInfo ci) {
         if (window != Minecraft.getInstance().getWindow().getWindow()) {
             return;
         }
         KeyBoardUtils.callMouse(button, action);
+        if (KeyBoardUtils.callMousePress(button, action)) {
+            ci.cancel();
+        }
     }
 
     // Колесо перехватывается, только когда ViewModel тащит руку (иначе скролл остаётся ванильным).

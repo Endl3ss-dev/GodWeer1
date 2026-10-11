@@ -54,6 +54,13 @@ public final class KeyBoardUtils {
         return viewModel != null && viewModel.onScroll(yOffset);
     }
 
+    // Клик отдаётся ViewModel: двойной клик по руке в чате начинает перетаскивание.
+    // true — событие съедено, экран (чат) его получать не должен.
+    public static boolean callMousePress(int button, int action) {
+        ViewModel viewModel = ModuleManager.get(ViewModel.class);
+        return viewModel != null && viewModel.onMousePress(button, action);
+    }
+
     // Индексный цикл: метод дёргается из колбэка ввода, итератор здесь лишняя аллокация.
     private static void toggleByKey(int key) {
         List<Module> modules = ModuleManager.getModules();
