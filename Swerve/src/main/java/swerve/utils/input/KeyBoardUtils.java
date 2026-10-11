@@ -2,6 +2,7 @@ package swerve.utils.input;
 
 import swerve.managers.ModuleManager;
 import swerve.modules.Module;
+import swerve.modules.impl.render.ViewModel;
 
 import net.minecraft.client.Minecraft;
 
@@ -40,6 +41,17 @@ public final class KeyBoardUtils {
             return;
         }
         toggleByKey(MOUSE_BUTTON_OFFSET + button);
+    }
+
+    // Скролл отдаётся ViewModel, пока он тащит руку (только при открытом экране).
+    // true — событие съедено, ванильный скролл нужно отменить.
+    public static boolean callScroll(double yOffset) {
+        if (yOffset == 0.0D || Minecraft.getInstance().screen == null) {
+            return false;
+        }
+
+        ViewModel viewModel = ModuleManager.get(ViewModel.class);
+        return viewModel != null && viewModel.onScroll(yOffset);
     }
 
     // Индексный цикл: метод дёргается из колбэка ввода, итератор здесь лишняя аллокация.

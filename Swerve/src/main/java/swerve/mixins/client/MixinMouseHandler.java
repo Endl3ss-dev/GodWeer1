@@ -20,4 +20,16 @@ public class MixinMouseHandler {
         }
         KeyBoardUtils.callMouse(button, action);
     }
+
+    // Колесо перехватывается, только когда ViewModel тащит руку (иначе скролл остаётся ванильным).
+    // require = 0: имя колбэка GLFW может отличаться — тогда просто нет перехвата, без краша.
+    @Inject(method = "onScroll", at = @At("HEAD"), cancellable = true, require = 0)
+    private void swerve$onMouseScroll(long window, double xOffset, double yOffset, CallbackInfo ci) {
+        if (window != Minecraft.getInstance().getWindow().getWindow()) {
+            return;
+        }
+        if (KeyBoardUtils.callScroll(yOffset)) {
+            ci.cancel();
+        }
+    }
 }
