@@ -19,15 +19,15 @@ import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
-// Руки от первого лица: смещения/масштаб ViewModel, взмах без опускания руки и
-// гашение сдвига пустой руки. Цели — renderArmWithItem, swingArm, applyItemArmTransform,
-// renderPlayerArm; сигнатуры соответствуют mojmap 1.21.4.
+// Руки от первого лица: смещения/масштаб ViewModel, полная замена взмаха (без опускания
+// руки) и гашение сдвига пустой руки. Цели — renderArmWithItem, swingArm,
+// applyItemArmTransform, renderPlayerArm; сигнатуры — mojmap 1.21.4.
 @Mixin(ItemInHandRenderer.class)
 public class MixinItemInHandRenderer {
 
-    // Единственный pushPose в renderArmWithItem: точка, где ещё не применена ни одна
-    // ветка анимации, поэтому смещения действуют одинаково для предмета, пустой руки,
-    // карты, арбалета, блока, лука, еды и riptide.
+    // Единственный pushPose в renderArmWithItem: здесь ещё не применена ни одна ветка
+    // анимации, поэтому смещения одинаковы для предмета, пустой руки, карты, арбалета,
+    // блока, лука, еды и riptide.
     @Inject(method = "renderArmWithItem",
             at = @At(value = "INVOKE", target = "Lcom/mojang/blaze3d/vertex/PoseStack;pushPose()V",
                     shift = At.Shift.AFTER))
@@ -38,19 +38,19 @@ public class MixinItemInHandRenderer {
         ViewModel.applyTransform(poseStack, player, hand);
     }
 
-    // Ванильный swingArm: сдвиг руки вниз/в сторону + доворот на -80° по X.
-    // Здесь он заменяется своей версией, где сдвиг и наклон обнулены по умолчанию.
+    // Ванильный swingArm не вызывается вовсе, пока модуль включён: он и делает сдвиг руки
+    // вниз (-0.4/0.2/-0.2 * sin) с доворотом -80° по X.
     @WrapOperation(method = "renderArmWithItem",
             at = @At(value = "INVOKE",
                     target = "Lnet/minecraft/client/renderer/ItemInHandRenderer;swingArm(FFLcom/mojang/blaze3d/vertex/PoseStack;ILnet/minecraft/world/entity/HumanoidArm;)V"))
     private void swerve$swing(ItemInHandRenderer instance, float swingProgress, float equippedProgress,
                               PoseStack poseStack, int armX, HumanoidArm arm, Operation<Void> original) {
-        if (!ViewModel.applySwing(poseStack, arm, armX, swingProgress, equippedProgress)) {
+        if (!ViewModel.applySwing(poseStack, arm, swingProgress)) {
             original.call(instance, swingProgress, equippedProgress, poseStack, armX, arm);
         }
     }
 
-    // equippedProgress = 0 — рука в финальной позиции: при смене предмета она не падает вниз.
+    // equippedProgress = 0 — рука сразу в финальной позиции: при смене предмета не падает.
     @WrapOperation(method = "renderArmWithItem",
             at = @At(value = "INVOKE",
                     target = "Lnet/minecraft/client/renderer/ItemInHandRenderer;applyItemArmTransform(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/world/entity/HumanoidArm;F)V"))
@@ -59,18 +59,8 @@ public class MixinItemInHandRenderer {
         original.call(instance, poseStack, arm, ViewModel.equipProgress(equippedProgress));
     }
 
-    // То же самое внутри ванильного swingArm: без этого «Без опускания при смене»
-    // работало бы во всех ветках, кроме взмаха предметом.
-    @WrapOperation(method = "swingArm", require = 0,
-            at = @At(value = "INVOKE",
-                    target = "Lnet/minecraft/client/renderer/ItemInHandRenderer;applyItemArmTransform(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/world/entity/HumanoidArm;F)V"))
-    private void swerve$equipInSwing(ItemInHandRenderer instance, PoseStack poseStack, HumanoidArm arm,
-                                     float equippedProgress, Operation<Void> original) {
-        original.call(instance, poseStack, arm, ViewModel.equipProgress(equippedProgress));
-    }
-
     // Пустая рука: renderPlayerArm считает свой сдвиг сам, поэтому в «Статично» взмах
-    // обнуляется аргументом, а в «На месте» сдвиг гасится обратным translate.
+    // обнуляется аргументом, а в остальных пресетах сдвиг гасится обратным translate.
     @WrapOperation(method = "renderArmWithItem", require = 0,
             at = @At(value = "INVOKE",
                     target = "Lnet/minecraft/client/renderer/ItemInHandRenderer;renderPlayerArm(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/client/renderer/MultiBufferSource;IFFLnet/minecraft/world/entity/HumanoidArm;)V"))
