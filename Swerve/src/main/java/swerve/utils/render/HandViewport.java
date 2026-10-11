@@ -20,16 +20,14 @@ public final class HandViewport {
     private static final float BASIS_STEP = 0.25F;
     private static final long STALE_NANOS = 250_000_000L;
     private static final float MIN_UNITS = 1.0E-3F;
-    private static final float MIN_DEPTH = 1.0E-4F;
 
     private static final Matrix4f COMBINED = new Matrix4f();
-    private static final Matrix4f VIEW = new Matrix4f();
     private static final float[] POINT = new float[2];
     private static final float[] BASIS_X = new float[2];
     private static final float[] BASIS_Y = new float[2];
 
-    private static final Matrix4f[] BASE_MATRIX = {new Matrix4f(), new Matrix4f()};
-    private static final float[] BASE_DEPTH = new float[SLOTS];
+    private static final float[] BASE_PPU_X = new float[SLOTS];
+    private static final float[] BASE_PPU_Y = new float[SLOTS];
     private static final boolean[] baseCaptured = new boolean[SLOTS];
 
     private static final boolean[] captured = new boolean[SLOTS];
@@ -54,25 +52,52 @@ public final class HandViewport {
         return wanted;
     }
 
+    // [!] База редактора: пиксели-на-единицу в той точке poseStack, где ViewModel кладёт
+    // своё смещение (до translate/scale). Раньше здесь считались матрица и глубина, которые
+    // никто не читал, а drag() делил дельту курсора на уже отмасштабированный ppu — при
+    // масштабе руки != 1 рука отставала от курсора ровно в scale раз.
     public static void captureBase(InteractionHand hand, PoseStack poseStack, float handX, float handY, float handZ) {
         int slot = slot(hand);
         if (slot < 0 || poseStack == null) {
             return;
         }
 
+        Minecraft minecraft = Minecraft.getInstance();
+        int width = minecraft.getWindow().getGuiScaledWidth();
+        int height = minecraft.getWindow().getGuiScaledHeight();
         PoseStack.Pose pose = poseStack.last();
         Matrix4fc projection = RenderSystem.getProjectionMatrix();
         Matrix4fc modelView = RenderSystem.getModelViewMatrix();
-        if (pose == null || projection == null || modelView == null) {
+        if (width <= 0 || height <= 0 || pose == null || projection == null || modelView == null) {
+            baseCaptured[slot] = false;
             return;
         }
 
         COMBINED.set(projection).mul(modelView).mul(pose.pose());
-        BASE_MATRIX[slot].set(COMBINED);
 
-        VIEW.set(modelView).mul(pose.pose());
-        float depth = -(VIEW.m02() * handX + VIEW.m12() * handY + VIEW.m22() * handZ + VIEW.m32());
-        BASE_DEPTH[slot] = depth > MIN_DEPTH ? depth : 0.0F;
+        if (!project(COMBINED, handX, handY, handZ, POINT, width, height)) {
+            baseCaptured[slot] = false;
+            return;
+        }
+
+        float centerX = POINT[0];
+        float centerY = POINT[1];
+
+        if (!project(COMBINED, handX + BASIS_STEP, handY, handZ, BASIS_X, width, height)
+                || !project(COMBINED, handX, handY + BASIS_STEP, handZ, BASIS_Y, width, height)) {
+            baseCaptured[slot] = false;
+            return;
+        }
+
+        float pixelsX = Math.abs(BASIS_X[0] - centerX) / BASIS_STEP;
+        float pixelsY = Math.abs(BASIS_Y[1] - centerY) / BASIS_STEP;
+        if (pixelsX < MIN_UNITS || pixelsY < MIN_UNITS) {
+            baseCaptured[slot] = false;
+            return;
+        }
+
+        BASE_PPU_X[slot] = pixelsX;
+        BASE_PPU_Y[slot] = pixelsY;
         baseCaptured[slot] = true;
     }
 
@@ -147,23 +172,18 @@ public final class HandViewport {
         return true;
     }
 
-    public static boolean isBaseReady(InteractionHand hand) {
+    public static float basePixelsPerUnitX(InteractionHand hand) {
         int slot = slot(hand);
-        return slot >= 0 && baseCaptured[slot] && BASE_DEPTH[slot] > MIN_DEPTH;
+        return slot < 0 || !baseCaptured[slot] ? 0.0F : BASE_PPU_X[slot];
+    }
+
+    public static float basePixelsPerUnitY(InteractionHand hand) {
+        int slot = slot(hand);
+        return slot < 0 || !baseCaptured[slot] ? 0.0F : BASE_PPU_Y[slot];
     }
 
     public static boolean isAnyReady() {
         return isReady(InteractionHand.MAIN_HAND) || isReady(InteractionHand.OFF_HAND);
-    }
-
-    public static Matrix4fc matrix(InteractionHand hand) {
-        int slot = slot(hand);
-        return slot < 0 ? null : BASE_MATRIX[slot];
-    }
-
-    public static float depth(InteractionHand hand) {
-        int slot = slot(hand);
-        return slot < 0 ? 0.0F : BASE_DEPTH[slot];
     }
 
     public static float anchorX(InteractionHand hand) {
@@ -219,8 +239,10 @@ public final class HandViewport {
         consume();
         baseCaptured[MAIN] = false;
         baseCaptured[OFF] = false;
-        BASE_DEPTH[MAIN] = 0.0F;
-        BASE_DEPTH[OFF] = 0.0F;
+        BASE_PPU_X[MAIN] = 0.0F;
+        BASE_PPU_Y[MAIN] = 0.0F;
+        BASE_PPU_X[OFF] = 0.0F;
+        BASE_PPU_Y[OFF] = 0.0F;
         anchorX[MAIN] = 0.0F;
         anchorY[MAIN] = 0.0F;
         anchorX[OFF] = 0.0F;

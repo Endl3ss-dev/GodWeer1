@@ -36,6 +36,7 @@ import org.lwjgl.glfw.GLFW;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
+import java.nio.file.StandardCopyOption;
 import java.util.List;
 
 public final class ViewModel extends Module {
@@ -81,10 +82,21 @@ public final class ViewModel extends Module {
     private static final float OUTLINE_RECT_THICKNESS = 1.4F;
 
     private static final double C1 = 1.70158D;
-    private static final double C3 = 2.70158D;
+    // [!] Было 2.70158 (= C1 + 1) при мёртвом C1: для easeInOutBack нужен c2 = c1 * 1.525,
+    // из-за опечатки пресет «Плавная» давал не тот выброс.
+    private static final double C3 = C1 * 1.525D;
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path FILE = FabricLoader.getInstance().getConfigDir().resolve("swerve/viewmodel.json");
+
+    // Конфиг уходит на диск из отдельного демона: на игровом потоке остаётся только сборка
+    // JSON, а createDirectories / writeString / move — это блокирующие вызовы (правило: не
+    // блокировать render/tick). Дебаунс склеивает серию правок от колеса и драга.
+    private static final long WRITE_DEBOUNCE_MS = 400L;
+    private static final Object WRITE_LOCK = new Object();
+    private static volatile String pendingJson;
+    private static volatile boolean writePending;
+    private static Thread configWriter;
 
     private static boolean eventsRegistered;
     private static ViewModel instance;
@@ -119,6 +131,16 @@ public final class ViewModel extends Module {
 
     private boolean loaded;
     private long lastFrameNanos;
+
+    // Снимок настроек: их меняют и островок, и панель настроек, и меню анимаций, поэтому
+    // сравниваем раз в кадр без аллокаций и помечаем конфиг грязным только на реальном изменении.
+    private boolean settingsSnapshotted;
+    private float snapStrength;
+    private float snapSpeed;
+    private float snapOutlineSize;
+    private boolean snapOnlyAura;
+    private boolean snapOutline;
+    private int snapAnim;
 
     private boolean holding;
     private InteractionHand grabbed;
@@ -180,20 +202,34 @@ public final class ViewModel extends Module {
         holding = false;
         grabbed = null;
         outlineHand = null;
+        pulseHand = null;
         animMenuOpen = false;
         HandOutline.setWanted(false);
+        HandViewport.setWanted(false);
         super.onDisable();
+        // [!] Выключение — последняя точка, где конфиг ещё можно дописать синхронно
+        // (дальше клиент может быть закрыт): сбрасываем накопившийся дебаунс.
+        if (writePending) {
+            saveNow();
+        }
+    }
+
+    // Единое условие для обоих хелперов рук: раньше beginFrame() проверял игрока/мир/вид
+    // от первого лица, а onHudRender() — только вкладку Hands, из-за чего флаг wanted
+    // флапал каждый кадр и HandOutline.release() уничтожал FBO по кругу.
+    private boolean handsVisible(Minecraft minecraft) {
+        return isEnable()
+                && minecraft.player != null
+                && minecraft.level != null
+                && minecraft.options.getCameraType().isFirstPerson();
     }
 
     public static void beginFrame() {
         ViewModel module = instance;
         Minecraft minecraft = Minecraft.getInstance();
-        boolean wanted = module != null && module.isEnable()
-                && minecraft.player != null
-                && minecraft.level != null
-                && minecraft.options.getCameraType().isFirstPerson();
-        HandViewport.setWanted(wanted);
-        HandOutline.setWanted(wanted && module.editorContext());
+        boolean visible = module != null && module.handsVisible(minecraft);
+        HandViewport.setWanted(visible);
+        HandOutline.setWanted(visible && module.editorContext());
     }
 
     public static void applyTransform(PoseStack poseStack, AbstractClientPlayer player, InteractionHand hand) {
@@ -231,14 +267,7 @@ public final class ViewModel extends Module {
         }
 
         if (main && module.lastMainArm != player.getMainArm()) {
-            module.handleMainHandSwap();
-        }
-    }
-
-    public static void applyPosition(InteractionHand hand, PoseStack poseStack) {
-        Minecraft mc = Minecraft.getInstance();
-        if (mc.player != null) {
-            applyTransform(poseStack, mc.player, hand);
+            module.handleMainHandSwap(player.getMainArm());
         }
     }
 
@@ -249,15 +278,14 @@ public final class ViewModel extends Module {
         }
         module.load();
 
-        float side = arm == HumanoidArm.RIGHT ? 1.0F : -1.0F;
-        poseStack.translate(side * ARM_X, ARM_Y, ARM_Z);
-
+        // [!] К этому моменту applyItemArmTransform уже поставил начало координат в якорь руки
+        // (side*0.56, -0.52, -0.72). Дополнительный translate на тот же якорь уносил точку
+        // поворота пресета от руки ещё на якорь: при вращении на 45° рука уезжала на ~0.7
+        // единицы вбок, а пресет «1.8» не совпадал с ванильным взмахом.
         float progress = Mth.clamp(swingProgress * module.speed.get(), 0.0F, 1.0F);
         if (progress > 0.0F) {
             module.renderPreset(poseStack, progress, arm);
         }
-
-        poseStack.translate(-side * ARM_X, -ARM_Y, -ARM_Z);
         return true;
     }
 
@@ -383,9 +411,11 @@ public final class ViewModel extends Module {
     }
 
     private static double easeInOutBack(double x) {
+        // Умножение вместо Math.pow(v, 2): метод в горячем пути (каждый кадр взмаха).
+        double doubled = 2.0D * x;
         return x < 0.5D
-                ? (Math.pow(2.0D * x, 2.0D) * ((C3 + 1.0D) * 2.0D * x - C3)) / 2.0D
-                : (Math.pow(2.0D * x - 2.0D, 2.0D) * ((C3 + 1.0D) * (x * 2.0D - 2.0D) + C3) + 2.0D) / 2.0D;
+                ? (doubled * doubled * ((C3 + 1.0D) * doubled - C3)) / 2.0D
+                : ((doubled - 2.0D) * (doubled - 2.0D) * ((C3 + 1.0D) * (doubled - 2.0D) + C3) + 2.0D) / 2.0D;
     }
 
     public boolean isHandHovered(float mouseX, float mouseY) {
@@ -406,14 +436,6 @@ public final class ViewModel extends Module {
                 return true;
             }
         }
-        return false;
-    }
-
-    public boolean onScroll(double yOffset) {
-        return false;
-    }
-
-    public boolean onMousePress(int button, int action) {
         return false;
     }
 
@@ -439,7 +461,7 @@ public final class ViewModel extends Module {
             offScaleAnim.setSpeed(SCALE_ANIM_SPEED);
             offScaleAnim.update(offScaleTarget);
         }
-        save();
+        markDirty();
         return true;
     }
 
@@ -473,8 +495,17 @@ public final class ViewModel extends Module {
             return;
         }
 
-        float ppuX = HandViewport.pixelsPerUnitX(grabbed);
-        float ppuY = HandViewport.pixelsPerUnitY(grabbed);
+        // [!] Смещение кладётся в poseStack ДО scale, поэтому делить дельту курсора нужно на
+        // «базовый» ppu (снятый до нашего масштаба). Деление на отмасштабированный ppu
+        // рассинхронизировало руку и курсор: при масштабе 2 рука шла вдвое медленнее мыши.
+        float ppuX = HandViewport.basePixelsPerUnitX(grabbed);
+        float ppuY = HandViewport.basePixelsPerUnitY(grabbed);
+        if (ppuX <= 1.0F) {
+            ppuX = HandViewport.pixelsPerUnitX(grabbed);
+        }
+        if (ppuY <= 1.0F) {
+            ppuY = HandViewport.pixelsPerUnitY(grabbed);
+        }
         if (ppuX <= 1.0F) {
             ppuX = (float) guiHeight * 0.95F;
         }
@@ -554,7 +585,7 @@ public final class ViewModel extends Module {
             offScaleAnim.setSpeed(SCALE_ANIM_SPEED);
             offScaleAnim.update(offScaleTarget);
         }
-        save();
+        markDirty();
     }
 
     private void resetAll() {
@@ -574,7 +605,7 @@ public final class ViewModel extends Module {
         offScaleAnim.setSpeed(SCALE_ANIM_SPEED);
         mainScaleAnim.update(mainScaleTarget);
         offScaleAnim.update(offScaleTarget);
-        save();
+        markDirty();
     }
 
     private void release(boolean keepOutlineHand) {
@@ -587,20 +618,15 @@ public final class ViewModel extends Module {
         if (!keepOutlineHand) {
             outlineHand = null;
         }
-        save();
+        markDirty();
     }
 
-    private void handleMainHandSwap() {
-        Minecraft minecraft = Minecraft.getInstance();
-        if (minecraft.player == null) {
-            return;
-        }
-        HumanoidArm arm = minecraft.player.getMainArm();
-        if (lastMainArm == null) {
+    // [!] Вызывается из applyTransform, то есть из отрисовки рук: файловых вызовов здесь
+    // быть не должно (только markDirty), а руку берём из аргумента, а не повторным
+    // обращением к Minecraft.getInstance().player.
+    private void handleMainHandSwap(HumanoidArm arm) {
+        if (lastMainArm == null || lastMainArm == arm) {
             lastMainArm = arm;
-            return;
-        }
-        if (lastMainArm == arm) {
             return;
         }
         lastMainArm = arm;
@@ -618,7 +644,7 @@ public final class ViewModel extends Module {
 
         mainScaleAnim.update(mainScaleTarget);
         offScaleAnim.update(offScaleTarget);
-        save();
+        markDirty();
     }
 
     public boolean editorContext() {
@@ -661,8 +687,14 @@ public final class ViewModel extends Module {
         return animMenuOpen;
     }
 
-    public void closeAnimMenu() {
+    // [!] Выход из редактора: смена вкладки островка или закрытие GUI. Без этого захват
+    // переживал контекст — рука оставалась с пульсом (масштаб ×1.06), оффсеты переставали
+    // сглаживаться, а следующий вход в GUI двигал руку без клика и съедал релиз островка.
+    public void cancelEditor() {
         animMenuOpen = false;
+        if (holding) {
+            release(true);
+        }
     }
 
     public boolean editorMiddleClick(float mouseX, float mouseY) {
@@ -705,7 +737,7 @@ public final class ViewModel extends Module {
                     int index = (int) (relY / itemH);
                     if (index >= 0 && index < modes.size()) {
                         anim.set(modes.get(index));
-                        save();
+                        markDirty();
                         animMenuOpen = false;
                         return true;
                     }
@@ -781,9 +813,17 @@ public final class ViewModel extends Module {
         }
 
         load();
+        syncSettings();
         float delta = computeDeltaSeconds();
 
-        boolean inHandsTab = editorContext();
+        // [!] Условие то же, что в beginFrame(): иначе вкладка Hands в третьем лице держала
+        // HandOutline в wanted=true и флапала release() каждый кадр.
+        boolean inHandsTab = editorContext() && handsVisible(minecraft);
+
+        // [!] Захват умирает вместе с контекстом редактора (страховка к cancelEditor()).
+        if (holding && !inHandsTab) {
+            release(true);
+        }
 
         if (holding) {
             mainOffsetX = mainTargetX;
@@ -888,47 +928,169 @@ public final class ViewModel extends Module {
         }
         loaded = true;
 
-        if (!Files.exists(FILE)) {
-            return;
-        }
-        try {
-            String json = Files.readString(FILE, StandardCharsets.UTF_8);
-            JsonElement parsed = JsonParser.parseString(json);
-            if (!parsed.isJsonObject()) {
-                return;
+        if (Files.exists(FILE)) {
+            try {
+                String json = Files.readString(FILE, StandardCharsets.UTF_8);
+                JsonElement parsed = JsonParser.parseString(json);
+                if (parsed.isJsonObject()) {
+                    applyConfig(parsed.getAsJsonObject());
+                }
+            } catch (Throwable t) {
+                Swerve.LOGGER.error("Failed to load ViewModel config", t);
             }
-            JsonObject object = parsed.getAsJsonObject();
+        }
 
-            mainTargetX = readFloat(object, "mainX", 0.0F);
-            mainTargetY = readFloat(object, "mainY", 0.0F);
-            offTargetX = readFloat(object, "offX", 0.0F);
-            offTargetY = readFloat(object, "offY", 0.0F);
+        syncSettings();
+    }
 
-            mainOffsetX = mainTargetX;
-            mainOffsetY = mainTargetY;
-            offOffsetX = offTargetX;
-            offOffsetY = offTargetY;
+    private void applyConfig(JsonObject object) {
+        mainTargetX = readFloat(object, "mainX", 0.0F);
+        mainTargetY = readFloat(object, "mainY", 0.0F);
+        offTargetX = readFloat(object, "offX", 0.0F);
+        offTargetY = readFloat(object, "offY", 0.0F);
 
-            mainScaleTarget = Mth.clamp(readFloat(object, "mainScale", 1.0F), SCALE_MIN, SCALE_MAX);
-            offScaleTarget = Mth.clamp(readFloat(object, "offScale", 1.0F), SCALE_MIN, SCALE_MAX);
-            mainScaleAnim.update(mainScaleTarget);
-            offScaleAnim.update(offScaleTarget);
-        } catch (Throwable t) {
-            Swerve.LOGGER.error("Failed to load ViewModel config", t);
+        mainOffsetX = mainTargetX;
+        mainOffsetY = mainTargetY;
+        offOffsetX = offTargetX;
+        offOffsetY = offTargetY;
+
+        mainScaleTarget = Mth.clamp(readFloat(object, "mainScale", 1.0F), SCALE_MIN, SCALE_MAX);
+        offScaleTarget = Mth.clamp(readFloat(object, "offScale", 1.0F), SCALE_MIN, SCALE_MAX);
+        // [!] setValue, а не update: update() запускал анимацию от 1.0 к сохранённому
+        // значению, и руки на глазах росли при каждом включении модуля и входе в мир.
+        mainScaleAnim.setValue(mainScaleTarget);
+        offScaleAnim.setValue(offScaleTarget);
+
+        // [!] Настройки раньше не сохранялись вовсе, хотя animMenuClick звал save():
+        // выбранная в Hands анимация и слайдеры островка сбрасывались после перезапуска.
+        // ModeSetting.set() сам игнорирует неизвестное значение — старый конфиг не ломается.
+        strength.setValue(readFloat(object, "strength", strength.get()));
+        speed.setValue(readFloat(object, "speed", speed.get()));
+        outlineSize.setValue(readFloat(object, "outlineSize", outlineSize.get()));
+        onlyAura.setState(readBoolean(object, "onlyAura", onlyAura.get()));
+        outline.setState(readBoolean(object, "outline", outline.get()));
+        anim.set(readString(object, "anim", anim.getCurrent()));
+    }
+
+    // Снимок настроек без аллокаций: 6 сравнений раз в кадр, markDirty только на изменении.
+    private void syncSettings() {
+        float strengthNow = strength.get();
+        float speedNow = speed.get();
+        float outlineSizeNow = outlineSize.get();
+        boolean onlyAuraNow = onlyAura.get();
+        boolean outlineNow = outline.get();
+        int animNow = anim.getIndex();
+
+        boolean changed = snapStrength != strengthNow
+                || snapSpeed != speedNow
+                || snapOutlineSize != outlineSizeNow
+                || snapOnlyAura != onlyAuraNow
+                || snapOutline != outlineNow
+                || snapAnim != animNow;
+
+        snapStrength = strengthNow;
+        snapSpeed = speedNow;
+        snapOutlineSize = outlineSizeNow;
+        snapOnlyAura = onlyAuraNow;
+        snapOutline = outlineNow;
+        snapAnim = animNow;
+
+        if (changed && settingsSnapshotted) {
+            markDirty();
+        }
+        settingsSnapshotted = true;
+    }
+
+    private void markDirty() {
+        pendingJson = buildConfig();
+        synchronized (WRITE_LOCK) {
+            writePending = true;
+            if (configWriter == null) {
+                configWriter = createWriter();
+                configWriter.start();
+            }
+            WRITE_LOCK.notifyAll();
         }
     }
 
-    private void save() {
+    // JSON собирается на игровом потоке (значения несутся сюда целиком, гонки нет),
+    // а файловые вызовы делает демон.
+    private String buildConfig() {
+        JsonObject object = new JsonObject();
+        object.addProperty("mainX", mainTargetX);
+        object.addProperty("mainY", mainTargetY);
+        object.addProperty("offX", offTargetX);
+        object.addProperty("offY", offTargetY);
+        object.addProperty("mainScale", mainScaleTarget);
+        object.addProperty("offScale", offScaleTarget);
+        object.addProperty("strength", strength.get());
+        object.addProperty("speed", speed.get());
+        object.addProperty("outlineSize", outlineSize.get());
+        object.addProperty("onlyAura", onlyAura.get());
+        object.addProperty("outline", outline.get());
+        object.addProperty("anim", anim.getCurrent());
+        return GSON.toJson(object);
+    }
+
+    private static Thread createWriter() {
+        Thread thread = new Thread(ViewModel::writeLoop, "Swerve-ViewModel-Config");
+        thread.setDaemon(true);
+        return thread;
+    }
+
+    private static void writeLoop() {
+        while (true) {
+            String json;
+            synchronized (WRITE_LOCK) {
+                while (!writePending) {
+                    try {
+                        WRITE_LOCK.wait();
+                    } catch (InterruptedException interrupted) {
+                        Thread.currentThread().interrupt();
+                        return;
+                    }
+                }
+                try {
+                    WRITE_LOCK.wait(WRITE_DEBOUNCE_MS);
+                } catch (InterruptedException interrupted) {
+                    Thread.currentThread().interrupt();
+                    return;
+                }
+                json = pendingJson;
+                pendingJson = null;
+                writePending = false;
+            }
+
+            if (json != null) {
+                writeConfig(json);
+            }
+        }
+    }
+
+    // Синхронный сброс накопленного: только на выключении модуля.
+    private void saveNow() {
+        synchronized (WRITE_LOCK) {
+            pendingJson = null;
+            writePending = false;
+            WRITE_LOCK.notifyAll();
+        }
+        writeConfig(buildConfig());
+    }
+
+    private static void writeConfig(String json) {
         try {
-            Files.createDirectories(FILE.getParent());
-            JsonObject object = new JsonObject();
-            object.addProperty("mainX", mainTargetX);
-            object.addProperty("mainY", mainTargetY);
-            object.addProperty("offX", offTargetX);
-            object.addProperty("offY", offTargetY);
-            object.addProperty("mainScale", mainScaleTarget);
-            object.addProperty("offScale", offScaleTarget);
-            Files.writeString(FILE, GSON.toJson(object), StandardCharsets.UTF_8);
+            Path parent = FILE.getParent();
+            if (parent != null) {
+                Files.createDirectories(parent);
+            }
+            // Запись во временный файл и move: краш/выход посреди записи не рвёт конфиг.
+            Path temp = FILE.resolveSibling(FILE.getFileName() + ".tmp");
+            Files.writeString(temp, json, StandardCharsets.UTF_8);
+            try {
+                Files.move(temp, FILE, StandardCopyOption.REPLACE_EXISTING, StandardCopyOption.ATOMIC_MOVE);
+            } catch (Throwable atomicUnsupported) {
+                Files.move(temp, FILE, StandardCopyOption.REPLACE_EXISTING);
+            }
         } catch (Throwable t) {
             Swerve.LOGGER.error("Failed to save ViewModel config", t);
         }
@@ -940,6 +1102,28 @@ public final class ViewModel extends Module {
         }
         try {
             return object.get(member).getAsFloat();
+        } catch (Throwable ignored) {
+            return fallback;
+        }
+    }
+
+    private static boolean readBoolean(JsonObject object, String member, boolean fallback) {
+        if (object == null || !object.has(member)) {
+            return fallback;
+        }
+        try {
+            return object.get(member).getAsBoolean();
+        } catch (Throwable ignored) {
+            return fallback;
+        }
+    }
+
+    private static String readString(JsonObject object, String member, String fallback) {
+        if (object == null || !object.has(member)) {
+            return fallback;
+        }
+        try {
+            return object.get(member).getAsString();
         } catch (Throwable ignored) {
             return fallback;
         }

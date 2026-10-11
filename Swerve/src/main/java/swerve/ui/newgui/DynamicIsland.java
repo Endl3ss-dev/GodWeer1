@@ -201,7 +201,10 @@ public class DynamicIsland {
         }
 
         float sScale = parent.getResolutionScale();
-        float buttonY = y + 5.625f * sScale;
+        // [!] Тот же отступ, что в render(): там кнопки рисуются на y + 2.625*sScale, а клик
+        // проверялся от y + 5.625*sScale — верхние 3px вкладки (в т.ч. HANDS) не нажимались,
+        // зато срабатывали 3px под островком.
+        float buttonY = y + 2.625f * sScale;
         float buttonH = 15.0f * sScale;
         float currentX = x + PADDING * sScale;
 

@@ -206,7 +206,8 @@ public class ClickGuiScreen extends Screen {
         if (tab != DynamicIsland.IslandTab.HANDS) {
             ViewModel vm = ModuleManager.get(ViewModel.class);
             if (vm != null) {
-                vm.closeAnimMenu();
+                // [!] cancelEditor закрывает и меню анимаций, и незавершённый захват руки.
+                vm.cancelEditor();
             }
         }
 
@@ -526,7 +527,7 @@ public class ClickGuiScreen extends Screen {
                         return true;
                     }
                 }
-                if (button == GLFW.GLFW_MOUSE_BUTTON_MIDDLE || button == 2) {
+                if (button == GLFW.GLFW_MOUSE_BUTTON_MIDDLE) {
                     if (viewModel.editorMiddleClick((float) mouseX, (float) mouseY)) {
                         return true;
                     }
@@ -559,7 +560,7 @@ public class ClickGuiScreen extends Screen {
         if (GuiStyle.showIsland() && dynamicIsland.mouseDragged((int) mouseX, (int) mouseY)) {
             return true;
         }
-        if (currentViewMode == ViewMode.HANDS) {
+        if (currentViewMode == ViewMode.HANDS && button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
             ViewModel viewModel = ModuleManager.get(ViewModel.class);
             if (viewModel != null && viewModel.isHolding()) {
                 viewModel.editorDrag((float) mouseX, (float) mouseY);
@@ -575,7 +576,9 @@ public class ClickGuiScreen extends Screen {
             dynamicIsland.mouseReleased();
         }
 
-        if (currentViewMode == ViewMode.HANDS) {
+        // [!] Только ЛКМ: захват начинается левой кнопкой, а отпускание ПКМ/СКМ раньше
+        // обрывало драг и съедало событие, не доходя до панелей.
+        if (currentViewMode == ViewMode.HANDS && button == GLFW.GLFW_MOUSE_BUTTON_LEFT) {
             ViewModel viewModel = ModuleManager.get(ViewModel.class);
             if (viewModel != null && viewModel.isHolding()) {
                 viewModel.editorRelease();
@@ -676,7 +679,8 @@ public class ClickGuiScreen extends Screen {
         scale = 0.0f;
         ViewModel vm = ModuleManager.get(ViewModel.class);
         if (vm != null) {
-            vm.closeAnimMenu();
+            // [!] Закрытие GUI с зажатым драгом раньше оставлял holding=true навсегда.
+            vm.cancelEditor();
         }
         if (themePanel != null) {
             themePanel.startClosingAnimation();
