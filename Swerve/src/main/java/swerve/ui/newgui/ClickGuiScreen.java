@@ -16,6 +16,8 @@ import org.lwjgl.glfw.GLFW;
 
 import java.util.ArrayList;
 
+// ClickGuiScreen из исходного клиента (newgui), портирован на 1.21.4 + Mojang mappings.
+// Режимы зафиксированы на дефолтах исходника: панели «Новые», настройки «Под модулем».
 public class ClickGuiScreen extends Screen {
 
     private final ArrayList<Panel> panels = new ArrayList<>();
@@ -46,6 +48,7 @@ public class ClickGuiScreen extends Screen {
         UI, CLIENT, HANDS, INTERFACE
     }
 
+    // Категории, показывающиеся рядом в режиме UI (INTERFACE — отдельная вкладка).
     private static ModuleCategory[] uiCategories() {
         ModuleCategory[] all = ModuleCategory.values();
         ModuleCategory[] out = new ModuleCategory[all.length - 1];
@@ -71,6 +74,7 @@ public class ClickGuiScreen extends Screen {
         return dynamicIsland;
     }
 
+    // Исходный метод во всех ветках возвращал 1, поэтому адаптивный масштаб вырожден — так и оставлено.
     public float getResolutionScale() {
         return resolutionScale;
     }
@@ -214,7 +218,7 @@ public class ClickGuiScreen extends Screen {
 
                 ModuleCategory[] categories = uiCategories();
                 float totalWidth = categories.length * panelWidth
-                    + (categories.length - 1) * panelSpacing;
+                        + (categories.length - 1) * panelSpacing;
                 float offsetX = client.getWindow().getGuiScaledWidth() / 2.0f - totalWidth / 2.0f;
                 for (Panel panel : panels) {
                     panel.setX(offsetX);
@@ -253,6 +257,7 @@ public class ClickGuiScreen extends Screen {
                     interfacePanel.setX(-1000.0f);
                 }
             }
+
             case INTERFACE -> {
                 currentViewMode = ViewMode.INTERFACE;
                 for (Panel panel : panels) {
@@ -277,6 +282,7 @@ public class ClickGuiScreen extends Screen {
     public void render(GuiGraphics context, int mouseX, int mouseY, float partialTicks) {
         PoseStack stack = context.pose();
         long currentTime = System.currentTimeMillis();
+        // Снапшот мира для блюра — до отрисовки GUI, иначе панели попадают в блюр друг друга.
         GuiBlur.beginFrame(GuiTheme.blurStrength());
         scaleV = Mathf.fast(scaleV, scale, GuiStyle.anim(16.0f));
 
@@ -365,39 +371,59 @@ public class ClickGuiScreen extends Screen {
 
         float scaledWidth = Minecraft.getInstance().getWindow().getGuiScaledWidth();
         float scaledHeight = Minecraft.getInstance().getWindow().getGuiScaledHeight();
-        if (bestDescription != null && bestDescription.description() != null && !bestDescription.description().isEmpty()) {
-            renderDescription(stack, bestDescription.description(), bestDescription.alpha(), scaledWidth, scaledHeight);
-        } else {
+
+        if (bestDescription != null && bestDescription.alpha() > 0.01f && !bestDescription.description().isEmpty()) {
+            renderDescription(stack, bestDescription.description(),
+                    bestDescription.alpha() * guiFadeAlpha * GuiStyle.descriptionAlpha(),
+                    scaledWidth, scaledHeight);
+        } else if (!lastDescription.isEmpty()) {
             lastDescription = "";
             descriptionTextLength = 0;
-            descriptionWidthAnim = 0.0f;
+            descriptionTextStartTime = 0L;
         }
 
-        GuiBlur.endFrame();
         super.render(context, mouseX, mouseY, partialTicks);
+        GuiBlur.endFrame();
     }
 
-    private void renderUIPanels(PoseStack stack, double mouseX, double mouseY, long currentTime) {
+    private void renderUIPanels(PoseStack stack, int mouseX, int mouseY, long currentTime) {
         for (int i = 0; i < panels.size(); i++) {
             Panel panel = panels.get(i);
+            panel.updateAnimation(currentTime, scaleV);
             if (panel.getAnimProgress() > 0.01f || !closing) {
-                panel.render(stack, (float) mouseX, (float) mouseY, currentTime, ctrlPressed, guiFadeAlpha);
+                stack.pushPose();
+                stack.translate(0.0f, 0.0f, i * 0.01f);
+                panel.render(stack, mouseX, mouseY);
+                stack.popPose();
             }
         }
     }
 
-    private void renderClientPanel(PoseStack stack, double mouseX, double mouseY, long currentTime) {
-        if (themePanel != null && (themePanel.getAnimProgress() > 0.01f || !closing)) {
-            themePanel.render(stack, (float) mouseX, (float) mouseY, currentTime, ctrlPressed, guiFadeAlpha);
+    private void renderClientPanel(PoseStack stack, int mouseX, int mouseY, long currentTime) {
+        if (themePanel != null) {
+            themePanel.updateAnimation(currentTime, scaleV);
+            if (themePanel.getAnimProgress() > 0.01f || !closing) {
+                stack.pushPose();
+                stack.translate(0.0f, 0.0f, 100.0f);
+                themePanel.render(stack, mouseX, mouseY);
+                stack.popPose();
+            }
         }
     }
 
-    private void renderInterfacePanel(PoseStack stack, double mouseX, double mouseY, long currentTime) {
-        if (interfacePanel != null && (interfacePanel.getAnimProgress() > 0.01f || !closing)) {
-            interfacePanel.render(stack, (float) mouseX, (float) mouseY, currentTime, ctrlPressed, guiFadeAlpha);
+    private void renderInterfacePanel(PoseStack stack, int mouseX, int mouseY, long currentTime) {
+        if (interfacePanel != null) {
+            interfacePanel.updateAnimation(currentTime, scaleV);
+            if (interfacePanel.getAnimProgress() > 0.01f || !closing) {
+                stack.pushPose();
+                stack.translate(0.0f, 0.0f, 100.0f);
+                interfacePanel.render(stack, mouseX, mouseY);
+                stack.popPose();
+            }
         }
     }
 
+    // Вкладка Hands — живой редактор: панели нет, руки таскаются прямо за экраном.
     private void renderHandsHint(PoseStack stack) {
         float sScale = getResolutionScale();
         Minecraft client = Minecraft.getInstance();
@@ -454,28 +480,25 @@ public class ClickGuiScreen extends Screen {
         }
 
         float textWidth = GuiFonts.SF_REGULAR.getWidth(displayText, descFontSize);
-        float textHeight = GuiFonts.SF_REGULAR.getHeight(displayText, descFontSize);
+        float descHeight = 24.0f * sScale;
 
-        float minWidth = 140.0f * sScale;
-        float targetWidth = Math.max(minWidth, textWidth + padding * 2.0f);
-        descriptionWidthAnim = Mathf.fast(descriptionWidthAnim, targetWidth, GuiStyle.anim(18.0f));
+        descriptionWidthAnim = Mathf.fast(descriptionWidthAnim, textWidth + padding * 2.0f, 8.0f);
 
-        float descWidth = descriptionWidthAnim;
-        float descHeight = textHeight + padding * 1.4f;
+        float centerX = scaledWidth / 2.0f;
+        float centerY = scaledHeight / 2.0f;
+        float descX = GuiStyle.descriptionsRight()
+                ? scaledWidth - descriptionWidthAnim - 10.0f * sScale
+                : centerX - descriptionWidthAnim / 2.0f;
+        float descY = centerY - panelHeight / 2.0f - 50.0f * sScale;
 
-        float bottomMargin = 22.0f * sScale;
-        float descX = scaledWidth / 2.0f - descWidth / 2.0f;
-        float descY = scaledHeight - descHeight - bottomMargin;
+        GuiRender.drawGlass(stack, descX, descY, descriptionWidthAnim, descHeight, 12.0f * sScale,
+                true, GuiTheme.blurStrength() * alpha);
 
-        float animAlpha = alpha * guiFadeAlpha;
-        if (animAlpha > 0.01f) {
-            GuiRender.drawGlass(stack, descX, descY, descWidth, descHeight, descHeight / 2.0f,
-                    GuiStyle.descriptionBlur(), 0.0f);
-            float textX = descX + descWidth / 2.0f - textWidth / 2.0f;
-            float textY = descY + descHeight / 2.0f - textHeight / 2.0f;
-            GuiFonts.SF_REGULAR.draw(stack, displayText, textX, textY,
-                    ColorUtils.multAlpha(GuiTheme.textColor(), animAlpha * 0.9f), descFontSize);
-        }
+        float textX = descX + descriptionWidthAnim / 2.0f - textWidth / 2.0f;
+        float textY = descY + descHeight / 2.0f - GuiFonts.SF_REGULAR.getHeight(displayText, descFontSize) / 2.0f;
+
+        GuiFonts.SF_REGULAR.draw(stack, displayText, textX, textY,
+                ColorUtils.multAlpha(GuiTheme.textColor(), alpha), descFontSize);
     }
 
     @Override
@@ -643,4 +666,5 @@ public class ClickGuiScreen extends Screen {
     public boolean isPauseScreen() {
         return false;
     }
+
 }
