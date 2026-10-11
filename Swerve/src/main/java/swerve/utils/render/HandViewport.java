@@ -176,9 +176,18 @@ public final class HandViewport {
         return slot < 0 ? 0.0F : anchorY[slot];
     }
 
+    public static float pixelsPerUnitX(InteractionHand hand) {
+        int slot = slot(hand);
+        return slot < 0 ? 0.0F : unitX[slot];
+    }
+
     public static float pixelsPerUnitY(InteractionHand hand) {
         int slot = slot(hand);
         return slot < 0 ? 0.0F : unitY[slot];
+    }
+
+    public static boolean hasAny() {
+        return isAnyReady();
     }
 
     public static float mouseGuiX(Minecraft minecraft) {

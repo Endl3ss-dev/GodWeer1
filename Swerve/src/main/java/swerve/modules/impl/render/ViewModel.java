@@ -143,6 +143,18 @@ public final class ViewModel extends Module {
         registerEvents();
     }
 
+    public static ViewModel get() {
+        return instance;
+    }
+
+    public FloatSetting strengthSetting() {
+        return strength;
+    }
+
+    public FloatSetting speedSetting() {
+        return speed;
+    }
+
     private static void registerEvents() {
         if (eventsRegistered) {
             return;
@@ -184,14 +196,22 @@ public final class ViewModel extends Module {
         HandOutline.setWanted(wanted && module.editorContext());
     }
 
-    public static void applyPosition(InteractionHand hand, PoseStack poseStack) {
+    public static void applyTransform(PoseStack poseStack, AbstractClientPlayer player, InteractionHand hand) {
         ViewModel module = instance;
-        if (module == null || !module.isEnable() || poseStack == null || hand == null) {
+        if (module == null || !module.isEnable() || poseStack == null || player == null || hand == null) {
             return;
         }
         module.load();
 
         boolean main = hand == InteractionHand.MAIN_HAND;
+        HumanoidArm arm = main ? player.getMainArm() : player.getMainArm().getOpposite();
+        float side = arm == HumanoidArm.RIGHT ? 1.0F : -1.0F;
+        float anchorX = ARM_X * side;
+
+        if (HandViewport.isWanted()) {
+            HandViewport.captureBase(hand, poseStack, anchorX, ARM_Y, ARM_Z);
+        }
+
         float offsetX = main ? module.mainOffsetX : module.offOffsetX;
         float offsetY = main ? module.mainOffsetY : module.offOffsetY;
         if (offsetX != 0.0F || offsetY != 0.0F) {
@@ -206,8 +226,19 @@ public final class ViewModel extends Module {
             poseStack.scale(scaleValue, scaleValue, scaleValue);
         }
 
-        if (main && module.lastMainArm != Minecraft.getInstance().player.getMainArm()) {
+        if (HandViewport.isWanted()) {
+            HandViewport.capture(hand, poseStack, anchorX, ARM_Y, ARM_Z);
+        }
+
+        if (main && module.lastMainArm != player.getMainArm()) {
             module.handleMainHandSwap();
+        }
+    }
+
+    public static void applyPosition(InteractionHand hand, PoseStack poseStack) {
+        Minecraft mc = Minecraft.getInstance();
+        if (mc.player != null) {
+            applyTransform(poseStack, mc.player, hand);
         }
     }
 
@@ -251,6 +282,10 @@ public final class ViewModel extends Module {
         return module != null && module.isEnable() && module.anim.is(ANIM_STATIC);
     }
 
+    public static boolean staticSwing() {
+        return isStatic();
+    }
+
     public static float equipProgress(float equippedProgress) {
         ViewModel module = instance;
         return module != null && module.isEnable() ? 0.0F : equippedProgress;
@@ -268,7 +303,7 @@ public final class ViewModel extends Module {
         float sinPi = Mth.sin(swingProgress * (float) Math.PI);
         float sinPiSqrt = Mth.sin(sqrt * (float) Math.PI);
 
-        switch (anim.get()) {
+        switch (anim.getCurrent()) {
             case ANIM_OLD -> {
                 poseStack.mulPose(Axis.YP.rotationDegrees(side * (45.0F + sinPiSqrt * -20.0F) * strength));
                 poseStack.mulPose(Axis.ZP.rotationDegrees(side * (sinPi * -20.0F) * strength));
@@ -371,6 +406,14 @@ public final class ViewModel extends Module {
                 return true;
             }
         }
+        return false;
+    }
+
+    public boolean onScroll(double yOffset) {
+        return false;
+    }
+
+    public boolean onMousePress(int button, int action) {
         return false;
     }
 
