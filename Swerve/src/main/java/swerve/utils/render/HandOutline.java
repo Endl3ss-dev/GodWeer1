@@ -24,23 +24,6 @@ import org.lwjgl.opengl.GL11;
 
 import java.nio.ByteBuffer;
 
-// Контур рук по силуэту — схема один в один как в референсе (Volon ShaderHandsRenderer,
-// 1.21.4): до и после отрисовки рук копируется глубина, из разницы получается маска,
-// а сводка (маска + контур) рисуется ОТЛОЖЕННО, уже в 2D-фазе, где активна GUI-проекция.
-//
-// Почему отложенно: в 2D-фазе квады рисуются в GUI-координатах тем же путём, что и весь
-// HUD клиента (GuiBlur, скруглённые.rect-ы), — без своих проекций и без трюков с матрицами,
-// которые ломаются между версиями RenderSystem. Контур при этом ложится поверх затемнения
-// чата и читается, а не тонет под ним.
-//
-// Контур — не размытое гало: шейдер block_overlay в режиме outlineOnly берёт градиент альфы
-// маски по 8 направлениям и рисует ровную кромку толщиной «Размер обводки».
-//
-// В RG-каналах маски лежит глубина руки (16 бит): по ней перетаскивание понимает, за какую
-// точку руки схватили курсором. Та же маска в уменьшенном виде читается в память и даёт
-// пиксель-точный ответ «курсор над рукой?».
-//
-// Пайплайн живёт только пока открыт чат и модуль включён; в остальное время стоимость нулевая.
 public final class HandOutline {
 
     private static final int GRID_WIDTH = 256;
@@ -79,7 +62,6 @@ public final class HandOutline {
     private HandOutline() {
     }
 
-    // Состояние приходит из ViewModel: нужен ли пайплайн в этом кадре и как рисовать обводку.
     public static void setWanted(boolean value) {
         if (wanted == value) {
             return;
@@ -104,7 +86,6 @@ public final class HandOutline {
         return maskReady && System.nanoTime() - maskAt < STALE_NANOS;
     }
 
-    // HEAD renderHandsWithItems: в буфере только мир, руки ещё не нарисованы.
     public static void beforeHands() {
         hooked = true;
         depthTaken = false;
@@ -126,8 +107,6 @@ public final class HandOutline {
         }
     }
 
-    // RETURN renderHandsWithItems: руки отрисованы и батч закрыт. Сам контур здесь не
-    // рисуется — только снимается глубина и ставится флаг отложенной сводки.
     public static void afterHands() {
         if (!wanted || !depthTaken) {
             return;
@@ -148,7 +127,6 @@ public final class HandOutline {
         }
     }
 
-    // 2D-фаза (HudRenderCallback): маска, сетка для hit-test и контур поверх кадра.
     public static void composite() {
         if (!pendingComposite) {
             return;
@@ -189,12 +167,10 @@ public final class HandOutline {
             try {
                 restoreState(main);
             } catch (Throwable ignored) {
-                // фреймбуфер восстановится в следующем кадре
             }
         }
     }
 
-    // Курсор над рукой? Координаты — в GUI-единицах, как у мыши и у HUD.
     public static boolean isHandCoveredAt(float guiX, float guiY) {
         if (!isMaskReady()) {
             return false;
@@ -210,7 +186,6 @@ public final class HandOutline {
         int cellX = (int) (guiX / (float) guiWidth * (float) GRID_WIDTH);
         int cellY = (int) (guiY / (float) guiHeight * (float) GRID_HEIGHT);
 
-        // Перебор 3x3: маска руки в сетке тонкая, попадание ровно в одну ячейку слишком требовательно.
         for (int offsetY = -1; offsetY <= 1; offsetY++) {
             int row = GRID_HEIGHT - 1 - (cellY + offsetY);
             if (row < 0 || row >= GRID_HEIGHT) {
@@ -230,7 +205,6 @@ public final class HandOutline {
         return false;
     }
 
-    // Глубина руки под курсором (оконная, 0..1) из той же сетки; -1 — руки там нет.
     public static float depthAt(float guiX, float guiY) {
         if (!isMaskReady()) {
             return -1.0F;
@@ -259,7 +233,6 @@ public final class HandOutline {
         return (float) (high * 256 + low) / 65535.0F;
     }
 
-    // Один раз в 5 секунд объясняет, почему обводки нет: хук не сработал или шейдер не собрался.
     public static void reportStale() {
         long now = System.currentTimeMillis();
         if (now - lastReport < 5_000L) {
@@ -297,8 +270,6 @@ public final class HandOutline {
         frameHeight = -1;
     }
 
-    // ------------------------------------------------------------------
-
     private static boolean ensureTargets() {
         Minecraft minecraft = Minecraft.getInstance();
         int width = minecraft.getWindow().getWidth();
@@ -315,7 +286,6 @@ public final class HandOutline {
         frameWidth = width;
         frameHeight = height;
 
-        // Глубина нужна как текстура: copyDepthFrom пишет в неё blit-ом, шейдер читает её же.
         depthBefore = new TextureTarget(width, height, true);
         depthAfter = new TextureTarget(width, height, true);
         mask = new TextureTarget(width, height, false);
@@ -327,59 +297,66 @@ public final class HandOutline {
     }
 
     private static boolean buildMask(float guiWidth, float guiHeight) {
-        CompiledShaderProgram shader = ShaderUtils.get(ShaderUtils.HANDS_MASK_DIFF);
-        if (shader == null) {
-            broken = true;
+        try {
+            CompiledShaderProgram shader = ShaderUtils.get(ShaderUtils.HANDS_MASK_DIFF);
+            if (shader == null) {
+                broken = true;
+                return false;
+            }
+
+            mask.bindWrite(true);
+            RenderSystem.clearColor(0.0F, 0.0F, 0.0F, 0.0F);
+            RenderSystem.clear(GL11.GL_COLOR_BUFFER_BIT);
+            RenderSystem.disableBlend();
+            RenderSystem.disableDepthTest();
+            RenderSystem.depthMask(false);
+            RenderSystem.setShaderTexture(0, depthBefore.getDepthTextureId());
+            RenderSystem.setShaderTexture(1, depthAfter.getDepthTextureId());
+            ShaderUtils.set(shader, "uThreshold", MASK_THRESHOLD);
+            RenderSystem.setShader(ShaderUtils.HANDS_MASK_DIFF);
+            guiQuad(guiWidth, guiHeight);
+            return true;
+        } catch (Throwable t) {
+            fail("hand mask build", t);
             return false;
         }
-
-        mask.bindWrite(true);
-        RenderSystem.clearColor(0.0F, 0.0F, 0.0F, 0.0F);
-        RenderSystem.clear(GL11.GL_COLOR_BUFFER_BIT);
-        RenderSystem.disableBlend();
-        RenderSystem.disableDepthTest();
-        RenderSystem.depthMask(false);
-        RenderSystem.setShaderTexture(0, depthBefore.getDepthTextureId());
-        RenderSystem.setShaderTexture(1, depthAfter.getDepthTextureId());
-        ShaderUtils.set(shader, "uThreshold", MASK_THRESHOLD);
-        RenderSystem.setShader(ShaderUtils.HANDS_MASK_DIFF);
-        guiQuad(guiWidth, guiHeight);
-        return true;
     }
 
-    // Контур: block_overlay в режиме outlineOnly — кромка силуэта, как в референсе.
     private static void drawOutline(RenderTarget main, float guiWidth, float guiHeight) {
-        CompiledShaderProgram shader = ShaderUtils.get(ShaderUtils.BLOCK_OVERLAY);
-        if (shader == null) {
-            broken = true;
-            return;
+        try {
+            CompiledShaderProgram shader = ShaderUtils.get(ShaderUtils.BLOCK_OVERLAY);
+            if (shader == null) {
+                broken = true;
+                return;
+            }
+
+            int theme = ThemeManager.getColor();
+            int second = ThemeManager.getColor(1);
+
+            main.bindWrite(true);
+            RenderSystem.enableBlend();
+            RenderSystem.defaultBlendFunc();
+            RenderSystem.disableDepthTest();
+            RenderSystem.depthMask(false);
+            RenderSystem.setShaderTexture(0, mask.getColorTextureId());
+            ShaderUtils.set(shader, "texelSize", 1.0F / (float) frameWidth, 1.0F / (float) frameHeight);
+            ShaderUtils.set(shader, "color", channel(theme, 16), channel(theme, 8), channel(theme, 0));
+            ShaderUtils.set(shader, "color2", channel(second, 16), channel(second, 8), channel(second, 0));
+            ShaderUtils.set(shader, "time", 0.0F);
+            ShaderUtils.set(shader, "speed", 0.0F);
+            ShaderUtils.set(shader, "scale", 0.0F);
+            ShaderUtils.set(shader, "outline", outlineWidth * widthScale());
+            ShaderUtils.set(shader, "glow", 0.0F);
+            ShaderUtils.set(shader, "fill", 0.0F);
+            ShaderUtils.set(shader, "alpha", outlineAlpha);
+            ShaderUtils.set(shader, "outlineOnly", 1.0F);
+            RenderSystem.setShader(ShaderUtils.BLOCK_OVERLAY);
+            guiQuad(guiWidth, guiHeight);
+        } catch (Throwable t) {
+            fail("hand outline draw", t);
         }
-
-        int theme = ThemeManager.getColor();
-        int second = ThemeManager.getColor(1);
-
-        main.bindWrite(true);
-        RenderSystem.enableBlend();
-        RenderSystem.defaultBlendFunc();
-        RenderSystem.disableDepthTest();
-        RenderSystem.depthMask(false);
-        RenderSystem.setShaderTexture(0, mask.getColorTextureId());
-        ShaderUtils.set(shader, "texelSize", 1.0F / (float) frameWidth, 1.0F / (float) frameHeight);
-        ShaderUtils.set(shader, "color", channel(theme, 16), channel(theme, 8), channel(theme, 0));
-        ShaderUtils.set(shader, "color2", channel(second, 16), channel(second, 8), channel(second, 0));
-        ShaderUtils.set(shader, "time", 0.0F);
-        ShaderUtils.set(shader, "speed", 0.0F);
-        ShaderUtils.set(shader, "scale", 0.0F);
-        ShaderUtils.set(shader, "outline", outlineWidth * widthScale());
-        ShaderUtils.set(shader, "glow", 0.0F);
-        ShaderUtils.set(shader, "fill", 0.0F);
-        ShaderUtils.set(shader, "alpha", outlineAlpha);
-        ShaderUtils.set(shader, "outlineOnly", 1.0F);
-        RenderSystem.setShader(ShaderUtils.BLOCK_OVERLAY);
-        guiQuad(guiWidth, guiHeight);
     }
 
-    // Толщина задаётся в GUI-пикселях, а маска живёт в пикселях фреймбуфера.
     private static float widthScale() {
         Minecraft minecraft = Minecraft.getInstance();
         int screenWidth = minecraft.getWindow().getScreenWidth();
@@ -389,7 +366,6 @@ public final class HandOutline {
         return Math.max(1.0F, (float) guiScale * ratio);
     }
 
-    // Маска в сетку 256x144 — столько же, сколько в референсе: достаточно для клика, дёшево для чтения.
     private static void copyGrid(float guiWidth, float guiHeight) {
         grid.bindWrite(true);
         RenderSystem.clearColor(0.0F, 0.0F, 0.0F, 0.0F);
@@ -424,8 +400,6 @@ public final class HandOutline {
         main.bindWrite(true);
     }
 
-    // Квад в GUI-координатах под текущей GUI-проекцией: накрывает viewport любого размера,
-    // UV перевёрнуты по вертикали — так же рисует весь HUD клиента.
     private static void guiQuad(float width, float height) {
         Matrix4f matrix = QUAD_STACK.last().pose();
         BufferBuilder buffer = Tesselator.getInstance()

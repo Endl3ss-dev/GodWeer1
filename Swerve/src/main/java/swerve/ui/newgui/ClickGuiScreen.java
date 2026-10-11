@@ -3,7 +3,6 @@ package swerve.ui.newgui;
 import com.mojang.blaze3d.vertex.PoseStack;
 
 import swerve.managers.ModuleManager;
-import swerve.modules.Module;
 import swerve.modules.ModuleCategory;
 import swerve.modules.impl.render.ViewModel;
 import swerve.utils.color.ColorUtils;
@@ -204,6 +203,13 @@ public class ClickGuiScreen extends Screen {
     public void onTabChanged(DynamicIsland.IslandTab tab) {
         Minecraft client = Minecraft.getInstance();
 
+        if (tab != DynamicIsland.IslandTab.HANDS) {
+            ViewModel vm = ModuleManager.get(ViewModel.class);
+            if (vm != null) {
+                vm.closeAnimMenu();
+            }
+        }
+
         switch (tab) {
             case UI -> {
                 currentViewMode = ViewMode.UI;
@@ -244,6 +250,10 @@ public class ClickGuiScreen extends Screen {
             }
             case HANDS -> {
                 currentViewMode = ViewMode.HANDS;
+                ViewModel vm = ModuleManager.get(ViewModel.class);
+                if (vm != null && !vm.isEnable()) {
+                    vm.setEnabled(true);
+                }
                 for (Panel panel : panels) {
                     panel.setX(-1000.0f);
                 }
@@ -330,6 +340,10 @@ public class ClickGuiScreen extends Screen {
             renderClientPanel(stack, mouseX, mouseY, currentTime);
         } else if (currentViewMode == ViewMode.HANDS) {
             renderHandsHint(stack);
+            ViewModel viewModel = ModuleManager.get(ViewModel.class);
+            if (viewModel != null && viewModel.isAnimMenuOpen()) {
+                viewModel.renderAnimMenu(stack, (float) mouseX, (float) mouseY);
+            }
         } else if (currentViewMode == ViewMode.INTERFACE) {
             renderInterfacePanel(stack, mouseX, mouseY, currentTime);
         }
@@ -425,7 +439,7 @@ public class ClickGuiScreen extends Screen {
         float sScale = getResolutionScale();
         Minecraft client = Minecraft.getInstance();
 
-        String text = "ЛКМ по руке — перетащить · Колесо — размер · ПКМ — сброс · Островок вверх — сила и скорость";
+        String text = "ЛКМ — перетащить · Колесо — размер · ПКМ — сброс · СКМ — анимации · Островок — сила и скорость";
         float textSize = 8.0f * sScale;
         float textWidth = GuiFonts.SF_REGULAR.getWidth(text, textSize);
         float padding = 10.0f * sScale;
@@ -507,6 +521,16 @@ public class ClickGuiScreen extends Screen {
         if (currentViewMode == ViewMode.HANDS) {
             ViewModel viewModel = ModuleManager.get(ViewModel.class);
             if (viewModel != null) {
+                if (viewModel.isAnimMenuOpen()) {
+                    if (viewModel.animMenuClick((float) mouseX, (float) mouseY, button)) {
+                        return true;
+                    }
+                }
+                if (button == GLFW.GLFW_MOUSE_BUTTON_MIDDLE || button == 2) {
+                    if (viewModel.editorMiddleClick((float) mouseX, (float) mouseY)) {
+                        return true;
+                    }
+                }
                 if (viewModel.editorReset(button)) {
                     return true;
                 }
@@ -535,6 +559,13 @@ public class ClickGuiScreen extends Screen {
         if (GuiStyle.showIsland() && dynamicIsland.mouseDragged((int) mouseX, (int) mouseY)) {
             return true;
         }
+        if (currentViewMode == ViewMode.HANDS) {
+            ViewModel viewModel = ModuleManager.get(ViewModel.class);
+            if (viewModel != null && viewModel.isHolding()) {
+                viewModel.editorDrag((float) mouseX, (float) mouseY);
+                return true;
+            }
+        }
         return super.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
     }
 
@@ -542,6 +573,14 @@ public class ClickGuiScreen extends Screen {
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
         if (GuiStyle.showIsland()) {
             dynamicIsland.mouseReleased();
+        }
+
+        if (currentViewMode == ViewMode.HANDS) {
+            ViewModel viewModel = ModuleManager.get(ViewModel.class);
+            if (viewModel != null && viewModel.isHolding()) {
+                viewModel.editorRelease();
+                return true;
+            }
         }
 
         if (currentViewMode == ViewMode.CLIENT && themePanel != null) {
@@ -607,6 +646,13 @@ public class ClickGuiScreen extends Screen {
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontalAmount, double verticalAmount) {
+        if (currentViewMode == ViewMode.HANDS) {
+            ViewModel viewModel = ModuleManager.get(ViewModel.class);
+            if (viewModel != null && viewModel.onScroll((float) mouseX, (float) mouseY, verticalAmount)) {
+                return true;
+            }
+        }
+
         if (currentViewMode == ViewMode.UI) {
             for (Panel panel : panels) {
                 panel.scroll((float) mouseX, (float) mouseY, (float) verticalAmount);
@@ -628,6 +674,10 @@ public class ClickGuiScreen extends Screen {
         GuiStyle.playSound("guiclose.wav", 0.3f);
         closing = true;
         scale = 0.0f;
+        ViewModel vm = ModuleManager.get(ViewModel.class);
+        if (vm != null) {
+            vm.closeAnimMenu();
+        }
         if (themePanel != null) {
             themePanel.startClosingAnimation();
         }
