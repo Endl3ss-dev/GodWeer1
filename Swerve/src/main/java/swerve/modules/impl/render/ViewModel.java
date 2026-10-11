@@ -16,6 +16,7 @@ import swerve.modules.ModuleCategory;
 import swerve.modules.api.setting.BooleanSetting;
 import swerve.modules.api.setting.FloatSetting;
 import swerve.modules.api.setting.ModeSetting;
+import swerve.ui.newgui.ClickGuiScreen;
 import swerve.ui.newgui.GuiRender;
 import swerve.utils.animation.AnimationUtils;
 import swerve.utils.animation.Easings;
@@ -132,6 +133,8 @@ public final class ViewModel extends Module {
             ANIM_DOWN, ANIM_JELLY, ANIM_SLAP, ANIM_BONK, ANIM_CIRCLE, ANIM_REALISM, ANIM_STATIC);
     private final FloatSetting strength = new FloatSetting("Сила", 1.0F, 0.5F, 3.0F, 0.05F)
             .visible(() -> !anim.is(ANIM_STATIC));
+    private final FloatSetting speed = new FloatSetting("Скорость", 1.0F, 0.1F, 3.0F, 0.05F)
+            .visible(() -> !anim.is(ANIM_STATIC));
     private final BooleanSetting onlyOnTarget = new BooleanSetting("Только при наводке", false);
 
     private final BooleanSetting dragInChat = new BooleanSetting("Перетаскивание в чате", true);
@@ -189,10 +192,10 @@ public final class ViewModel extends Module {
     private boolean realismReady = true;
 
     public ViewModel() {
-        super("ViewModel", "Позиция и анимации рук. Двойной клик по руке в чате — перетащить, колесо — размер, ПКМ — сброс.",
-                ModuleCategory.HANDS);
+        super("ViewModel", "Позиция и анимации рук. Во вкладке Hands или в чате: клик по руке — перетащить, колесо — размер, ПКМ — сброс.",
+                ModuleCategory.RENDER);
         instance = this;
-        addSettings(anim, strength, onlyOnTarget, dragInChat, outline, outlineSize);
+        addSettings(anim, strength, speed, onlyOnTarget, dragInChat, outline, outlineSize);
         load();
         registerEvents();
     }
@@ -256,10 +259,9 @@ public final class ViewModel extends Module {
         }
 
         module.load();
-        boolean inChat = minecraft.screen instanceof ChatScreen;
-        boolean wanted = inChat && (module.dragInChat.get() || module.outline.get());
-        HandViewport.setWanted(wanted);
-        HandOutline.setWanted(inChat && module.dragInChat.get());
+        boolean active = module.chatDragContext() || module.editorContext();
+        HandViewport.setWanted(active);
+        HandOutline.setWanted(active);
     }
 
     public static void applyTransform(PoseStack poseStack, AbstractClientPlayer player, InteractionHand hand) {
@@ -320,7 +322,7 @@ public final class ViewModel extends Module {
         // equippedProgress сюда намеренно не передаётся: опускания руки больше нет.
         poseStack.translate(side * ARM_X, ARM_Y, ARM_Z);
 
-        float progress = Mth.clamp(swingProgress, 0.0F, 1.0F);
+        float progress = Mth.clamp(swingProgress * module.speed.get(), 0.0F, 1.0F);
         if (progress <= 0.0F || module.anim.is(ANIM_STATIC) || !module.targetAllows()) {
             return true;
         }
@@ -826,6 +828,50 @@ public final class ViewModel extends Module {
     // Кадр HUD: сглаживание, обводка, состояние для HandOutline.
     // ------------------------------------------------------------------
 
+    // Перетаскивание живо в двух местах: в чате (если разрешено настройкой) и во вкладке Hands.
+    private boolean chatDragContext() {
+        return Minecraft.getInstance().screen instanceof ChatScreen && dragInChat.get();
+    }
+
+    private boolean editorContext() {
+        return Minecraft.getInstance().screen instanceof ClickGuiScreen
+                && ((ClickGuiScreen) Minecraft.getInstance().screen).isHandsTab();
+    }
+
+    // ПКМ во вкладке Hands: сброс схваченной руки или обеих, как в чате.
+    public boolean editorReset(int button) {
+        if (button != GLFW.GLFW_MOUSE_BUTTON_RIGHT || !isEnable()) {
+            return false;
+        }
+        if (holding && grabbed != null) {
+            resetHand(grabbed);
+            release(true);
+        } else {
+            resetAll();
+        }
+        return true;
+    }
+
+    // Клик по руке во вкладке Hands: хват той же механикой, что и двойной клик в чате.
+    public boolean editorGrab(float mouseX, float mouseY) {
+        if (!isEnable() || Minecraft.getInstance().player == null || Minecraft.getInstance().level == null) {
+            return false;
+        }
+        if (!HandOutline.isMaskReady() || !HandOutline.isHandCoveredAt(mouseX, mouseY)) {
+            return false;
+        }
+        grab(pickHand(mouseX, mouseY), mouseX, mouseY);
+        return true;
+    }
+
+    public FloatSetting strengthSetting() {
+        return strength;
+    }
+
+    public FloatSetting speedSetting() {
+        return speed;
+    }
+
     private void onHudRender(GuiGraphics graphics) {
         Minecraft minecraft = Minecraft.getInstance();
         float delta = frameDelta();
@@ -842,7 +888,7 @@ public final class ViewModel extends Module {
         load();
         handleMainHandSwap();
 
-        boolean canDrag = minecraft.screen instanceof ChatScreen && dragInChat.get();
+        boolean canDrag = chatDragContext() || editorContext();
         if (!canDrag) {
             release(false);
         }

@@ -2,8 +2,10 @@ package swerve.ui.newgui;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 
+import swerve.managers.ModuleManager;
 import swerve.modules.Module;
 import swerve.modules.ModuleCategory;
+import swerve.modules.impl.render.ViewModel;
 import swerve.utils.color.ColorUtils;
 
 import net.minecraft.client.Minecraft;
@@ -22,7 +24,6 @@ public class ClickGuiScreen extends Screen {
     private final ArrayList<Panel> panels = new ArrayList<>();
     private Panel themePanel;
     private Panel interfacePanel;
-    private Panel handsPanel;
     private final DynamicIsland dynamicIsland;
 
     private float scale, scaleV;
@@ -48,13 +49,13 @@ public class ClickGuiScreen extends Screen {
         UI, CLIENT, HANDS, INTERFACE
     }
 
-    // Категории, показывающиеся рядом в режиме UI (INTERFACE и HANDS — отдельные вкладки).
+    // Категории, показывающиеся рядом в режиме UI (INTERFACE — отдельная вкладка).
     private static ModuleCategory[] uiCategories() {
         ModuleCategory[] all = ModuleCategory.values();
-        ModuleCategory[] out = new ModuleCategory[all.length - 2];
+        ModuleCategory[] out = new ModuleCategory[all.length - 1];
         int index = 0;
         for (ModuleCategory category : all) {
-            if (category != ModuleCategory.INTERFACE && category != ModuleCategory.HANDS) {
+            if (category != ModuleCategory.INTERFACE) {
                 out[index++] = category;
             }
         }
@@ -127,10 +128,6 @@ public class ClickGuiScreen extends Screen {
             themePanel.setY(centerY - panelHeight / 2.0f);
             themePanel.setCustomSize(panelWidth, panelHeight);
             positionInterfacePanel(client.getWindow().getGuiScaledWidth(), client.getWindow().getGuiScaledHeight());
-            if (handsPanel != null) {
-                handsPanel.setCustomSize(panelWidth, panelHeight);
-                positionHandsPanel(client.getWindow().getGuiScaledWidth(), client.getWindow().getGuiScaledHeight());
-            }
 
             for (Panel panel : panels) {
                 panel.setX(offsetX);
@@ -149,9 +146,6 @@ public class ClickGuiScreen extends Screen {
             }
             if (interfacePanel != null) {
                 interfacePanel.setupInitialAnimation();
-            }
-            if (handsPanel != null) {
-                handsPanel.setupInitialAnimation();
             }
             for (Panel panel : panels) {
                 panel.setupInitialAnimation();
@@ -193,13 +187,6 @@ public class ClickGuiScreen extends Screen {
                 client.getWindow().getGuiScaledHeight() / 2.0f - panelHeight / 2.0f, 0, false);
         interfacePanel.setCustomSize(panelWidth, panelHeight);
         interfacePanel.setX(-1000.0f);
-
-        // Руки живут только на своей вкладке: панель категории HANDS не показывается в UI.
-        handsPanel = new Panel(this, ModuleCategory.HANDS,
-                client.getWindow().getGuiScaledWidth() / 2.0f - panelWidth / 2.0f,
-                client.getWindow().getGuiScaledHeight() / 2.0f - panelHeight / 2.0f, 0, false);
-        handsPanel.setCustomSize(panelWidth, panelHeight);
-        handsPanel.setX(-1000.0f);
     }
 
     private void positionInterfacePanel(float scaledWidth, float scaledHeight) {
@@ -210,12 +197,8 @@ public class ClickGuiScreen extends Screen {
         }
     }
 
-    private void positionHandsPanel(float scaledWidth, float scaledHeight) {
-        if (handsPanel != null) {
-            handsPanel.setX(scaledWidth / 2.0f - panelWidth / 2.0f);
-            handsPanel.setY(scaledHeight / 2.0f - panelHeight / 2.0f);
-            handsPanel.setCustomSize(panelWidth, panelHeight);
-        }
+    public boolean isHandsTab() {
+        return currentViewMode == ViewMode.HANDS;
     }
 
     public void onTabChanged(DynamicIsland.IslandTab tab) {
@@ -232,9 +215,6 @@ public class ClickGuiScreen extends Screen {
                 }
                 if (interfacePanel != null) {
                     interfacePanel.setX(-1000.0f);
-                }
-                if (handsPanel != null) {
-                    handsPanel.setX(-1000.0f);
                 }
 
                 ModuleCategory[] categories = uiCategories();
@@ -273,8 +253,6 @@ public class ClickGuiScreen extends Screen {
                 if (interfacePanel != null) {
                     interfacePanel.setX(-1000.0f);
                 }
-                positionHandsPanel(client.getWindow().getGuiScaledWidth(),
-                        client.getWindow().getGuiScaledHeight());
             }
 
             case INTERFACE -> {
@@ -284,9 +262,6 @@ public class ClickGuiScreen extends Screen {
                 }
                 if (themePanel != null) {
                     themePanel.setX(-1000.0f);
-                }
-                if (handsPanel != null) {
-                    handsPanel.setX(-1000.0f);
                 }
                 positionInterfacePanel(client.getWindow().getGuiScaledWidth(),
                         client.getWindow().getGuiScaledHeight());
@@ -354,7 +329,7 @@ public class ClickGuiScreen extends Screen {
         } else if (currentViewMode == ViewMode.CLIENT) {
             renderClientPanel(stack, mouseX, mouseY, currentTime);
         } else if (currentViewMode == ViewMode.HANDS) {
-            renderHandsPanel(stack, mouseX, mouseY, currentTime);
+            renderHandsHint(stack);
         } else if (currentViewMode == ViewMode.INTERFACE) {
             renderInterfacePanel(stack, mouseX, mouseY, currentTime);
         }
@@ -384,14 +359,6 @@ public class ClickGuiScreen extends Screen {
         } else if (currentViewMode == ViewMode.INTERFACE) {
             if (interfacePanel != null && (interfacePanel.getAnimProgress() > 0.01f || !closing)) {
                 Panel.DescriptionInfo info = interfacePanel.getDescriptionInfo((float) mouseX, (float) mouseY);
-                if (info.alpha() > maxAlpha) {
-                    maxAlpha = info.alpha();
-                    bestDescription = info;
-                }
-            }
-        } else if (currentViewMode == ViewMode.HANDS) {
-            if (handsPanel != null && (handsPanel.getAnimProgress() > 0.01f || !closing)) {
-                Panel.DescriptionInfo info = handsPanel.getDescriptionInfo((float) mouseX, (float) mouseY);
                 if (info.alpha() > maxAlpha) {
                     maxAlpha = info.alpha();
                     bestDescription = info;
@@ -453,16 +420,25 @@ public class ClickGuiScreen extends Screen {
         }
     }
 
-    private void renderHandsPanel(PoseStack stack, int mouseX, int mouseY, long currentTime) {
-        if (handsPanel != null) {
-            handsPanel.updateAnimation(currentTime, scaleV);
-            if (handsPanel.getAnimProgress() > 0.01f || !closing) {
-                stack.pushPose();
-                stack.translate(0.0f, 0.0f, 100.0f);
-                handsPanel.render(stack, mouseX, mouseY);
-                stack.popPose();
-            }
-        }
+    // Вкладка Hands — живой редактор: панели нет, руки таскаются прямо за экраном.
+    private void renderHandsHint(PoseStack stack) {
+        float sScale = getResolutionScale();
+        Minecraft client = Minecraft.getInstance();
+
+        String text = "ЛКМ по руке — перетащить · Колесо — размер · ПКМ — сброс · Островок вверх — сила и скорость";
+        float textSize = 8.0f * sScale;
+        float textWidth = GuiFonts.SF_REGULAR.getWidth(text, textSize);
+        float padding = 10.0f * sScale;
+        float plateW = textWidth + padding * 2.0f;
+        float plateH = textSize + padding * 1.4f;
+        float plateX = client.getWindow().getGuiScaledWidth() / 2.0f - plateW / 2.0f;
+        float plateY = client.getWindow().getGuiScaledHeight() - plateH - 18.0f * sScale;
+
+        GuiRender.roundedRect(stack, plateX, plateY, plateW, plateH, plateH / 2.0f,
+                ColorUtils.getColor(0, 0, 0, (int) (0.45 * 255 * guiFadeAlpha)));
+        GuiFonts.SF_REGULAR.draw(stack, text, plateX + padding,
+                plateY + plateH / 2.0f - textSize / 2.0f,
+                ColorUtils.multAlpha(GuiTheme.textColor(), 0.75f * guiFadeAlpha), textSize);
     }
 
     private float descriptionWidthAnim = 0.0f;
@@ -524,8 +500,21 @@ public class ClickGuiScreen extends Screen {
 
     @Override
     public boolean mouseClicked(double mouseX, double mouseY, int button) {
-        if (GuiStyle.showIsland()) {
-            dynamicIsland.mouseClicked((int) mouseX, (int) mouseY, button);
+        if (GuiStyle.showIsland() && dynamicIsland.mouseClicked((int) mouseX, (int) mouseY, button)) {
+            return true;
+        }
+
+        if (currentViewMode == ViewMode.HANDS) {
+            ViewModel viewModel = ModuleManager.get(ViewModel.class);
+            if (viewModel != null) {
+                if (viewModel.editorReset(button)) {
+                    return true;
+                }
+                if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT
+                        && viewModel.editorGrab((float) mouseX, (float) mouseY)) {
+                    return true;
+                }
+            }
         }
 
         if (currentViewMode == ViewMode.CLIENT && themePanel != null) {
@@ -543,11 +532,18 @@ public class ClickGuiScreen extends Screen {
 
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double deltaX, double deltaY) {
+        if (GuiStyle.showIsland() && dynamicIsland.mouseDragged((int) mouseX, (int) mouseY)) {
+            return true;
+        }
         return super.mouseDragged(mouseX, mouseY, button, deltaX, deltaY);
     }
 
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (GuiStyle.showIsland()) {
+            dynamicIsland.mouseReleased();
+        }
+
         if (currentViewMode == ViewMode.CLIENT && themePanel != null) {
             themePanel.mouse((float) mouseX, (float) mouseY, button, GLFW.GLFW_RELEASE);
         } else if (currentViewMode == ViewMode.INTERFACE && interfacePanel != null) {
