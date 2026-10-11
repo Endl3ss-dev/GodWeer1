@@ -278,14 +278,17 @@ public final class ViewModel extends Module {
         }
         module.load();
 
-        // [!] К этому моменту applyItemArmTransform уже поставил начало координат в якорь руки
-        // (side*0.56, -0.52, -0.72). Дополнительный translate на тот же якорь уносил точку
-        // поворота пресета от руки ещё на якорь: при вращении на 45° рука уезжала на ~0.7
-        // единицы вбок, а пресет «1.8» не совпадал с ванильным взмахом.
+        // Поворот пресета вокруг якоря руки — штатное размещение предмета, откатано к
+        // исходному виду: без этой пары translate предмет в руке уходит с привычного места.
+        float side = arm == HumanoidArm.RIGHT ? 1.0F : -1.0F;
+        poseStack.translate(side * ARM_X, ARM_Y, ARM_Z);
+
         float progress = Mth.clamp(swingProgress * module.speed.get(), 0.0F, 1.0F);
         if (progress > 0.0F) {
             module.renderPreset(poseStack, progress, arm);
         }
+
+        poseStack.translate(-side * ARM_X, -ARM_Y, -ARM_Z);
         return true;
     }
 
