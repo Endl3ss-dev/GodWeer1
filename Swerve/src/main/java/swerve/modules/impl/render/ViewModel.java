@@ -60,6 +60,12 @@ public final class ViewModel extends Module {
     private static final float ARM_Y = -0.52F;
     private static final float ARM_Z = -0.72F;
 
+    // Ванильный applyItemArmTransform: translate(side*0.56, -0.52 + equip*-0.6, -0.72),
+    // у пустой руки в renderPlayerArm тот же член equip*-0.6. equipProgress() отдаёт финал
+    // экипировки (1.0), поэтому настоящий якорь руки лежит на ARM_EQUIP_DROP ниже ARM_Y.
+    private static final float ARM_EQUIP_DROP = -0.6F;
+    private static final float ARM_ANCHOR_Y = ARM_Y + ARM_EQUIP_DROP;
+
     private static final float ARM_SWING_X = -0.3F;
     private static final float ARM_SWING_Y = 0.4F;
     private static final float ARM_SWING_Z = -0.4F;
@@ -245,7 +251,7 @@ public final class ViewModel extends Module {
         float anchorX = ARM_X * side;
 
         if (HandViewport.isWanted()) {
-            HandViewport.captureBase(hand, poseStack, anchorX, ARM_Y, ARM_Z);
+            HandViewport.captureBase(hand, poseStack, anchorX, ARM_ANCHOR_Y, ARM_Z);
         }
 
         float offsetX = main ? module.mainOffsetX : module.offOffsetX;
@@ -259,11 +265,20 @@ public final class ViewModel extends Module {
             scaleValue *= 1.0F + GRAB_PULSE * module.pulse.getValue();
         }
         if (scaleValue != 1.0F) {
+            // [!] Масштаб вокруг якоря руки, а не вокруг начала координат камеры.
+            // Для перспективной проекции scale() в центре камеры — no-op по картинке:
+            // NDC не меняется (clip.xyz и clip.w масштабируются одинаково), рука лишь
+            // уезжает вдоль своего луча по глубине. Поэтому настройка размера не делала
+            // ничего, а уменьшение уводило руку за ближнюю плоскость отсечения — руки
+            // пропадали совсем. С масштабом вокруг якоря вершина руки получает
+            // s*v + anchor + offset: размер меняется, место и глубина руки остаются прежними.
+            poseStack.translate(anchorX, ARM_ANCHOR_Y, ARM_Z);
             poseStack.scale(scaleValue, scaleValue, scaleValue);
+            poseStack.translate(-anchorX, -ARM_ANCHOR_Y, -ARM_Z);
         }
 
         if (HandViewport.isWanted()) {
-            HandViewport.capture(hand, poseStack, anchorX, ARM_Y, ARM_Z);
+            HandViewport.capture(hand, poseStack, anchorX, ARM_ANCHOR_Y, ARM_Z);
         }
 
         if (main && module.lastMainArm != player.getMainArm()) {
@@ -317,9 +332,13 @@ public final class ViewModel extends Module {
         return isStatic();
     }
 
+    // [!] Финал экипировки — это 1.0, а не 0.0: 0 — старт анимации смены предмета.
+    // С нулём рука (и предмет в ней) постоянно стояла на 0.6 выше ванильного места —
+    // -0.52 вместо -0.52 + 1*(-0.6) = -1.12, из-за чего руки казались крупнее и вылезали
+    // из своего угла. Единица так же гасит анимацию смены предмета, но ставит руку на место.
     public static float equipProgress(float equippedProgress) {
         ViewModel module = instance;
-        return module != null && module.isEnable() ? 0.0F : equippedProgress;
+        return module != null && module.isEnable() ? 1.0F : equippedProgress;
     }
 
     private void renderPreset(PoseStack poseStack, float swingProgress, HumanoidArm arm) {
