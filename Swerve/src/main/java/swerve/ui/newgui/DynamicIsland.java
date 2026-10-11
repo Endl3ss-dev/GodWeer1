@@ -6,7 +6,7 @@ import swerve.utils.color.ColorUtils;
 
 import net.minecraft.client.Minecraft;
 
-// Динамический остров с вкладками UI / INTERFACE / CUSTOM / HUD SETTING.
+// Динамический остров с вкладками UI / INTERFACE / CUSTOM / HANDS.
 public class DynamicIsland {
 
     private static final float BASE_ISLAND_HEIGHT = 20.25f;
@@ -154,7 +154,7 @@ public class DynamicIsland {
         UI("UI"),
         INTERFACE("INTERFACE"),
         CLIENT("CUSTOM"),
-        HUD("HUD SETTING");
+        HANDS("HANDS");
 
         private final String text;
 

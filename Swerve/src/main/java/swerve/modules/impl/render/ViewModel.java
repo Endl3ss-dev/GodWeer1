@@ -37,6 +37,7 @@ import net.minecraft.world.entity.LivingEntity;
 
 import org.joml.Matrix4f;
 import org.joml.Matrix4fc;
+import org.joml.Vector4f;
 import org.lwjgl.glfw.GLFW;
 
 import java.nio.charset.StandardCharsets;
@@ -94,11 +95,13 @@ public final class ViewModel extends Module {
     private static final float SCALE_MAX = 5.0F;
     private static final float SCALE_STEP = 0.22F;
     private static final float SCALE_ANIM_SPEED = 10.0F;
-    // Предел смещения: при 0.8 юнитах рука никогда не уходит за экран целиком — её
-    // всегда можно схватить снова, а ПКМ без ползунков координат остаётся запасным выходом.
-    private static final float OFFSET_LIMIT = 0.8F;
-    private static final float FALLBACK_DEPTH = 0.72F;
+    // Пределов по XY нет: смещение ограничено только здравым смыслом, сброс — ПКМ в чате.
     private static final float DRAG_UNITS_PER_PIXEL = 3.2F;
+
+    // Импульс захвата: схватили — рука чуть крупнее, отпустили — возвращается.
+    private static final float GRAB_PULSE = 0.06F;
+    private static final float PULSE_IN_SPEED = 16.0F;
+    private static final float PULSE_OUT_SPEED = 8.0F;
 
     // Скольжение за курсором: 1/с. Меньше — сильнее отставание, больше — резче следует.
     private static final float FOLLOW_RATE = 18.0F;
@@ -117,8 +120,9 @@ public final class ViewModel extends Module {
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path FILE = FabricLoader.getInstance().getConfigDir().resolve("swerve/viewmodel.json");
 
-    // Переиспользуемый результат якобиана: перетаскивание идёт каждый кадр.
-    private static final float[] JACOBIAN = new float[4];
+    // Обратная базовая матрица руки и точка под курсором: считаются один раз за захват.
+    private static final Matrix4f INVERTED = new Matrix4f();
+    private static final Vector4f UNPROJECT = new Vector4f();
 
     private static boolean eventsRegistered;
     private static ViewModel instance;
@@ -138,6 +142,7 @@ public final class ViewModel extends Module {
     private final AnimationUtils mainScaleAnim = new AnimationUtils(1.0F, SCALE_ANIM_SPEED, Easings.CUBIC_OUT);
     private final AnimationUtils offScaleAnim = new AnimationUtils(1.0F, SCALE_ANIM_SPEED, Easings.CUBIC_OUT);
     private final AnimationUtils outlineAnim = new AnimationUtils(0.0F, OUTLINE_IN_SPEED, Easings.CUBIC_OUT);
+    private final AnimationUtils pulse = new AnimationUtils(0.0F, PULSE_IN_SPEED, Easings.CUBIC_OUT);
 
     // Целевые значения — то, что даёт перетаскивание и что сохраняется;
     // offset* — сглаженные, именно они попадают в матрицу руки.
@@ -159,19 +164,23 @@ public final class ViewModel extends Module {
 
     private boolean holding;
     private InteractionHand grabbed;
-    private final Matrix4f grabMatrix = new Matrix4f();
-    private boolean grabMatrixValid;
     private float grabCursorX;
     private float grabCursorY;
-    private float grabNdcX;
-    private float grabNdcY;
     private float grabOffsetX;
     private float grabOffsetY;
-    private float grabScale = 1.0F;
-    private float grabPivotX;
-    private float grabPivotY;
-    private boolean grabPivotValid;
-    private float grabDepth = FALLBACK_DEPTH;
+
+    // Точка руки под курсором в момент захвата, в системе координат руки: масштаб крутится
+    // вокруг неё, и перетаскивание держит её ровно под курсором.
+    private float mainPivotX;
+    private float mainPivotY;
+    private float mainPivotZ;
+    private boolean mainPivotValid;
+    private float offPivotX;
+    private float offPivotY;
+    private float offPivotZ;
+    private boolean offPivotValid;
+
+    private InteractionHand pulseHand;
 
     private InteractionHand outlineHand;
     private HumanoidArm lastMainArm;
@@ -181,7 +190,7 @@ public final class ViewModel extends Module {
 
     public ViewModel() {
         super("ViewModel", "Позиция и анимации рук. Двойной клик по руке в чате — перетащить, колесо — размер, ПКМ — сброс.",
-                ModuleCategory.RENDER);
+                ModuleCategory.HANDS);
         instance = this;
         addSettings(anim, strength, onlyOnTarget, dragInChat, outline, outlineSize);
         load();
@@ -221,6 +230,8 @@ public final class ViewModel extends Module {
         grabbed = null;
         outlineHand = null;
         outlineAnim.setValue(0.0F);
+        pulse.setValue(0.0F);
+        pulseHand = null;
         realismSide = -1;
         realismReady = true;
         HandViewport.setWanted(false);
@@ -267,18 +278,29 @@ public final class ViewModel extends Module {
             HandViewport.captureBase(hand, poseStack, anchorX, ARM_Y, ARM_Z);
         }
 
-        float scaleValue = main ? module.mainScaleAnim.getValue() : module.offScaleAnim.getValue();
-        if (scaleValue != 1.0F) {
-            // Масштаб вокруг точки крепления: рука растёт на месте, а не уезжает к камере.
-            poseStack.translate(anchorX, ARM_Y, ARM_Z);
-            poseStack.scale(scaleValue, scaleValue, scaleValue);
-            poseStack.translate(-anchorX, -ARM_Y, -ARM_Z);
-        }
-
+        // Смещение идёт до масштаба и не масштабируется: юнит смещения всегда стоит
+        // столько же экранных пикселей, иначе перетаскивание «плыло» бы после колёсика.
         float offsetX = main ? module.mainOffsetX : module.offOffsetX;
         float offsetY = main ? module.mainOffsetY : module.offOffsetY;
         if (offsetX != 0.0F || offsetY != 0.0F) {
             poseStack.translate(offsetX, offsetY, 0.0F);
+        }
+
+        boolean pivotValid = main ? module.mainPivotValid : module.offPivotValid;
+        float pivotX = pivotValid ? (main ? module.mainPivotX : module.offPivotX) : anchorX;
+        float pivotY = pivotValid ? (main ? module.mainPivotY : module.offPivotY) : ARM_Y;
+        float pivotZ = pivotValid ? (main ? module.mainPivotZ : module.offPivotZ) : ARM_Z;
+
+        float scaleValue = main ? module.mainScaleAnim.getValue() : module.offScaleAnim.getValue();
+        if (hand == module.pulseHand) {
+            scaleValue *= 1.0F + GRAB_PULSE * module.pulse.getValue();
+        }
+        if (scaleValue != 1.0F) {
+            // Масштаб вокруг точки, за которую схватили курсором: она остаётся на месте,
+            // предмет не уезжает от курсора ни при уменьшении, ни при увеличении.
+            poseStack.translate(pivotX, pivotY, pivotZ);
+            poseStack.scale(scaleValue, scaleValue, scaleValue);
+            poseStack.translate(-pivotX, -pivotY, -pivotZ);
         }
 
         if (HandViewport.isWanted()) {
@@ -476,13 +498,15 @@ public final class ViewModel extends Module {
         }
         load();
 
-        // ПКМ сбрасывает руку, которая сейчас в перетаскивании. Чужие клики не съедаются.
+        // ПКМ: рука в перетаскивании сбрасывается; без захвата — обе руки возвращаются
+        // на место (пределов по XY нет, поэтому сброс всегда должен быть под рукой).
         if (button == GLFW.GLFW_MOUSE_BUTTON_RIGHT) {
-            if (!holding || grabbed == null) {
-                return false;
+            if (holding && grabbed != null) {
+                resetHand(grabbed);
+                release(true);
+            } else {
+                resetAll();
             }
-            resetHand(grabbed);
-            release(true);
             return true;
         }
 
@@ -548,29 +572,80 @@ public final class ViewModel extends Module {
         holding = true;
         grabCursorX = mouseX;
         grabCursorY = mouseY;
-        grabNdcX = guiWidth > 0 ? mouseX / (float) guiWidth * 2.0F - 1.0F : 0.0F;
-        grabNdcY = guiHeight > 0 ? 1.0F - mouseY / (float) guiHeight * 2.0F : 0.0F;
 
         boolean main = hand == InteractionHand.MAIN_HAND;
         grabOffsetX = main ? mainTargetX : offTargetX;
         grabOffsetY = main ? mainTargetY : offTargetY;
-        grabScale = main ? mainScaleTarget : offScaleTarget;
-        grabPivotValid = HandViewport.isReady(hand);
-        grabPivotX = HandViewport.anchorX(hand);
-        grabPivotY = HandViewport.anchorY(hand);
 
-        Matrix4fc matrix = HandViewport.matrix(hand);
-        grabMatrixValid = matrix != null && HandViewport.isBaseReady(hand);
-        if (grabMatrixValid) {
-            grabMatrix.set(matrix);
-            grabDepth = HandViewport.depth(hand);
-        } else {
-            grabDepth = FALLBACK_DEPTH;
-        }
+        setPivot(hand, mouseX, mouseY, guiWidth, guiHeight);
+
+        pulseHand = hand;
+        pulse.setSpeed(PULSE_IN_SPEED);
+        pulse.update(1.0F);
 
         outlineAnim.setSpeed(OUTLINE_IN_SPEED);
         outlineAnim.update(1.0F);
         HandOutline.setOutline(outline.get() ? outlineAnim.getValue() : 0.0F, outlineSize.get());
+    }
+
+    // Точка руки под курсором: разворачиваем луч курсора на глубину руки из маски силуэта
+    // в систему координат руки. Без этого масштаб крутился бы вокруг точки крепления,
+    // и предмет при колёсике уезжал бы от курсора.
+    private void setPivot(InteractionHand hand, float mouseX, float mouseY, int guiWidth, int guiHeight) {
+        boolean main = hand == InteractionHand.MAIN_HAND;
+        float pivotX = 0.0F;
+        float pivotY = 0.0F;
+        float pivotZ = 0.0F;
+        boolean valid = false;
+
+        Matrix4fc matrix = HandViewport.matrix(hand);
+        float windowDepth = HandOutline.depthAt(mouseX, mouseY);
+        if (matrix != null && HandViewport.isBaseReady(hand) && windowDepth > 0.0F
+                && guiWidth > 0 && guiHeight > 0) {
+            INVERTED.set(matrix).invert();
+            UNPROJECT.set(mouseX / (float) guiWidth * 2.0F - 1.0F,
+                    1.0F - mouseY / (float) guiHeight * 2.0F,
+                    windowDepth * 2.0F - 1.0F,
+                    1.0F);
+            INVERTED.transform(UNPROJECT);
+
+            float w = UNPROJECT.w();
+            if (Math.abs(w) > 1.0E-6F) {
+                float x = UNPROJECT.x() / w;
+                float y = UNPROJECT.y() / w;
+                float z = UNPROJECT.z() / w;
+                if (Float.isFinite(x) && Float.isFinite(y) && Float.isFinite(z)) {
+                    pivotX = x;
+                    pivotY = y;
+                    pivotZ = z;
+                    valid = true;
+                }
+            }
+        }
+
+        if (!valid) {
+            // Маска или матрица не готовы: масштаб вокруг точки крепления руки.
+            Minecraft minecraft = Minecraft.getInstance();
+            HumanoidArm arm = minecraft.player != null ? minecraft.player.getMainArm() : HumanoidArm.RIGHT;
+            if (!main) {
+                arm = arm.getOpposite();
+            }
+            pivotX = ARM_X * (arm == HumanoidArm.RIGHT ? 1.0F : -1.0F);
+            pivotY = ARM_Y;
+            pivotZ = ARM_Z;
+        }
+
+        if (main) {
+            mainPivotX = pivotX;
+            mainPivotY = pivotY;
+            mainPivotZ = pivotZ;
+            mainPivotValid = true;
+        } else {
+            offPivotX = pivotX;
+            offPivotY = pivotY;
+            offPivotZ = pivotZ;
+            offPivotValid = true;
+        }
     }
 
     private void drag(float mouseX, float mouseY) {
@@ -582,56 +657,63 @@ public final class ViewModel extends Module {
         }
 
         boolean main = grabbed == InteractionHand.MAIN_HAND;
-        float scaleNow = main ? mainScaleAnim.getValue() : offScaleAnim.getValue();
-        float targetX = 0.0F;
-        float targetY = 0.0F;
-        boolean solved = false;
-
-        // Якобиан проекции руки: сколько экранных пикселей стоит один мировой юнит
-        // в точке захвата. Без него рука тянулась бы с разной скоростью по осям.
-        if (grabMatrixValid && grabDepth > 1.0E-4F) {
-            jacobian(grabMatrix, grabDepth, grabNdcX, grabNdcY, guiWidth, guiHeight);
-            float determinant = JACOBIAN[0] * JACOBIAN[3] - JACOBIAN[2] * JACOBIAN[1];
-            if (Math.abs(determinant) > 1.0E-4F) {
-                float ratio = grabScale > 1.0E-4F ? scaleNow / grabScale : 1.0F;
-                float pivotX = grabPivotValid ? grabPivotX : grabCursorX;
-                float pivotY = grabPivotValid ? grabPivotY : grabCursorY;
-                // Масштаб меняется вокруг точки крепления: пиксель под курсором должен
-                // оставаться тем же пикселем руки, иначе рука уезжает при колёсике.
-                float deltaX = mouseX - pivotX - ratio * (grabCursorX - pivotX);
-                float deltaY = mouseY - pivotY - ratio * (grabCursorY - pivotY);
-                targetX = grabOffsetX + (JACOBIAN[3] * deltaX - JACOBIAN[2] * deltaY) / determinant;
-                targetY = grabOffsetY + (-JACOBIAN[1] * deltaX + JACOBIAN[0] * deltaY) / determinant;
-                solved = true;
-            }
+        boolean pivotValid = main ? mainPivotValid : offPivotValid;
+        Matrix4fc matrix = HandViewport.matrix(grabbed);
+        if (!pivotValid || matrix == null || !HandViewport.isBaseReady(grabbed)) {
+            dragFallback(mouseX, mouseY, guiHeight);
+            return;
         }
 
-        if (!solved) {
-            // Запасной вариант: цена пикселя от высоты экрана, как в референсе.
-            float unitsPerPixel = DRAG_UNITS_PER_PIXEL / (float) guiHeight;
-            targetX = grabOffsetX + (mouseX - grabCursorX) * unitsPerPixel;
-            targetY = grabOffsetY - (mouseY - grabCursorY) * unitsPerPixel;
-        }
+        // Точка захвата P в системе руки масштабом не двигается, поэтому её экранное
+        // положение — это проекция (P + смещение). Решаем 2x2 точно: какое смещение (x, y)
+        // переносит P ровно под курсор. Учтена и перспектива, и покачивание рук в кадре —
+        // предмет всегда доезжает до курсора, пределов по осям нет.
+        float pivotX = main ? mainPivotX : offPivotX;
+        float pivotY = main ? mainPivotY : offPivotY;
+        float pivotZ = main ? mainPivotZ : offPivotZ;
 
-        setTarget(grabbed, Mth.clamp(targetX, -OFFSET_LIMIT, OFFSET_LIMIT),
-                Mth.clamp(targetY, -OFFSET_LIMIT, OFFSET_LIMIT));
-    }
-
-    // d(экран)/d(юнит) в точке захвата; знак по Y перевёрнут — экранный Y смотрит вниз.
-    private static void jacobian(Matrix4fc matrix, float depth, float ndcX, float ndcY, int width, int height) {
         float m00 = matrix.m00();
         float m01 = matrix.m01();
-        float m03 = matrix.m03();
         float m10 = matrix.m10();
         float m11 = matrix.m11();
-        float m13 = matrix.m13();
-        float halfWidth = (float) width * 0.5F;
-        float halfHeight = (float) height * 0.5F;
+        float m30 = matrix.m30();
+        float m31 = matrix.m31();
 
-        JACOBIAN[0] = (m00 - ndcX * m03) / depth * halfWidth;
-        JACOBIAN[1] = -(m01 - ndcY * m03) / depth * halfHeight;
-        JACOBIAN[2] = (m10 - ndcX * m13) / depth * halfWidth;
-        JACOBIAN[3] = -(m11 - ndcY * m13) / depth * halfHeight;
+        float clipX = m00 * pivotX + m01 * pivotY + matrix.m02() * pivotZ + matrix.m03();
+        float clipY = m10 * pivotX + m11 * pivotY + matrix.m12() * pivotZ + matrix.m13();
+        float clipW = m30 * pivotX + m31 * pivotY + matrix.m32() * pivotZ + matrix.m33();
+
+        float ndcX = mouseX / (float) guiWidth * 2.0F - 1.0F;
+        float ndcY = 1.0F - mouseY / (float) guiHeight * 2.0F;
+
+        float e00 = m00 - ndcX * m30;
+        float e01 = m01 - ndcX * m31;
+        float e10 = m10 - ndcY * m30;
+        float e11 = m11 - ndcY * m31;
+        float determinant = e00 * e11 - e01 * e10;
+        if (Math.abs(determinant) < 1.0E-6F) {
+            dragFallback(mouseX, mouseY, guiHeight);
+            return;
+        }
+
+        float r0 = ndcX * clipW - clipX;
+        float r1 = ndcY * clipW - clipY;
+        float targetX = (r0 * e11 - e01 * r1) / determinant;
+        float targetY = (e00 * r1 - e10 * r0) / determinant;
+        if (!Float.isFinite(targetX) || !Float.isFinite(targetY)) {
+            dragFallback(mouseX, mouseY, guiHeight);
+            return;
+        }
+
+        setTarget(grabbed, targetX, targetY);
+    }
+
+    // Нет точки захвата или матрицы: цена пикселя от высоты экрана, как в референсе.
+    private void dragFallback(float mouseX, float mouseY, int guiHeight) {
+        float unitsPerPixel = DRAG_UNITS_PER_PIXEL / (float) guiHeight;
+        setTarget(grabbed,
+                grabOffsetX + (mouseX - grabCursorX) * unitsPerPixel,
+                grabOffsetY - (mouseY - grabCursorY) * unitsPerPixel);
     }
 
     private InteractionHand pickHand(float mouseX, float mouseY) {
@@ -686,6 +768,23 @@ public final class ViewModel extends Module {
             offScaleAnim.setSpeed(SCALE_ANIM_SPEED);
             offScaleAnim.update(offScaleTarget);
         }
+        save();
+    }
+
+    // ПКМ без захвата: вернуть обе руки на место — пределов по XY больше нет.
+    private void resetAll() {
+        holding = false;
+        grabbed = null;
+        mainTargetX = 0.0F;
+        mainTargetY = 0.0F;
+        offTargetX = 0.0F;
+        offTargetY = 0.0F;
+        mainScaleTarget = 1.0F;
+        offScaleTarget = 1.0F;
+        mainScaleAnim.setSpeed(SCALE_ANIM_SPEED);
+        mainScaleAnim.update(mainScaleTarget);
+        offScaleAnim.setSpeed(SCALE_ANIM_SPEED);
+        offScaleAnim.update(offScaleTarget);
         save();
     }
 
@@ -768,6 +867,10 @@ public final class ViewModel extends Module {
         smooth(delta);
         mainScaleAnim.update(mainScaleTarget);
         offScaleAnim.update(offScaleTarget);
+        if (pulse.getTarget() != (holding ? 1.0F : 0.0F)) {
+            pulse.setSpeed(holding ? PULSE_IN_SPEED : PULSE_OUT_SPEED);
+        }
+        pulse.update(holding ? 1.0F : 0.0F);
 
         // Обводка — только пока рука в перетаскивании.
         boolean dragging = holding && grabbed != null && outline.get();
@@ -788,6 +891,9 @@ public final class ViewModel extends Module {
 
         HandOutline.setWanted(canDrag);
         HandOutline.setOutline(alpha, outlineSize.get());
+        // Сводка маски и контур рисуются здесь, в 2D-фазе: GUI-проекция уже активна,
+        // и контур ложится поверх затемнения чата, как в референсе.
+        HandOutline.composite();
 
         if (!HandOutline.isShaderReady() && outlineHand != null) {
             drawRectOutline(graphics.pose());

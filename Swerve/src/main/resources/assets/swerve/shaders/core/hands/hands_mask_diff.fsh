@@ -15,5 +15,11 @@ void main() {
     // Силуэт рук: пиксели, где рука закрыла мир (глубина стала ближе).
     // Там, где рука оказалась ЗА миром, её не видно — маски там и не должно быть.
     float mask = smoothstep(uThreshold * 0.5, uThreshold * 1.5, depthBefore - depthAfter);
-    OutColor = vec4(mask, mask, mask, mask);
+
+    // В RG пакуется глубина руки (16 бит): по ней перетаскивание понимает, за какую точку
+    // руки схватили, и масштаб меняет руку вокруг неё, а не вокруг точки крепления.
+    float packed = clamp(depthAfter, 0.0, 1.0) * 65535.0;
+    float hi = floor(packed / 256.0) / 255.0;
+    float lo = mod(packed, 256.0) / 255.0;
+    OutColor = vec4(hi, lo, mask, mask);
 }

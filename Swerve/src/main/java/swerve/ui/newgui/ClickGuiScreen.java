@@ -22,6 +22,7 @@ public class ClickGuiScreen extends Screen {
     private final ArrayList<Panel> panels = new ArrayList<>();
     private Panel themePanel;
     private Panel interfacePanel;
+    private Panel handsPanel;
     private final DynamicIsland dynamicIsland;
 
     private float scale, scaleV;
@@ -44,16 +45,16 @@ public class ClickGuiScreen extends Screen {
     private ViewMode currentViewMode = ViewMode.UI;
 
     public enum ViewMode {
-        UI, CLIENT, HUD, INTERFACE
+        UI, CLIENT, HANDS, INTERFACE
     }
 
-    // Категории, показывающиеся рядом в режиме UI (INTERFACE — отдельная вкладка).
+    // Категории, показывающиеся рядом в режиме UI (INTERFACE и HANDS — отдельные вкладки).
     private static ModuleCategory[] uiCategories() {
         ModuleCategory[] all = ModuleCategory.values();
-        ModuleCategory[] out = new ModuleCategory[all.length - 1];
+        ModuleCategory[] out = new ModuleCategory[all.length - 2];
         int index = 0;
         for (ModuleCategory category : all) {
-            if (category != ModuleCategory.INTERFACE) {
+            if (category != ModuleCategory.INTERFACE && category != ModuleCategory.HANDS) {
                 out[index++] = category;
             }
         }
@@ -126,6 +127,10 @@ public class ClickGuiScreen extends Screen {
             themePanel.setY(centerY - panelHeight / 2.0f);
             themePanel.setCustomSize(panelWidth, panelHeight);
             positionInterfacePanel(client.getWindow().getGuiScaledWidth(), client.getWindow().getGuiScaledHeight());
+            if (handsPanel != null) {
+                handsPanel.setCustomSize(panelWidth, panelHeight);
+                positionHandsPanel(client.getWindow().getGuiScaledWidth(), client.getWindow().getGuiScaledHeight());
+            }
 
             for (Panel panel : panels) {
                 panel.setX(offsetX);
@@ -144,6 +149,9 @@ public class ClickGuiScreen extends Screen {
             }
             if (interfacePanel != null) {
                 interfacePanel.setupInitialAnimation();
+            }
+            if (handsPanel != null) {
+                handsPanel.setupInitialAnimation();
             }
             for (Panel panel : panels) {
                 panel.setupInitialAnimation();
@@ -185,6 +193,13 @@ public class ClickGuiScreen extends Screen {
                 client.getWindow().getGuiScaledHeight() / 2.0f - panelHeight / 2.0f, 0, false);
         interfacePanel.setCustomSize(panelWidth, panelHeight);
         interfacePanel.setX(-1000.0f);
+
+        // Руки живут только на своей вкладке: панель категории HANDS не показывается в UI.
+        handsPanel = new Panel(this, ModuleCategory.HANDS,
+                client.getWindow().getGuiScaledWidth() / 2.0f - panelWidth / 2.0f,
+                client.getWindow().getGuiScaledHeight() / 2.0f - panelHeight / 2.0f, 0, false);
+        handsPanel.setCustomSize(panelWidth, panelHeight);
+        handsPanel.setX(-1000.0f);
     }
 
     private void positionInterfacePanel(float scaledWidth, float scaledHeight) {
@@ -192,6 +207,14 @@ public class ClickGuiScreen extends Screen {
             interfacePanel.setX(scaledWidth / 2.0f - panelWidth / 2.0f);
             interfacePanel.setY(scaledHeight / 2.0f - panelHeight / 2.0f);
             interfacePanel.setCustomSize(panelWidth, panelHeight);
+        }
+    }
+
+    private void positionHandsPanel(float scaledWidth, float scaledHeight) {
+        if (handsPanel != null) {
+            handsPanel.setX(scaledWidth / 2.0f - panelWidth / 2.0f);
+            handsPanel.setY(scaledHeight / 2.0f - panelHeight / 2.0f);
+            handsPanel.setCustomSize(panelWidth, panelHeight);
         }
     }
 
@@ -209,6 +232,9 @@ public class ClickGuiScreen extends Screen {
                 }
                 if (interfacePanel != null) {
                     interfacePanel.setX(-1000.0f);
+                }
+                if (handsPanel != null) {
+                    handsPanel.setX(-1000.0f);
                 }
 
                 ModuleCategory[] categories = uiCategories();
@@ -236,8 +262,8 @@ public class ClickGuiScreen extends Screen {
                     interfacePanel.setX(-1000.0f);
                 }
             }
-            case HUD -> {
-                currentViewMode = ViewMode.HUD;
+            case HANDS -> {
+                currentViewMode = ViewMode.HANDS;
                 for (Panel panel : panels) {
                     panel.setX(-1000.0f);
                 }
@@ -247,6 +273,8 @@ public class ClickGuiScreen extends Screen {
                 if (interfacePanel != null) {
                     interfacePanel.setX(-1000.0f);
                 }
+                positionHandsPanel(client.getWindow().getGuiScaledWidth(),
+                        client.getWindow().getGuiScaledHeight());
             }
 
             case INTERFACE -> {
@@ -256,6 +284,9 @@ public class ClickGuiScreen extends Screen {
                 }
                 if (themePanel != null) {
                     themePanel.setX(-1000.0f);
+                }
+                if (handsPanel != null) {
+                    handsPanel.setX(-1000.0f);
                 }
                 positionInterfacePanel(client.getWindow().getGuiScaledWidth(),
                         client.getWindow().getGuiScaledHeight());
@@ -322,8 +353,8 @@ public class ClickGuiScreen extends Screen {
             renderUIPanels(stack, mouseX, mouseY, currentTime);
         } else if (currentViewMode == ViewMode.CLIENT) {
             renderClientPanel(stack, mouseX, mouseY, currentTime);
-        } else if (currentViewMode == ViewMode.HUD) {
-            renderHUDSettings(stack);
+        } else if (currentViewMode == ViewMode.HANDS) {
+            renderHandsPanel(stack, mouseX, mouseY, currentTime);
         } else if (currentViewMode == ViewMode.INTERFACE) {
             renderInterfacePanel(stack, mouseX, mouseY, currentTime);
         }
@@ -353,6 +384,14 @@ public class ClickGuiScreen extends Screen {
         } else if (currentViewMode == ViewMode.INTERFACE) {
             if (interfacePanel != null && (interfacePanel.getAnimProgress() > 0.01f || !closing)) {
                 Panel.DescriptionInfo info = interfacePanel.getDescriptionInfo((float) mouseX, (float) mouseY);
+                if (info.alpha() > maxAlpha) {
+                    maxAlpha = info.alpha();
+                    bestDescription = info;
+                }
+            }
+        } else if (currentViewMode == ViewMode.HANDS) {
+            if (handsPanel != null && (handsPanel.getAnimProgress() > 0.01f || !closing)) {
+                Panel.DescriptionInfo info = handsPanel.getDescriptionInfo((float) mouseX, (float) mouseY);
                 if (info.alpha() > maxAlpha) {
                     maxAlpha = info.alpha();
                     bestDescription = info;
@@ -414,27 +453,16 @@ public class ClickGuiScreen extends Screen {
         }
     }
 
-    // Вкладка HUD в исходнике — заглушка «Coming soon», у Swerve HUD-системы пока нет.
-    private void renderHUDSettings(PoseStack stack) {
-        float sScale = getResolutionScale();
-        float centerX = Minecraft.getInstance().getWindow().getGuiScaledWidth() / 2.0f;
-        float centerY = Minecraft.getInstance().getWindow().getGuiScaledHeight() / 2.0f;
-
-        String text = "HUD Settings";
-        float textSize = 14.0f * sScale;
-        float textWidth = GuiFonts.SF_BOLD.getWidth(text, textSize);
-        int textColor = ColorUtils.multAlpha(GuiTheme.textColor(), 0.8f);
-
-        GuiFonts.SF_BOLD.draw(stack, text, centerX - textWidth / 2.0f, centerY - textSize / 2.0f,
-                textColor, textSize);
-
-        String subText = "Coming soon...";
-        float subSize = 9.0f * sScale;
-        float subWidth = GuiFonts.SF_REGULAR.getWidth(subText, subSize);
-        int subColor = ColorUtils.multAlpha(GuiTheme.textColor(), 0.5f);
-
-        GuiFonts.SF_REGULAR.draw(stack, subText, centerX - subWidth / 2.0f, centerY + 10.0f * sScale,
-                subColor, subSize);
+    private void renderHandsPanel(PoseStack stack, int mouseX, int mouseY, long currentTime) {
+        if (handsPanel != null) {
+            handsPanel.updateAnimation(currentTime, scaleV);
+            if (handsPanel.getAnimProgress() > 0.01f || !closing) {
+                stack.pushPose();
+                stack.translate(0.0f, 0.0f, 100.0f);
+                handsPanel.render(stack, mouseX, mouseY);
+                stack.popPose();
+            }
+        }
     }
 
     private float descriptionWidthAnim = 0.0f;
