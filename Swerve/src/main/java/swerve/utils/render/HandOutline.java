@@ -50,6 +50,10 @@ public final class HandOutline {
     private HandOutline() {
     }
 
+    public static RenderTarget redirectTarget(RenderTarget original) {
+        return capturing ? silhouette : original;
+    }
+
     public static void beginFrame() {
         clearedThisFrame = false;
         hasSilhouette = false;

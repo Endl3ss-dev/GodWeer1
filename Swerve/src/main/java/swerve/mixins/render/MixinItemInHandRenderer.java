@@ -98,7 +98,7 @@ public abstract class MixinItemInHandRenderer {
     private void swerve$swingArm(ItemInHandRenderer instance, float swingProgress, float equippedProgress, PoseStack poseStack,
                                  int direction, HumanoidArm arm, Operation<Void> original) {
         InteractionHand hand = swerve$hand;
-        if (hand != null && !swerve$using && SwingAnimation.apply(poseStack, hand, swingProgress)) {
+        if (hand != null && !swerve$using && SwingAnimation.apply(poseStack, hand, swingProgress, equippedProgress)) {
             ViewModel.applyScale(poseStack, hand);
             return;
         }

@@ -8,8 +8,10 @@
 	"client": [
 		"client.MixinKeyboardHandler",
 		"client.MixinLivingEntity",
+		"client.MixinMinecraft",
 		"client.MixinMouseHandler",
-		"render.MixinItemInHandRenderer"
+		"render.MixinItemInHandRenderer",
+		"render.MixinLevelRenderer"
 	],
 	"injectors": {
 		"defaultRequire": 1

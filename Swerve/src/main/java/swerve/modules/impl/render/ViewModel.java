@@ -35,9 +35,10 @@ public final class ViewModel extends Module {
     private static final Path FILE = FabricLoader.getInstance().getConfigDir().resolve("swerve/viewmodel.json");
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
 
-    private static final float SCALE_STEP = 0.22F;
     private static final float SCALE_MIN = 0.2F;
-    private static final float SCALE_MAX = 5.0F;
+    private static final float SCALE_MAX = 1.2F;
+    private static final float SCALE_FINE_STEP = 0.05F;
+    private static final float SCALE_EPSILON = 1.0E-3F;
     private static final float SCALE_ANIM_SPEED = 10.0F;
     private static final float FOLLOW_SPEED = 10.0F;
     private static final float MAX_FRAME_DELTA = 0.1F;
@@ -270,8 +271,22 @@ public final class ViewModel extends Module {
         }
         load();
         HandTransform transform = transform(hand);
-        transform.scaleTarget = Mth.clamp(transform.scaleTarget + (amount > 0.0 ? SCALE_STEP : -SCALE_STEP), SCALE_MIN, SCALE_MAX);
+        transform.scaleTarget = nextScale(transform.scaleTarget, amount > 0.0);
         save();
+    }
+
+    // Вверх от 1.0 — ровно один щелчок до максимума, ниже 1.0 — мелкий шаг для точной подстройки.
+    private static float nextScale(float current, boolean up) {
+        float next;
+        if (up) {
+            next = current >= 1.0F - SCALE_EPSILON ? SCALE_MAX : Math.min(1.0F, current + SCALE_FINE_STEP);
+        } else {
+            next = current > 1.0F + SCALE_EPSILON ? 1.0F : current - SCALE_FINE_STEP;
+        }
+        if (next < 1.0F) {
+            next = Math.round(next / SCALE_FINE_STEP) * SCALE_FINE_STEP;
+        }
+        return Mth.clamp(next, SCALE_MIN, SCALE_MAX);
     }
 
     public void resetHand(InteractionHand hand) {

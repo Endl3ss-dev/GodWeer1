@@ -88,12 +88,28 @@ public final class SwingAnimation extends Module {
         nextPreviewAt = 0L;
     }
 
-    public static boolean apply(PoseStack poseStack, InteractionHand hand, float progress) {
-        if (progress <= 0.0F || progress >= 1.0F || hand != InteractionHand.MAIN_HAND) {
+    // Вне взмаха режимы с позой покоя держат руку в стартовой точке анимации (progress = 0),
+    // поэтому удар начинается без рывка из ванильной позы.
+    public static boolean apply(PoseStack poseStack, InteractionHand hand, float progress, float equippedProgress) {
+        if (hand != InteractionHand.MAIN_HAND) {
             return false;
         }
         SwingAnimation module = instance;
-        return module != null && module.isEnable() && module.applyAnimation(poseStack, progress);
+        if (module == null || !module.isEnable()) {
+            return false;
+        }
+        if (progress <= 0.0F || progress >= 1.0F) {
+            if (!module.hasRestPose()) {
+                return false;
+            }
+            progress = 0.0F;
+        }
+        return module.applyAnimation(poseStack, progress, equippedProgress);
+    }
+
+    private boolean hasRestPose() {
+        int mode = type.getIndex();
+        return mode == SHIFT || mode == BREAK || mode == CIRCLE;
     }
 
     public static int modifySwingDuration(int vanillaTicks) {
@@ -126,7 +142,7 @@ public final class SwingAnimation extends Module {
         player.swingingArm = InteractionHand.MAIN_HAND;
     }
 
-    private boolean applyAnimation(PoseStack poseStack, float progress) {
+    private boolean applyAnimation(PoseStack poseStack, float progress, float equippedProgress) {
         Minecraft mc = Minecraft.getInstance();
         LocalPlayer player = mc.player;
         if (player == null) {
@@ -151,7 +167,7 @@ public final class SwingAnimation extends Module {
         float sin = Mth.sin(progress * Mth.PI);
         float power = strength.get();
 
-        poseStack.translate(side * 0.56F, -0.52F, -0.72F);
+        poseStack.translate(side * 0.56F, -0.52F + equippedProgress * -0.6F, -0.72F);
 
         switch (type.getIndex()) {
             case SHIFT -> {

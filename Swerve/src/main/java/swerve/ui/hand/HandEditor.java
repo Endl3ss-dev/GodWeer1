@@ -19,7 +19,7 @@ import net.minecraft.world.InteractionHand;
 
 import org.lwjgl.glfw.GLFW;
 
-// Редактор рук в чате. 2×ЛКМ по руке включает режим расположения (панель взмаха над рукой).
+// Редактор рук в чате. 2×ЛКМ по руке включает режим расположения (панель взмаха вверху экрана).
 // В режиме: зажатая ЛКМ двигает руку, колесо — масштаб, ПКМ — меню анимаций.
 // Выход: Esc, ЛКМ мимо руки или закрытие чата. Работает через Fabric Screen API.
 public final class HandEditor {
@@ -119,8 +119,8 @@ public final class HandEditor {
 
         if (placement) {
             lastHandClickMs = 0L;
-            if (viewModel.beginDrag(hand) && PANEL.getHand() != hand) {
-                PANEL.open(hand, mouseX, mouseY);
+            if (viewModel.beginDrag(hand)) {
+                PANEL.open(hand);
             }
             return true;
         }
@@ -133,7 +133,7 @@ public final class HandEditor {
         }
 
         placement = true;
-        PANEL.open(hand, mouseX, mouseY);
+        PANEL.open(hand);
         return true;
     }
 
@@ -157,7 +157,7 @@ public final class HandEditor {
             return true;
         }
         if (PANEL.contains(mouseX, mouseY)) {
-            PANEL.mouseScrolled(mouseY, amount);
+            PANEL.mouseScrolled(mouseX, amount);
             return true;
         }
 
