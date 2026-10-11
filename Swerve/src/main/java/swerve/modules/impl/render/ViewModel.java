@@ -37,7 +37,6 @@ import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.entity.LivingEntity;
 
 import org.joml.Matrix4f;
-import org.joml.Matrix4fc;
 import org.joml.Vector4f;
 import org.lwjgl.glfw.GLFW;
 
@@ -94,9 +93,6 @@ public final class ViewModel extends Module {
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path FILE = FabricLoader.getInstance().getConfigDir().resolve("swerve/viewmodel.json");
-
-    private static final Matrix4f INVERTED = new Matrix4f();
-    private static final Vector4f UNPROJECT = new Vector4f();
 
     private static boolean eventsRegistered;
     private static ViewModel instance;
@@ -175,12 +171,8 @@ public final class ViewModel extends Module {
         eventsRegistered = true;
         HudRenderCallback.EVENT.register((guiGraphics, deltaTracker) -> {
             ViewModel module = instance;
-            try {
-                if (module != null) {
-                    module.onHudRender(guiGraphics);
-                }
-            } finally {
-                HandViewport.consume();
+            if (module != null) {
+                module.onHudRender(guiGraphics);
             }
         });
     }
@@ -435,7 +427,7 @@ public final class ViewModel extends Module {
         if (HandViewport.isReady(InteractionHand.MAIN_HAND)) {
             float ax = HandViewport.anchorX(InteractionHand.MAIN_HAND);
             float ay = HandViewport.anchorY(InteractionHand.MAIN_HAND);
-            float radius = Math.max(35.0F, HandViewport.pixelsPerUnitY(InteractionHand.MAIN_HAND) * 0.45F);
+            float radius = Math.max(50.0F, HandViewport.pixelsPerUnitY(InteractionHand.MAIN_HAND) * 0.6F);
             if (distance(mouseX, mouseY, ax, ay) <= radius * radius) {
                 return true;
             }
@@ -443,7 +435,7 @@ public final class ViewModel extends Module {
         if (HandViewport.isReady(InteractionHand.OFF_HAND)) {
             float ax = HandViewport.anchorX(InteractionHand.OFF_HAND);
             float ay = HandViewport.anchorY(InteractionHand.OFF_HAND);
-            float radius = Math.max(35.0F, HandViewport.pixelsPerUnitY(InteractionHand.OFF_HAND) * 0.45F);
+            float radius = Math.max(50.0F, HandViewport.pixelsPerUnitY(InteractionHand.OFF_HAND) * 0.6F);
             if (distance(mouseX, mouseY, ax, ay) <= radius * radius) {
                 return true;
             }
@@ -454,7 +446,7 @@ public final class ViewModel extends Module {
         if (width > 0 && height > 0) {
             float relX = mouseX / (float) width;
             float relY = mouseY / (float) height;
-            return relY >= 0.45F && (relX <= 0.45F || relX >= 0.55F);
+            return relY >= 0.40F && (relX <= 0.45F || relX >= 0.55F);
         }
         return false;
     }
@@ -537,10 +529,6 @@ public final class ViewModel extends Module {
     }
 
     private void grab(InteractionHand hand, float mouseX, float mouseY) {
-        Minecraft minecraft = Minecraft.getInstance();
-        int guiWidth = minecraft.getWindow().getGuiScaledWidth();
-        int guiHeight = minecraft.getWindow().getGuiScaledHeight();
-
         grabbed = hand;
         outlineHand = hand;
         holding = true;
@@ -551,59 +539,14 @@ public final class ViewModel extends Module {
         grabOffsetX = main ? mainTargetX : offTargetX;
         grabOffsetY = main ? mainTargetY : offTargetY;
 
-        setPivot(hand, mouseX, mouseY, guiWidth, guiHeight);
-
-        pulseHand = hand;
-        pulse.setSpeed(PULSE_IN_SPEED);
-        pulse.update(1.0F);
-
-        outlineAnim.setSpeed(OUTLINE_IN_SPEED);
-        outlineAnim.update(1.0F);
-        HandOutline.setOutline(outline.get() ? outlineAnim.getValue() : 0.0F, outlineSize.get());
-    }
-
-    private void setPivot(InteractionHand hand, float mouseX, float mouseY, int guiWidth, int guiHeight) {
-        boolean main = hand == InteractionHand.MAIN_HAND;
-        float pivotX = 0.0F;
-        float pivotY = 0.0F;
-        float pivotZ = 0.0F;
-        boolean valid = false;
-
-        Matrix4fc matrix = HandViewport.matrix(hand);
-        float windowDepth = HandOutline.depthAt(mouseX, mouseY);
-        if (matrix != null && HandViewport.isBaseReady(hand) && windowDepth > 0.0F
-                && guiWidth > 0 && guiHeight > 0) {
-            INVERTED.set(matrix).invert();
-            UNPROJECT.set(mouseX / (float) guiWidth * 2.0F - 1.0F,
-                    1.0F - mouseY / (float) guiHeight * 2.0F,
-                    windowDepth * 2.0F - 1.0F,
-                    1.0F);
-            INVERTED.transform(UNPROJECT);
-
-            float w = UNPROJECT.w();
-            if (Math.abs(w) > 1.0E-6F) {
-                float x = UNPROJECT.x() / w;
-                float y = UNPROJECT.y() / w;
-                float z = UNPROJECT.z() / w;
-                if (Float.isFinite(x) && Float.isFinite(y) && Float.isFinite(z)) {
-                    pivotX = x;
-                    pivotY = y;
-                    pivotZ = z;
-                    valid = true;
-                }
-            }
+        Minecraft minecraft = Minecraft.getInstance();
+        HumanoidArm arm = minecraft.player != null ? minecraft.player.getMainArm() : HumanoidArm.RIGHT;
+        if (!main) {
+            arm = arm.getOpposite();
         }
-
-        if (!valid) {
-            Minecraft minecraft = Minecraft.getInstance();
-            HumanoidArm arm = minecraft.player != null ? minecraft.player.getMainArm() : HumanoidArm.RIGHT;
-            if (!main) {
-                arm = arm.getOpposite();
-            }
-            pivotX = ARM_X * (arm == HumanoidArm.RIGHT ? 1.0F : -1.0F);
-            pivotY = ARM_Y;
-            pivotZ = ARM_Z;
-        }
+        float pivotX = ARM_X * (arm == HumanoidArm.RIGHT ? 1.0F : -1.0F);
+        float pivotY = ARM_Y;
+        float pivotZ = ARM_Z;
 
         if (main) {
             mainPivotX = pivotX;
@@ -616,72 +559,47 @@ public final class ViewModel extends Module {
             offPivotZ = pivotZ;
             offPivotValid = true;
         }
+
+        pulseHand = hand;
+        pulse.setSpeed(PULSE_IN_SPEED);
+        pulse.update(1.0F);
+
+        outlineAnim.setSpeed(OUTLINE_IN_SPEED);
+        outlineAnim.update(1.0F);
+        HandOutline.setOutline(outline.get() ? outlineAnim.getValue() : 0.0F, outlineSize.get());
     }
 
-    private void drag(float mouseX, float mouseY) {
+    public void drag(float mouseX, float mouseY) {
+        if (!holding || grabbed == null) {
+            return;
+        }
+
         Minecraft minecraft = Minecraft.getInstance();
-        int guiWidth = minecraft.getWindow().getGuiScaledWidth();
         int guiHeight = minecraft.getWindow().getGuiScaledHeight();
-        if (guiWidth <= 0 || guiHeight <= 0) {
+        if (guiHeight <= 0) {
             return;
         }
 
-        boolean main = grabbed == InteractionHand.MAIN_HAND;
-        boolean pivotValid = main ? mainPivotValid : offPivotValid;
-        Matrix4fc matrix = HandViewport.matrix(grabbed);
-        if (!pivotValid || matrix == null || !HandViewport.isBaseReady(grabbed)) {
-            dragFallback(mouseX, mouseY, guiHeight);
-            return;
-        }
-
-        float pivotX = main ? mainPivotX : offPivotX;
-        float pivotY = main ? mainPivotY : offPivotY;
-        float pivotZ = main ? mainPivotZ : offPivotZ;
-
-        float m00 = matrix.m00();
-        float m10 = matrix.m10();
-        float m01 = matrix.m01();
-        float m11 = matrix.m11();
-        float m03 = matrix.m03();
-        float m13 = matrix.m13();
-
-        float clipX = m00 * pivotX + m10 * pivotY + matrix.m20() * pivotZ + matrix.m30();
-        float clipY = m01 * pivotX + m11 * pivotY + matrix.m21() * pivotZ + matrix.m31();
-        float clipW = m03 * pivotX + m13 * pivotY + matrix.m23() * pivotZ + matrix.m33();
-
-        float ndcX = mouseX / (float) guiWidth * 2.0F - 1.0F;
-        float ndcY = 1.0F - mouseY / (float) guiHeight * 2.0F;
-
-        float e00 = m00 - ndcX * m03;
-        float e01 = m10 - ndcX * m13;
-        float e10 = m01 - ndcY * m03;
-        float e11 = m11 - ndcY * m13;
-        float determinant = e00 * e11 - e01 * e10;
-        if (Math.abs(determinant) < 1.0E-6F) {
-            dragFallback(mouseX, mouseY, guiHeight);
-            return;
-        }
-
-        float r0 = ndcX * clipW - clipX;
-        float r1 = ndcY * clipW - clipY;
-        float targetX = (r0 * e11 - e01 * r1) / determinant;
-        float targetY = (e00 * r1 - e10 * r0) / determinant;
-        if (!Float.isFinite(targetX) || !Float.isFinite(targetY)) {
-            dragFallback(mouseX, mouseY, guiHeight);
-            return;
-        }
-
-        setTarget(grabbed, targetX, targetY);
-    }
-
-    private void dragFallback(float mouseX, float mouseY, int guiHeight) {
         float unitsPerPixel = DRAG_UNITS_PER_PIXEL / (float) guiHeight;
-        setTarget(grabbed,
-                grabOffsetX + (mouseX - grabCursorX) * unitsPerPixel,
-                grabOffsetY - (mouseY - grabCursorY) * unitsPerPixel);
+        float deltaX = (mouseX - grabCursorX) * unitsPerPixel;
+        float deltaY = -(mouseY - grabCursorY) * unitsPerPixel;
+
+        setTarget(grabbed, grabOffsetX + deltaX, grabOffsetY + deltaY);
     }
 
-    private InteractionHand pickHand(float mouseX, float mouseY) {
+    public void editorDrag(float mouseX, float mouseY) {
+        drag(mouseX, mouseY);
+    }
+
+    public void editorRelease() {
+        release(true);
+    }
+
+    public boolean isHolding() {
+        return holding;
+    }
+
+    public InteractionHand pickHand(float mouseX, float mouseY) {
         boolean mainReady = HandViewport.isReady(InteractionHand.MAIN_HAND);
         boolean offReady = HandViewport.isReady(InteractionHand.OFF_HAND);
         if (mainReady && offReady) {
@@ -722,12 +640,16 @@ public final class ViewModel extends Module {
         if (hand == InteractionHand.MAIN_HAND) {
             mainTargetX = 0.0F;
             mainTargetY = 0.0F;
+            mainOffsetX = 0.0F;
+            mainOffsetY = 0.0F;
             mainScaleTarget = 1.0F;
             mainScaleAnim.setSpeed(SCALE_ANIM_SPEED);
             mainScaleAnim.update(mainScaleTarget);
         } else {
             offTargetX = 0.0F;
             offTargetY = 0.0F;
+            offOffsetX = 0.0F;
+            offOffsetY = 0.0F;
             offScaleTarget = 1.0F;
             offScaleAnim.setSpeed(SCALE_ANIM_SPEED);
             offScaleAnim.update(offScaleTarget);
@@ -742,6 +664,10 @@ public final class ViewModel extends Module {
         mainTargetY = 0.0F;
         offTargetX = 0.0F;
         offTargetY = 0.0F;
+        mainOffsetX = 0.0F;
+        mainOffsetY = 0.0F;
+        offOffsetX = 0.0F;
+        offOffsetY = 0.0F;
         mainScaleTarget = 1.0F;
         offScaleTarget = 1.0F;
         mainScaleAnim.setSpeed(SCALE_ANIM_SPEED);
@@ -807,6 +733,9 @@ public final class ViewModel extends Module {
     }
 
     public boolean editorGrab(float mouseX, float mouseY) {
+        if (!isEnable() && editorContext()) {
+            setEnabled(true);
+        }
         if (!isEnable() || Minecraft.getInstance().player == null || Minecraft.getInstance().level == null) {
             return false;
         }
@@ -866,7 +795,15 @@ public final class ViewModel extends Module {
             release(true);
         }
 
-        smooth(delta);
+        if (holding) {
+            mainOffsetX = mainTargetX;
+            mainOffsetY = mainTargetY;
+            offOffsetX = offTargetX;
+            offOffsetY = offTargetY;
+        } else {
+            smooth(delta);
+        }
+
         mainScaleAnim.update(mainScaleTarget);
         offScaleAnim.update(offScaleTarget);
         if (pulse.getTarget() != (holding ? 1.0F : 0.0F)) {
