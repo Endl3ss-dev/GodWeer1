@@ -2,6 +2,7 @@ package swerve;
 
 import swerve.managers.ModuleManager;
 import swerve.utils.input.ClickGuiController;
+import swerve.utils.render.WorldProjection;
 
 import net.fabricmc.api.ClientModInitializer;
 
@@ -31,6 +32,9 @@ public class Swerve implements ClientModInitializer {
 		instance = this;
 
 		long start = System.nanoTime();
+
+		// [+] Съём матриц кадра для HUD-элементов, привязанных к точке мира (TargetHud).
+		WorldProjection.init();
 
 		// Шрифты грузятся лениво при первом обращении: на этом этапе GL-контекст ещё не готов.
 		ModuleManager.init();

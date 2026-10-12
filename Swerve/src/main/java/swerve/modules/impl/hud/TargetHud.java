@@ -12,10 +12,10 @@ import swerve.modules.api.setting.BooleanSetting;
 import swerve.modules.api.setting.ModeSetting;
 import swerve.ui.hud.HudPointer;
 import swerve.ui.hud.HudSettingsController;
-import swerve.ui.hud.HudSettingsScreen;
 import swerve.ui.newgui.GuiFonts;
 import swerve.ui.newgui.GuiRender;
 import swerve.utils.color.ColorUtils;
+import swerve.utils.render.WorldProjection;
 import swerve.utils.render.msdf.MsdfFont;
 import swerve.utils.render.msdf.MsdfGlyph;
 
@@ -23,6 +23,7 @@ import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.gui.screens.ChatScreen;
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.resources.PlayerSkin;
 import net.minecraft.util.Mth;
@@ -59,8 +60,16 @@ public final class TargetHud extends Module {
     private static final float POSITION_STIFFNESS = 480.0f;
     private static final float POSITION_DAMPING = 46.0f;
     private static final float MAX_POSITION_SPEED = 4_000.0f;
-    private static final float CURSOR_SMOOTHING = 55.0f;
     private static final int MAX_SUB_STEPS = 6;
+
+    // [+] Привязка под ногами цели: точка низа хитбокса проецируется в GUI-координаты,
+    // панель встаёт по центру этой точки и следует за целью пружиной.
+    private static final float GROUND_GAP = 2.0f;
+    private static final float SPAWN_STIFFNESS = 320.0f;
+    private static final float SPAWN_DAMPING = 20.0f;
+    private static final float SPAWN_MIN_SCALE = 0.82f;
+    private static final float SPAWN_LIFT = 7.0f;
+    private static final float SPAWN_MAX = 1.25f;
 
     // [+] Анимация уменьшения HP: полоса, догоняющий «призрак» урона и вспышка.
     private static final float HEALTH_SMOOTHING = 16.0f;
@@ -90,6 +99,9 @@ public final class TargetHud extends Module {
     private final ModeSetting hpStyle = new ModeSetting("Стиль HP", "Тема", "Тема", "Здоровье");
     // [+] Без активной цели элемент показывает самого игрока клиента.
     private final BooleanSetting showSelf = new BooleanSetting("Показывать себя", true);
+    // [+] Появление ровно под ногами цели + следование за ней.
+    private final BooleanSetting followTarget = new BooleanSetting("Под ногами цели", true);
+    private final BooleanSetting spawnAnimation = new BooleanSetting("Анимация появления", true);
     private final BooleanSetting resetPosition = new BooleanSetting("Сбросить позицию", false);
 
     private LivingEntity target;
@@ -109,15 +121,16 @@ public final class TargetHud extends Module {
     private float renderY = -1.0f;
     private float velocityX;
     private float velocityY;
-    private float cursorX;
-    private float cursorY;
-    private boolean cursorReady;
     private boolean positionSnap = true;
     private boolean dragging;
     private float grabX;
     private float grabY;
     private boolean lastLeftDown;
     private boolean lastRightDown;
+
+    private final float[] projectedPoint = new float[2];
+    private float spawnAnim;
+    private float spawnVelocity;
 
     private String targetName = "";
     private String displayName = "";
@@ -140,8 +153,8 @@ public final class TargetHud extends Module {
     private float emptyMarkerOffsetY;
 
     public TargetHud() {
-        super("TargetHud", "Панель с информацией о враге", ModuleCategory.INTERFACE);
-        addSettings(showItems, hpStyle, showSelf, resetPosition);
+        super("TargetHud", "Панель с информацией о враге. ПКМ в чате — настройки", ModuleCategory.INTERFACE);
+        addSettings(showItems, hpStyle, showSelf, followTarget, spawnAnimation, resetPosition);
         registerEvents();
     }
 
@@ -153,7 +166,8 @@ public final class TargetHud extends Module {
         HudRenderCallback.EVENT.register((guiGraphics, deltaTracker) -> {
             TargetHud module = ModuleManager.get(TargetHud.class);
             if (module != null && module.isEnable()) {
-                module.onHudRender(guiGraphics, guiGraphics.pose());
+                module.onHudRender(guiGraphics, guiGraphics.pose(),
+                        deltaTracker.getGameTimeDeltaPartialTick(true));
             }
         });
     }
@@ -178,7 +192,7 @@ public final class TargetHud extends Module {
         positionSnap = true;
     }
 
-    private void onHudRender(GuiGraphics context, PoseStack stack) {
+    private void onHudRender(GuiGraphics context, PoseStack stack, float partialTick) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null || mc.options.hideGui) {
             resetTargetState();
@@ -201,6 +215,8 @@ public final class TargetHud extends Module {
                 resetTargetState();
             }
             dragging = false;
+            spawnAnim = 0.0f;
+            spawnVelocity = 0.0f;
             // [+] Края кнопок запоминаем и в пропущенном кадре: иначе после возврата
             // элемента зажатая ЛКМ мгновенно стартовала бы перетаскивание.
             lastLeftDown = HudPointer.isLeftDown();
@@ -233,6 +249,21 @@ public final class TargetHud extends Module {
         float maxX = Math.max(2.0f, scaledWidth - width - 2.0f);
         float maxY = Math.max(2.0f, scaledHeight - totalHeight - 2.0f);
 
+        // [+] Цель на прицеле: элемент висит ровно под ногами цели (проекция низа хитбокса
+        // в GUI-координаты) и следует за ней. Себя и недоступную проекцию не привязываем —
+        // тогда работает обычное свободное позиционирование.
+        boolean anchored = false;
+        float anchorX = 0.0f;
+        float anchorY = 0.0f;
+        if (followTarget.get() && target != mc.player && WorldProjection.isReady()
+                && WorldProjection.project(Mth.lerp(partialTick, target.xo, target.getX()),
+                        Mth.lerp(partialTick, target.yo, target.getY()),
+                        Mth.lerp(partialTick, target.zo, target.getZ()), projectedPoint)) {
+            anchored = true;
+            anchorX = projectedPoint[0] - width * 0.5f;
+            anchorY = projectedPoint[1] + GROUND_GAP;
+        }
+
         // [+] Курсор и кнопки читаются из HudPointer: элемент больше не дёргает GLFW сам
         // и видит нажатия при открытом экране (нужно для ПКМ-меню в чате).
         float pointerX = (float) HudPointer.getX();
@@ -240,28 +271,20 @@ public final class TargetHud extends Module {
         boolean leftDown = HudPointer.isLeftDown();
         boolean rightDown = HudPointer.isRightDown();
 
-        if (!cursorReady) {
-            cursorX = pointerX;
-            cursorY = pointerY;
-            cursorReady = true;
-        } else {
-            float cursorFactor = smoothingFactor(delta, CURSOR_SMOOTHING);
-            cursorX += (pointerX - cursorX) * cursorFactor;
-            cursorY += (pointerY - cursorY) * cursorFactor;
-        }
-
         boolean hovered = anim > DRAG_ANIM_THRESHOLD
                 && pointerX >= renderX && pointerX <= renderX + width
                 && pointerY >= renderY && pointerY <= renderY + totalHeight;
 
-        // [+] ПКМ по элементу при открытом экране (в чате) открывает меню настроек.
-        // В бою ПКМ не перехватываем: там курсор захвачен, а клик ставит блок.
-        if (rightDown && !lastRightDown && hovered && mc.screen != null
-                && !(mc.screen instanceof HudSettingsScreen)) {
-            HudSettingsController.requestOpen(this);
+        // [+] ПКМ по элементу в чате открывает меню настроек ровно в точке элемента.
+        // Только чат: в инвентаре ПКМ разбрасывает предметы, а в бою клик ставит блок.
+        if (rightDown && !lastRightDown && hovered && mc.screen instanceof ChatScreen) {
+            HudSettingsController.requestOpen(this, renderX, renderY, width, totalHeight);
         }
 
-        if (leftDown && !lastLeftDown && hovered) {
+        if (anchored) {
+            // Позицию в этом режиме ведёт цель, ручной драг не начинаем.
+            dragging = false;
+        } else if (leftDown && !lastLeftDown && hovered) {
             dragging = true;
             grabX = pointerX - posX;
             grabY = pointerY - posY;
@@ -272,15 +295,25 @@ public final class TargetHud extends Module {
         lastLeftDown = leftDown;
         lastRightDown = rightDown;
 
-        if (dragging) {
-            posX = Mth.clamp(pointerX - grabX, 2.0f, maxX);
-            posY = Mth.clamp(pointerY - grabY, 2.0f, maxY);
+        float goalX;
+        float goalY;
+        if (anchored) {
+            goalX = Mth.clamp(anchorX, 2.0f, maxX);
+            goalY = Mth.clamp(anchorY, 2.0f, maxY);
         } else {
-            posX = Mth.clamp(posX, 2.0f, maxX);
-            posY = Mth.clamp(posY, 2.0f, maxY);
+            if (dragging) {
+                posX = Mth.clamp(pointerX - grabX, 2.0f, maxX);
+                posY = Mth.clamp(pointerY - grabY, 2.0f, maxY);
+            } else {
+                posX = Mth.clamp(posX, 2.0f, maxX);
+                posY = Mth.clamp(posY, 2.0f, maxY);
+            }
+            goalX = posX;
+            goalY = posY;
         }
 
-        updatePosition(delta);
+        updatePosition(delta, goalX, goalY);
+        updateSpawnAnimation(delta);
 
         float x = renderX;
         float y = renderY;
@@ -290,11 +323,17 @@ public final class TargetHud extends Module {
             return;
         }
 
-        float visualScale = 0.96f + 0.04f * anim;
+        // [+] Анимация появления: пружина с лёгким перелётом — панель «выпрыгивает» снизу
+        // и доезжает до места; отключается настройкой «Анимация появления».
+        float spawnEase = spawnAnimation.get() ? Mth.clamp(spawnAnim, 0.0f, SPAWN_MAX) : 1.0f;
+        float spawnScale = SPAWN_MIN_SCALE + (1.0f - SPAWN_MIN_SCALE) * spawnEase;
+        float lift = (1.0f - Math.min(spawnEase, 1.0f)) * SPAWN_LIFT;
+
+        float visualScale = (0.96f + 0.04f * anim) * spawnScale;
         float centerX = x + width * 0.5f;
         float centerY = y + totalHeight * 0.5f;
         stack.pushPose();
-        stack.translate(centerX, centerY, 0.0f);
+        stack.translate(centerX, centerY + lift, 0.0f);
         stack.scale(visualScale, visualScale, 1.0f);
         stack.translate(-centerX, -centerY, 0.0f);
 
@@ -454,11 +493,13 @@ public final class TargetHud extends Module {
     }
 
     // [+] Пружина с подшагами: кадр не зависит от FPS, а позиция не «телепортируется» по кадрам.
-    private void updatePosition(float delta) {
+    // Цель приходит извне: при свободном позиционировании это перетаскиваемая точка,
+    // при привязке к цели — спроецированные в экран ноги цели.
+    private void updatePosition(float delta, float goalX, float goalY) {
         if (positionSnap) {
             positionSnap = false;
-            renderX = posX;
-            renderY = posY;
+            renderX = goalX;
+            renderY = goalY;
             velocityX = 0.0f;
             velocityY = 0.0f;
             return;
@@ -471,12 +512,36 @@ public final class TargetHud extends Module {
         int steps = Mth.clamp((int) Math.ceil(delta / MAX_SUB_STEP), 1, MAX_SUB_STEPS);
         float step = delta / steps;
         for (int i = 0; i < steps; i++) {
-            velocityX += ((posX - renderX) * POSITION_STIFFNESS - velocityX * POSITION_DAMPING) * step;
-            velocityY += ((posY - renderY) * POSITION_STIFFNESS - velocityY * POSITION_DAMPING) * step;
+            velocityX += ((goalX - renderX) * POSITION_STIFFNESS - velocityX * POSITION_DAMPING) * step;
+            velocityY += ((goalY - renderY) * POSITION_STIFFNESS - velocityY * POSITION_DAMPING) * step;
             velocityX = Mth.clamp(velocityX, -MAX_POSITION_SPEED, MAX_POSITION_SPEED);
             velocityY = Mth.clamp(velocityY, -MAX_POSITION_SPEED, MAX_POSITION_SPEED);
             renderX += velocityX * step;
             renderY += velocityY * step;
+        }
+    }
+
+    private void updateSpawnAnimation(float delta) {
+        if (!spawnAnimation.get()) {
+            spawnAnim = 1.0f;
+            spawnVelocity = 0.0f;
+            return;
+        }
+
+        if (delta <= 0.0f) {
+            return;
+        }
+
+        int steps = Mth.clamp((int) Math.ceil(delta / MAX_SUB_STEP), 1, MAX_SUB_STEPS);
+        float step = delta / steps;
+        for (int i = 0; i < steps; i++) {
+            spawnVelocity += ((1.0f - spawnAnim) * SPAWN_STIFFNESS - spawnVelocity * SPAWN_DAMPING) * step;
+            spawnAnim += spawnVelocity * step;
+        }
+
+        if (spawnAnim > SPAWN_MAX) {
+            spawnAnim = SPAWN_MAX;
+            spawnVelocity = 0.0f;
         }
     }
 
@@ -550,6 +615,9 @@ public final class TargetHud extends Module {
         ghostHealth = displayHealth;
         ghostHold = 0.0f;
         damageFlash = 0.0f;
+        // Новая цель — анимация появления проигрывается заново.
+        spawnAnim = 0.0f;
+        spawnVelocity = 0.0f;
     }
 
     private void updateDisplayName(float maxWidth, float size) {
@@ -716,9 +784,10 @@ public final class TargetHud extends Module {
         ghostHold = 0.0f;
         damageFlash = 0.0f;
         dragging = false;
-        cursorReady = false;
         velocityX = 0.0f;
         velocityY = 0.0f;
+        spawnAnim = 0.0f;
+        spawnVelocity = 0.0f;
         // Края кнопок синхронизируем с текущим курсором: иначе после сброса зажатая ЛКМ/ПКМ
         // сработала бы как новое нажатие.
         lastLeftDown = HudPointer.isLeftDown();

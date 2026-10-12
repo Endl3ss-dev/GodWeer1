@@ -39,7 +39,7 @@ public final class HudSettingsScreen extends Screen {
     private static final float PANEL_RADIUS = 8.0f;
     private static final float SIDE_PADDING = 8.0f;
     private static final float TOP_PADDING = 6.5f;
-    private static final float HEADER_HEIGHT = 26.0f;
+    private static final float HEADER_HEIGHT = 34.0f;
     private static final float FOOTER_HEIGHT = 15.0f;
     private static final float ROW_GAP = 1.5f;
     private static final float ROW_RADIUS = 4.0f;
@@ -62,12 +62,41 @@ public final class HudSettingsScreen extends Screen {
     private static final float SCROLL_STEP = 14.0f;
     private static final int SCRIM_ALPHA = 115;
 
+    // [+] «Таблетка» переноса: за неё панель тащат, во время переноса виден только её контур.
+    private static final float PILL_WIDTH = 30.0f;
+    private static final float PILL_HEIGHT = 5.0f;
+    private static final float PILL_Y = 5.0f;
+    private static final float PILL_DOT = 1.6f;
+    private static final float PANEL_MARGIN = 4.0f;
+    private static final float PANEL_STIFFNESS = 900.0f;
+    private static final float PANEL_DAMPING = 54.0f;
+    private static final float PANEL_MAX_SPEED = 6_000.0f;
+    private static final float DIM_ALPHA = 0.35f;
+    private static final float GHOST_OUTLINE_WIDTH = 1.2f;
+    private static final float SPAWN_SCALE = 0.94f;
+    private static final float MAX_FRAME_DELTA = 0.05f;
+    private static final float MAX_SUB_STEP = 0.008f;
+    private static final int MAX_SUB_STEPS = 6;
+
+    private static final int WHITE_16 = ColorUtils.getColor(255, 255, 255, 41);
+    private static final int PILL_DOT_COLOR = ColorUtils.getColor(0, 0, 0, 150);
+    private static final int GHOST_FILL = ColorUtils.getColor(0, 0, 0, 70);
+
     private final Module module;
     private final List<Setting> settings;
     private final Row[] rows;
 
+    private final float anchorX;
+    private final float anchorY;
+    private final float anchorWidth;
+    private final float anchorHeight;
+
     private float panelX;
     private float panelY;
+    private float panelTargetX;
+    private float panelTargetY;
+    private float panelVelocityX;
+    private float panelVelocityY;
     private float panelHeight;
     private float contentHeight;
     private float maxScroll;
@@ -75,13 +104,26 @@ public final class HudSettingsScreen extends Screen {
     private float scrollTarget;
     private float appear;
 
+    private boolean spawned;
+    private boolean draggingPanel;
+    private float grabOffsetX;
+    private float grabOffsetY;
+    private float ghostX;
+    private float ghostY;
+    private boolean ghostValid;
+    private float pillHoverAnim;
+    private boolean hoveredPill;
+
+    private long lastFrameNanos;
+
     private int draggingSlider = -1;
     private boolean closing;
 
     private float cachedValue = Float.NaN;
     private String cachedValueText = "0.00";
 
-    public HudSettingsScreen(Module module) {
+    public HudSettingsScreen(Module module, float anchorX, float anchorY,
+                             float anchorWidth, float anchorHeight) {
         super(Component.literal(module.getName()));
         this.module = module;
         this.settings = module.getSettings();
@@ -89,6 +131,10 @@ public final class HudSettingsScreen extends Screen {
         for (int i = 0; i < this.rows.length; i++) {
             this.rows[i] = new Row();
         }
+        this.anchorX = anchorX;
+        this.anchorY = anchorY;
+        this.anchorWidth = anchorWidth;
+        this.anchorHeight = anchorHeight;
     }
 
     @Override
@@ -98,8 +144,27 @@ public final class HudSettingsScreen extends Screen {
         this.scroll = 0.0f;
         this.scrollTarget = 0.0f;
         this.draggingSlider = -1;
+        this.draggingPanel = false;
+        this.ghostValid = false;
         this.closing = false;
+        this.lastFrameNanos = 0L;
         layout();
+
+        // [+] Меню открывается ровно в точке клика по элементу интерфейса: левый верхний угол
+        // панели ставится в левый верхний угол элемента (вырожденный прямоугольник — центр экрана).
+        // При повторном init() (ресайз окна) позиция сохраняется.
+        if (!this.spawned) {
+            this.spawned = true;
+            this.panelTargetX = Mth.clamp(this.anchorWidth > 0.0f
+                    ? this.anchorX : (this.width - PANEL_WIDTH) * 0.5f, PANEL_MARGIN, maxPanelX());
+            this.panelTargetY = Mth.clamp(this.anchorHeight > 0.0f
+                    ? this.anchorY : (this.height - this.panelHeight) * 0.5f, PANEL_MARGIN, maxPanelY());
+            this.panelX = this.panelTargetX;
+            this.panelY = this.panelTargetY;
+            this.panelVelocityX = 0.0f;
+            this.panelVelocityY = 0.0f;
+        }
+
         GuiStyle.playSound("guiopen.wav", 0.25f);
     }
 
@@ -114,9 +179,11 @@ public final class HudSettingsScreen extends Screen {
         GuiBlur.beginFrame(GuiTheme.blurStrength());
 
         PoseStack stack = context.pose();
+        float delta = nextFrameDelta();
         this.appear = Mathf.fast(this.appear, 1.0f, GuiStyle.anim(16.0f));
         this.scroll = Mathf.fast(this.scroll, this.scrollTarget, GuiStyle.anim(18.0f));
         layout();
+        updatePanelMotion(delta);
         updateHover(mouseX, mouseY);
 
         int theme = GuiTheme.clientColor();
@@ -124,16 +191,37 @@ public final class HudSettingsScreen extends Screen {
 
         GuiRender.roundedRect(stack, -1.0f, -1.0f, this.width + 2.0f, this.height + 2.0f, 0.0f,
                 ColorUtils.multAlpha(ColorUtils.getColor(0, 0, 0, SCRIM_ALPHA), alpha));
+
+        // [+] Перенос: сама панель за курсором не едет — виден только её контур,
+        // а содержимое приглушается. После отпускания панель быстро и плавно доезжает сюда.
+        if (this.draggingPanel && this.ghostValid) {
+            GuiRender.roundedRect(stack, this.ghostX, this.ghostY, PANEL_WIDTH, this.panelHeight,
+                    PANEL_RADIUS, ColorUtils.multAlpha(GHOST_FILL, alpha));
+            GuiRender.roundedOutline(stack, this.ghostX, this.ghostY, PANEL_WIDTH, this.panelHeight,
+                    GHOST_OUTLINE_WIDTH, ColorUtils.multAlpha(theme, 0.9f * alpha), PANEL_RADIUS);
+        }
+
+        float contentAlpha = alpha * (this.draggingPanel ? DIM_ALPHA : 1.0f);
+        float spawnScale = SPAWN_SCALE + (1.0f - SPAWN_SCALE) * alpha;
+        float centerX = this.panelX + PANEL_WIDTH * 0.5f;
+        float centerY = this.panelY + this.panelHeight * 0.5f;
+
+        stack.pushPose();
+        stack.translate(centerX, centerY, 0.0f);
+        stack.scale(spawnScale, spawnScale, 1.0f);
+        stack.translate(-centerX, -centerY, 0.0f);
+
         GuiRender.drawGlass(stack, this.panelX, this.panelY, PANEL_WIDTH, this.panelHeight,
                 PANEL_RADIUS, true, 0.0f);
 
         stack.pushPose();
         stack.translate(this.panelX, this.panelY, 0.0f);
 
-        drawHeader(stack, theme, alpha);
-        drawRows(stack, theme, alpha);
-        drawFooter(stack, theme, alpha);
+        drawHeader(stack, theme, contentAlpha);
+        drawRows(stack, theme, contentAlpha);
+        drawFooter(stack, theme, contentAlpha);
 
+        stack.popPose();
         stack.popPose();
 
         super.render(context, mouseX, mouseY, partialTick);
@@ -141,8 +229,22 @@ public final class HudSettingsScreen extends Screen {
     }
 
     private void drawHeader(PoseStack stack, int theme, float alpha) {
-        float titleY = TOP_PADDING;
-        GuiRender.roundedRect(stack, SIDE_PADDING, titleY + 1.0f, ACCENT_WIDTH, ACCENT_HEIGHT,
+        // «Таблетка» переноса: три точки по центру панели, при наведении подсвечивается темой.
+        float pillX = (PANEL_WIDTH - PILL_WIDTH) * 0.5f;
+        GuiRender.roundedRect(stack, pillX, PILL_Y, PILL_WIDTH, PILL_HEIGHT, PILL_HEIGHT * 0.5f,
+                ColorUtils.multAlpha(ColorUtils.overCol(WHITE_16, ColorUtils.multAlpha(theme, 0.85f),
+                        this.pillHoverAnim), alpha));
+
+        float dotY = PILL_Y + (PILL_HEIGHT - PILL_DOT) * 0.5f;
+        float dotCenter = PANEL_WIDTH * 0.5f - 4.0f;
+        for (int i = 0; i < 3; i++) {
+            GuiRender.roundedRect(stack, dotCenter + i * 4.0f - PILL_DOT * 0.5f, dotY,
+                    PILL_DOT, PILL_DOT, PILL_DOT * 0.5f,
+                    ColorUtils.multAlpha(PILL_DOT_COLOR, alpha));
+        }
+
+        float titleY = TOP_PADDING + 6.5f;
+        GuiRender.roundedRect(stack, SIDE_PADDING, titleY + 0.5f, ACCENT_WIDTH, ACCENT_HEIGHT - 1.0f,
                 ACCENT_WIDTH * 0.5f, ColorUtils.multAlpha(theme, 0.9f * alpha));
         GuiFonts.SF_BOLD.draw(stack, this.module.getDisplayName(), SIDE_PADDING + ACCENT_WIDTH + 5.0f,
                 titleY, ColorUtils.multAlpha(GuiTheme.disabledColor(), alpha), TITLE_SIZE);
@@ -154,7 +256,7 @@ public final class HudSettingsScreen extends Screen {
 
         String description = fit(this.module.getDisplayDescription(), HINT_SIZE,
                 PANEL_WIDTH - SIDE_PADDING * 2.0f - ACCENT_WIDTH - 5.0f);
-        GuiFonts.SF_MEDIUM.draw(stack, description, SIDE_PADDING + ACCENT_WIDTH + 5.0f, titleY + 11.0f,
+        GuiFonts.SF_MEDIUM.draw(stack, description, SIDE_PADDING + ACCENT_WIDTH + 5.0f, titleY + 9.5f,
                 ColorUtils.multAlpha(GuiTheme.textColor(), 0.5f * alpha), HINT_SIZE);
 
         GuiRender.roundedRect(stack, SIDE_PADDING, HEADER_HEIGHT - 4.0f,
@@ -296,10 +398,15 @@ public final class HudSettingsScreen extends Screen {
         if (value.isEmpty()) {
             return;
         }
+
         float valueWidth = GuiFonts.SF_MEDIUM.getWidth(value, HINT_SIZE);
-        GuiFonts.SF_MEDIUM.draw(stack, value, row.x + row.width - valueWidth,
-                y + (row.height - GuiFonts.SF_MEDIUM.getHeight(value, HINT_SIZE)) * 0.5f,
-                ColorUtils.multAlpha(GuiTheme.textColor(), 0.55f * alpha), HINT_SIZE);
+        float boxWidth = valueWidth + 6.0f;
+        float boxX = row.x + row.width - boxWidth;
+        float boxY = y + (row.height - 10.0f) * 0.5f;
+        GuiRender.roundedRect(stack, boxX, boxY, boxWidth, 10.0f, 3.0f,
+                ColorUtils.multAlpha(theme, 0.10f * alpha));
+        GuiFonts.SF_MEDIUM.draw(stack, value, boxX + 3.0f, boxY + 1.5f,
+                ColorUtils.multAlpha(GuiTheme.textColor(), 0.6f * alpha), HINT_SIZE);
     }
 
     private void drawLabel(PoseStack stack, Row row, String text, float y, float alpha) {
@@ -318,7 +425,8 @@ public final class HudSettingsScreen extends Screen {
     private void drawFooter(PoseStack stack, int theme, float alpha) {
         float y = this.panelHeight - FOOTER_HEIGHT + 3.0f;
         GuiRender.roundedRect(stack, SIDE_PADDING, y - 2.5f, PANEL_WIDTH - SIDE_PADDING * 2.0f,
-                0.75f, 0.375f, ColorUtils.multAlpha(GuiTheme.textColor(), 0.08f * alpha));
+                0.75f, 0.375f, ColorUtils.multAlpha(ColorUtils.overCol(GuiTheme.textColor(), theme, 0.35f),
+                        0.10f * alpha));
         GuiFonts.SF_MEDIUM.draw(stack, "ЛКМ — изменить", SIDE_PADDING, y,
                 ColorUtils.multAlpha(GuiTheme.textColor(), 0.5f * alpha), HINT_SIZE);
 
@@ -378,8 +486,67 @@ public final class HudSettingsScreen extends Screen {
 
         float visibleContent = Math.min(this.contentHeight, contentLimit);
         this.panelHeight = HEADER_HEIGHT + visibleContent + FOOTER_HEIGHT;
-        this.panelX = (this.width - PANEL_WIDTH) * 0.5f;
-        this.panelY = Math.max(10.0f, (this.height - this.panelHeight) * 0.5f);
+
+        // [+] Панель живёт в своей точке экрана: цель зажимается в границы окна,
+        // а сама панель догоняет цель пружиной (при переносе — контуром под курсором).
+        this.panelTargetX = Mth.clamp(this.panelTargetX, PANEL_MARGIN, maxPanelX());
+        this.panelTargetY = Mth.clamp(this.panelTargetY, PANEL_MARGIN, maxPanelY());
+        this.panelX = Mth.clamp(this.panelX, -PANEL_WIDTH, this.width);
+        this.panelY = Mth.clamp(this.panelY, -this.panelHeight, this.height);
+    }
+
+    private float maxPanelX() {
+        return Math.max(PANEL_MARGIN, this.width - PANEL_WIDTH - PANEL_MARGIN);
+    }
+
+    private float maxPanelY() {
+        return Math.max(PANEL_MARGIN, this.height - this.panelHeight - PANEL_MARGIN);
+    }
+
+    private float pillScreenX() {
+        return this.panelX + (PANEL_WIDTH - PILL_WIDTH) * 0.5f;
+    }
+
+    private float pillScreenY() {
+        return this.panelY + PILL_Y;
+    }
+
+    private boolean overPill(double mouseX, double mouseY) {
+        return mouseX >= pillScreenX() - 3.0f && mouseX <= pillScreenX() + PILL_WIDTH + 3.0f
+                && mouseY >= pillScreenY() - 3.0f && mouseY <= pillScreenY() + PILL_HEIGHT + 3.0f;
+    }
+
+    // [+] Пружина панели с подшагами: во время переноса цель заморожена, после отпускания
+    // панель быстро и плавно доезжает до контура (сеттл ~0.15 с, без раскачки).
+    private void updatePanelMotion(float delta) {
+        if (delta <= 0.0f) {
+            return;
+        }
+
+        int steps = Mth.clamp((int) Math.ceil(delta / MAX_SUB_STEP), 1, MAX_SUB_STEPS);
+        float step = delta / steps;
+        for (int i = 0; i < steps; i++) {
+            this.panelVelocityX += ((this.panelTargetX - this.panelX) * PANEL_STIFFNESS
+                    - this.panelVelocityX * PANEL_DAMPING) * step;
+            this.panelVelocityY += ((this.panelTargetY - this.panelY) * PANEL_STIFFNESS
+                    - this.panelVelocityY * PANEL_DAMPING) * step;
+            this.panelVelocityX = Mth.clamp(this.panelVelocityX, -PANEL_MAX_SPEED, PANEL_MAX_SPEED);
+            this.panelVelocityY = Mth.clamp(this.panelVelocityY, -PANEL_MAX_SPEED, PANEL_MAX_SPEED);
+            this.panelX += this.panelVelocityX * step;
+            this.panelY += this.panelVelocityY * step;
+        }
+    }
+
+    private float nextFrameDelta() {
+        long now = System.nanoTime();
+        if (this.lastFrameNanos == 0L) {
+            this.lastFrameNanos = now;
+            return 1.0f / 60.0f;
+        }
+
+        float delta = Mth.clamp((now - this.lastFrameNanos) / 1_000_000_000.0f, 0.0f, MAX_FRAME_DELTA);
+        this.lastFrameNanos = now;
+        return delta;
     }
 
     private void layoutControls(Row row, Setting setting) {
@@ -413,6 +580,10 @@ public final class HudSettingsScreen extends Screen {
         boolean insideViewport = insidePanel
                 && mouseY >= this.panelY + HEADER_HEIGHT
                 && mouseY <= this.panelY + this.panelHeight - FOOTER_HEIGHT;
+
+        // [+] Подсветка «таблетки» переноса — единственная интерактивная ручка в шапке.
+        this.hoveredPill = overPill(mouseX, mouseY) || this.draggingPanel;
+        this.pillHoverAnim = Mathf.fast(this.pillHoverAnim, this.hoveredPill ? 1.0f : 0.0f, GuiStyle.anim(16.0f));
 
         for (int i = 0; i < this.rows.length; i++) {
             Row row = this.rows[i];
@@ -452,6 +623,19 @@ public final class HudSettingsScreen extends Screen {
         if (button != GLFW.GLFW_MOUSE_BUTTON_LEFT) {
             return false;
         }
+
+        // [+] Зажатие «таблетки»: панель остаётся на месте, за курсором едет только контур.
+        if (overPill(mouseX, mouseY)) {
+            this.draggingPanel = true;
+            this.grabOffsetX = (float) mouseX - this.panelX;
+            this.grabOffsetY = (float) mouseY - this.panelY;
+            this.ghostX = this.panelX;
+            this.ghostY = this.panelY;
+            this.ghostValid = true;
+            GuiStyle.playSound("mode_pick.wav", 0.1f);
+            return true;
+        }
+
         if (!insidePanel(mouseX, mouseY)) {
             onClose();
             return true;
@@ -505,6 +689,13 @@ public final class HudSettingsScreen extends Screen {
 
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {
+        // [+] Контур идёт за курсором ровно, кадр в кадр — без сглаживания и пружин.
+        if (this.draggingPanel) {
+            this.ghostX = Mth.clamp((float) mouseX - this.grabOffsetX, PANEL_MARGIN, maxPanelX());
+            this.ghostY = Mth.clamp((float) mouseY - this.grabOffsetY, PANEL_MARGIN, maxPanelY());
+            return true;
+        }
+
         if (this.draggingSlider < 0) {
             return false;
         }
@@ -520,6 +711,17 @@ public final class HudSettingsScreen extends Screen {
 
     @Override
     public boolean mouseReleased(double mouseX, double mouseY, int button) {
+        if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT && this.draggingPanel) {
+            this.draggingPanel = false;
+            if (this.ghostValid) {
+                // [+] Отпустили «таблетку» — панель быстро и плавно доезжает до контура.
+                this.panelTargetX = this.ghostX;
+                this.panelTargetY = this.ghostY;
+                this.ghostValid = false;
+            }
+            return true;
+        }
+
         if (button == GLFW.GLFW_MOUSE_BUTTON_LEFT && this.draggingSlider >= 0) {
             this.draggingSlider = -1;
             return true;
