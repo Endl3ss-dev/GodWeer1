@@ -1,6 +1,6 @@
 package swerve.modules.impl.render;
 
-import com.mojang.blaze3d.systems.ProjectionType;
+import com.mojang.blaze3d.ProjectionType;
 import com.mojang.blaze3d.systems.RenderSystem;
 import com.mojang.blaze3d.vertex.PoseStack;
 
@@ -77,6 +77,8 @@ public final class SpatialGui extends Module {
     private final Matrix4f inverseProjectionMatrix = new Matrix4f();
     private final Matrix4f combinedProjection = new Matrix4f();
     private final Matrix4f modelViewInverse = new Matrix4f();
+    // Снимок проекции кадра: RenderSystem хранит ссылку на матрицу, поэтому копируем.
+    private final Matrix4f savedProjection = new Matrix4f();
     private final Vector4f nearPoint = new Vector4f();
     private final Vector4f farPoint = new Vector4f();
     private final Vector3f rayOrigin = new Vector3f();
@@ -93,6 +95,7 @@ public final class SpatialGui extends Module {
     private boolean hasMappedPoint;
     private boolean matricesReady;
     private boolean projectionApplied;
+    private ProjectionType savedProjectionType = ProjectionType.PERSPECTIVE;
 
     public SpatialGui() {
         super("SpatialGui", "Инвентарь и контейнеры как 3D-панель перед камерой", ModuleCategory.RENDER);
@@ -167,7 +170,7 @@ public final class SpatialGui extends Module {
             drawCursorMarker(graphics.pose());
         }
 
-        RenderSystem.restoreProjectionMatrix();
+        RenderSystem.setProjectionMatrix(savedProjection, savedProjectionType);
         RenderSystem.enableCull();
         projectionApplied = false;
     }
@@ -322,9 +325,13 @@ public final class SpatialGui extends Module {
     }
 
     private void applyProjection() {
-        RenderSystem.backupProjectionMatrix();
+        // Тип проекции сохраняется вручную: restoreProjectionMatrix() возвращает только матрицу,
+        // а GUI должен отрисовываться ортографически, иначе поедут порядок и глубина квадов.
+        savedProjection.set(RenderSystem.getProjectionMatrix());
+        savedProjectionType = RenderSystem.getProjectionType();
         RenderSystem.setProjectionMatrix(combinedProjection, ProjectionType.PERSPECTIVE);
-        // GUI-квады рисуются без отсечения граней; при наклоне панели витку контуров это критично.
+        // Матрица панели зеркалит Y (GUI-ось вниз -> ось камеры вверх), поэтому виток квадов
+        // переворачивается и отсечение граней надо выключить.
         RenderSystem.disableCull();
         projectionApplied = true;
     }
