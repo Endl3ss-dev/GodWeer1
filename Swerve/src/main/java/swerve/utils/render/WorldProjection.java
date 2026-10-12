@@ -20,6 +20,7 @@ import org.joml.Matrix4f;
 public final class WorldProjection {
 
     private static final Matrix4f VIEW_PROJECTION = new Matrix4f();
+    private static final Matrix4f PROJECTION = new Matrix4f();
     private static final float TRANSLATION_EPSILON = 0.5f;
     private static final float MIN_CLIP_W = 1.0E-6f;
     private static final float OFF_SCREEN_LIMIT = 4.0f;
@@ -59,11 +60,23 @@ public final class WorldProjection {
         cameraRelative = translation < TRANSLATION_EPSILON;
 
         VIEW_PROJECTION.set(projection).mul(position);
+        // [+] Чистая перспектива кадра — нужна SpatialGui: панель строится в пространстве камеры
+        // и должна проецироваться тем же fov/near/far, что и мир.
+        PROJECTION.set(projection);
         ready = true;
     }
 
     public static boolean isReady() {
         return ready;
+    }
+
+    // Копия перспективной матрицы кадра в dest. false — кадр ещё не снят (меню, загрузка).
+    public static boolean copyProjection(Matrix4f dest) {
+        if (!ready || dest == null) {
+            return false;
+        }
+        dest.set(PROJECTION);
+        return true;
     }
 
     // out[0]/out[1] — координаты точки в GUI-пикселях. false — точка позади камеры,

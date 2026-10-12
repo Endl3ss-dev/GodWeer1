@@ -1,6 +1,7 @@
 package swerve.ui.hud;
 
 import swerve.Swerve;
+import swerve.modules.impl.render.SpatialGui;
 import swerve.ui.newgui.GuiStyle;
 
 import net.fabricmc.fabric.api.client.rendering.v1.HudRenderCallback;
@@ -43,6 +44,12 @@ public final class HudManager {
     private static void render(GuiGraphics context) {
         Minecraft minecraft = Minecraft.getInstance();
         if (minecraft.options.hideGui || minecraft.player == null || minecraft.level == null) {
+            return;
+        }
+
+        // [+] SpatialGui в режиме 3D-панели может прятать HUD: экран занимает центр кадра,
+        // и элементы интерфейса поверх него только мешают.
+        if (SpatialGui.isHidingHud()) {
             return;
         }
 

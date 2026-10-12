@@ -10,7 +10,8 @@
 		"client.MixinMinecraft",
 		"client.MixinMouseHandler",
 		"client.MixinUser",
-		"render.MixinItemInHandRenderer"
+		"render.MixinItemInHandRenderer",
+		"render.MixinScreenSpatialGui"
 	],
 	"injectors": {
 		"defaultRequire": 1
