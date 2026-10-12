@@ -41,6 +41,18 @@ public class MixinScreenSpatialGui {
         }
     }
 
+    // Затемнение и блюр мира: в 1.21.4 и то и другое рисует Screen.renderBackground, который
+    // вызывается внутри renderWithTooltip, — поэтому фон можно погасить, пока панель на месте.
+    @WrapMethod(method = "renderBackground", require = 0)
+    private void swerve$spatialBackground(GuiGraphics graphics, int mouseX, int mouseY, float partialTick,
+                                         Operation<Void> original) {
+        SpatialGui module = SpatialGui.get();
+        if (module != null && module.blocksScreenBackground()) {
+            return;
+        }
+        original.call(graphics, mouseX, mouseY, partialTick);
+    }
+
     @WrapMethod(method = "mouseClicked", require = 0)
     private boolean swerve$spatialMouseClicked(double mouseX, double mouseY, int button,
                                                Operation<Boolean> original) {

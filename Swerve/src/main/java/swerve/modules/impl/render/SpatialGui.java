@@ -39,10 +39,13 @@ import org.joml.Vector4f;
 // Курсор: физический курсор ходит по окну, поэтому координаты мыши для экрана считаются
 // пересечением луча камеры с плоскостью панели (обратная матрица панели) — клики и ховер
 // попадают туда, куда смотрит игрок. Точка попадания дополнительно рисуется на панели.
+//
+// Фон экрана (затемнение + блюр мира) по умолчанию выключен: в оригинале world blur тоже
+// выключен, панель висит прямо перед камерой, а мир за ней остаётся чётким.
 public final class SpatialGui extends Module {
 
     private static final float OPEN_DURATION_MS = 190.0f;
-    private static final float BASE_SCREEN_FRACTION = 0.62f;
+    private static final float BASE_SCREEN_FRACTION = 0.80f;
     private static final float OPEN_SCALE_FROM = 0.86f;
     private static final float OPEN_LIFT = 0.22f;
     private static final float OPEN_DISTANCE_BONUS = 0.30f;
@@ -61,7 +64,7 @@ public final class SpatialGui extends Module {
     private static SpatialGui instance;
 
     private final ModeSetting screenMode = new ModeSetting("Экраны", "Контейнеры", "Контейнеры", "Все");
-    private final FloatSetting distance = new FloatSetting("Дистанция", 1.6f, 0.55f, 3.0f, 0.05f);
+    private final FloatSetting distance = new FloatSetting("Дистанция", 1.5f, 0.55f, 3.0f, 0.05f);
     private final FloatSetting size = new FloatSetting("Размер", 1.0f, 0.4f, 1.8f, 0.05f);
     private final FloatSetting offsetY = new FloatSetting("Смещение по высоте", 0.0f, -0.8f, 0.8f, 0.02f);
     private final FloatSetting rotateY = new FloatSetting("Поворот", 0.0f, -50.0f, 50.0f, 1.0f);
@@ -70,6 +73,7 @@ public final class SpatialGui extends Module {
     private final BooleanSetting cursorMarker = new BooleanSetting("Метка курсора", true);
     private final BooleanSetting hideHud = new BooleanSetting("Скрывать HUD", false);
     private final BooleanSetting skipChat = new BooleanSetting("В чате как обычно", true);
+    private final BooleanSetting darkenWorld = new BooleanSetting("Блюр и затемнение", false);
 
     private final Matrix4f projectionMatrix = new Matrix4f();
     private final Matrix4f panelMatrix = new Matrix4f();
@@ -99,7 +103,7 @@ public final class SpatialGui extends Module {
 
     public SpatialGui() {
         super("SpatialGui", "Инвентарь и контейнеры как 3D-панель перед камерой", ModuleCategory.RENDER);
-        addSettings(screenMode, distance, size, offsetY, rotateY, rotateX, openAnimation, cursorMarker, hideHud, skipChat);
+        addSettings(screenMode, distance, size, offsetY, rotateY, rotateX, openAnimation, cursorMarker, hideHud, skipChat, darkenWorld);
         instance = this;
     }
 
@@ -111,6 +115,12 @@ public final class SpatialGui extends Module {
     public static boolean isHidingHud() {
         SpatialGui module = instance;
         return module != null && module.isEnable() && module.hideHud.get() && module.isHooked();
+    }
+
+    // Фон экрана (затемнение + блюр мира) отключается, пока панель висит перед камерой:
+    // в оригинале мир не размывается, иначе панель читается как плоский GUI поверх мутного мира.
+    public boolean blocksScreenBackground() {
+        return !darkenWorld.get() && isHooked();
     }
 
     @Override
