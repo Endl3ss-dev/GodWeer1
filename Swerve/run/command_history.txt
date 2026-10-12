@@ -1,0 +1,50 @@
+/gamemode 0
+/gamemode survival
+/summon minecraft:zombie
+/gamemode creative
+/gamemode survival
+/gamemode creative
+/give Player690 minecraft:golden_apple 65
+/summon minecraft:iron_golem
+/gamemode survival
+/summon minecraft:iron_golem
+/summon minecraft:zombie
+/give Player690 minecraft:potion
+/gamemode creative
+/effect clear
+/gamemode survival
+/effect clear
+/kill @e
+/gamemode creative
+/gamemode survival
+/effect clear
+/gamemode creative
+/gamemode survival
+/effect clear
+/lwd
+/l wd
+/give Player151 minecraft:netherite_sword
+/reg wd
+/gamemode creative
+/reg wd
+/hyb
+/hub
+/spawn
+/l wd
+/m _SyXaRiK
+/m _SyXaRiK q bratek
+/m _SyXaRiK gost
+/m _SyXaRiK nado bota?
+/m _SyXaRiK забыл кае включать...
+/m _SyXaRiK а?..
+/m _SyXaRiK вспаминаю
+/m _SyXaRiK плаген для работы удалил случайн
+/m _SyXaRiK
+/m _SyXaRiK все?
+/m _SyXaRiK
+/m _SyXaRiK все?
+/m _SyXaRiK .
+/m _SyXaRiK
+/m _SyXaRiK n
+/spawn
+/m _SyXaRiK n

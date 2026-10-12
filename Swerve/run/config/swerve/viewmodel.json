@@ -1,0 +1,14 @@
+{
+  "mainX": -0.0027068425,
+  "mainY": 0.6834782,
+  "offX": 0.0,
+  "offY": 0.0,
+  "mainScale": 0.2,
+  "offScale": 1.0,
+  "strength": 0.55,
+  "speed": 0.75,
+  "outlineSize": 0.5,
+  "onlyAura": false,
+  "outline": true,
+  "anim": "На себя"
+}

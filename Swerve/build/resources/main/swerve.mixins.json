@@ -1,0 +1,22 @@
+{
+	"required": true,
+	"package": "swerve.mixins",
+	"compatibilityLevel": "JAVA_21",
+	"minVersion": "0.8",
+	"mixins": [
+	],
+	"client": [
+		"client.MixinKeyboardHandler",
+		"client.MixinMinecraft",
+		"client.MixinMouseHandler",
+		"client.MixinUser",
+		"render.MixinItemInHandRenderer",
+		"render.MixinScreenSpatialGui"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	},
+	"overwrites": {
+		"requireAnnotations": true
+	}
+}
