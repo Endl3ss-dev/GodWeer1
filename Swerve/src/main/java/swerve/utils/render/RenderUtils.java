@@ -59,9 +59,12 @@ public final class RenderUtils {
             ShaderUtils.set(shader, "ColorModulator", 1.0f, 1.0f, 1.0f, 1.0f);
         }
 
+        // [!] Раньше alpha == 0 принудительно превращалась в 255. Из-за этого любой затухающий
+        // элемент (TargetHud, строки ArrayList, уведомления) в конце анимации вспыхивал
+        // непрозрачным белым вместо исчезновения. Нулевая альфа — это «не рисовать».
         int alpha = (color >> 24) & 0xFF;
         if (alpha == 0) {
-            alpha = 255;
+            return;
         }
         float r = ((color >> 16) & 0xFF) / 255.0f;
         float g = ((color >> 8) & 0xFF) / 255.0f;

@@ -10,6 +10,9 @@ import swerve.modules.Module;
 import swerve.modules.ModuleCategory;
 import swerve.modules.api.setting.BooleanSetting;
 import swerve.modules.api.setting.ModeSetting;
+import swerve.ui.hud.HudPointer;
+import swerve.ui.hud.HudSettingsController;
+import swerve.ui.hud.HudSettingsScreen;
 import swerve.ui.newgui.GuiFonts;
 import swerve.ui.newgui.GuiRender;
 import swerve.utils.color.ColorUtils;
@@ -28,8 +31,6 @@ import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
-
-import org.lwjgl.glfw.GLFW;
 
 public final class TargetHud extends Module {
 
@@ -51,7 +52,31 @@ public final class TargetHud extends Module {
     private static final float HUD_OPACITY = 0.90f;
     private static final float TEXT_SCALE = HUD_SCALE;
     private static final float ANIMATION_SPEED = 12.0f;
-    private static final float POSITION_SMOOTHING = 18.0f;
+    private static final float DEFAULT_POS_X = 20.0f;
+    private static final float DEFAULT_POS_Y_FRACTION = 0.32f;
+
+    // [+] Позиция ведётся пружиной: жёсткость = ω², демпфер = 2ζω (ζ чуть больше 1 — без раскачки).
+    private static final float POSITION_STIFFNESS = 480.0f;
+    private static final float POSITION_DAMPING = 46.0f;
+    private static final float MAX_POSITION_SPEED = 4_000.0f;
+    private static final float CURSOR_SMOOTHING = 55.0f;
+    private static final int MAX_SUB_STEPS = 6;
+
+    // [+] Анимация уменьшения HP: полоса, догоняющий «призрак» урона и вспышка.
+    private static final float HEALTH_SMOOTHING = 16.0f;
+    private static final float GHOST_SMOOTHING = 5.0f;
+    private static final float GHOST_HOLD_SECONDS = 0.32f;
+    private static final float FLASH_DECAY = 4.5f;
+    private static final float FLASH_PER_HEALTH = 2.6f;
+    private static final float FLASH_MIN = 0.35f;
+    private static final float FLASH_ON_BAR = 0.35f;
+    private static final float FLASH_ON_TEXT = 0.8f;
+
+    private static final float MAX_FRAME_DELTA = 0.05f;
+    private static final float MAX_SUB_STEP = 0.008f;
+    private static final float ANIM_EPSILON = 0.004f;
+    private static final float DRAG_ANIM_THRESHOLD = 0.5f;
+
     private static final int WHITE = ColorUtils.getColor(255, 255, 255, 255);
     private static final int MUTED_WHITE = ColorUtils.getColor(205, 211, 222, 255);
     private static final int HEALTH_RED = ColorUtils.rgba(242, 83, 91, 255);
@@ -63,6 +88,9 @@ public final class TargetHud extends Module {
 
     private final BooleanSetting showItems = new BooleanSetting("Предметы", true);
     private final ModeSetting hpStyle = new ModeSetting("Стиль HP", "Тема", "Тема", "Здоровье");
+    // [+] Без активной цели элемент показывает самого игрока клиента.
+    private final BooleanSetting showSelf = new BooleanSetting("Показывать себя", true);
+    private final BooleanSetting resetPosition = new BooleanSetting("Сбросить позицию", false);
 
     private LivingEntity target;
     private LivingEntity cachedTarget;
@@ -70,14 +98,26 @@ public final class TargetHud extends Module {
     private long lastFrameNanos;
     private float anim;
     private float displayHealth;
+    private float previousHealth;
+    private float ghostHealth;
+    private float ghostHold;
+    private float damageFlash;
 
     private float posX = -1.0f;
     private float posY = -1.0f;
     private float renderX = -1.0f;
     private float renderY = -1.0f;
+    private float velocityX;
+    private float velocityY;
+    private float cursorX;
+    private float cursorY;
+    private boolean cursorReady;
+    private boolean positionSnap = true;
     private boolean dragging;
     private float grabX;
     private float grabY;
+    private boolean lastLeftDown;
+    private boolean lastRightDown;
 
     private String targetName = "";
     private String displayName = "";
@@ -101,7 +141,7 @@ public final class TargetHud extends Module {
 
     public TargetHud() {
         super("TargetHud", "Панель с информацией о враге", ModuleCategory.INTERFACE);
-        addSettings(showItems, hpStyle);
+        addSettings(showItems, hpStyle, showSelf, resetPosition);
         registerEvents();
     }
 
@@ -124,6 +164,20 @@ public final class TargetHud extends Module {
         super.onDisable();
     }
 
+    @Override
+    public void onTick() {
+        if (!resetPosition.get()) {
+            return;
+        }
+
+        // Настройка-кнопка: сбрасываем позицию один раз и гасим галочку, как в HudElement.
+        resetPosition.setState(false);
+        Minecraft minecraft = Minecraft.getInstance();
+        posX = DEFAULT_POS_X;
+        posY = minecraft.getWindow().getGuiScaledHeight() * DEFAULT_POS_Y_FRACTION;
+        positionSnap = true;
+    }
+
     private void onHudRender(GuiGraphics context, PoseStack stack) {
         Minecraft mc = Minecraft.getInstance();
         if (mc.player == null || mc.level == null || mc.options.hideGui) {
@@ -132,34 +186,35 @@ public final class TargetHud extends Module {
         }
 
         float frameDelta = nextFrameDelta();
+        float delta = Mth.clamp(frameDelta, 0.0f, MAX_FRAME_DELTA);
         long now = System.currentTimeMillis();
-        boolean hovered = false;
-        Entity picked = mc.crosshairPickEntity;
-        if (picked instanceof LivingEntity living && living != mc.getCameraEntity() && living.isAlive()
-                && !(living instanceof Player player && FriendManager.isFriend(player))) {
-            target = living;
-            lastSeen = now;
-            hovered = true;
+
+        LivingEntity resolved = resolveTarget(mc, now);
+        if (resolved != null) {
+            target = resolved;
         }
+        // Последняя цель остаётся в поле зрения, пока идёт затухание (showSelf = false).
+        anim = Mth.lerp(smoothingFactor(delta, ANIMATION_SPEED), anim, resolved != null ? 1.0f : 0.0f);
 
-        boolean targetAlive = target != null && target.isAlive();
-        boolean visible = targetAlive
-                && (hovered || now - lastSeen <= TARGET_HOLD_TIME_MS);
-        anim = Mth.lerp(smoothingFactor(frameDelta, ANIMATION_SPEED), anim, visible ? 1.0f : 0.0f);
-
-        if (target == null || anim <= 0.004f) {
-            if (!visible || target == null) {
+        if (target == null || anim <= ANIM_EPSILON) {
+            if (resolved == null) {
                 resetTargetState();
             }
             dragging = false;
+            // [+] Края кнопок запоминаем и в пропущенном кадре: иначе после возврата
+            // элемента зажатая ЛКМ мгновенно стартовала бы перетаскивание.
+            lastLeftDown = HudPointer.isLeftDown();
+            lastRightDown = HudPointer.isRightDown();
             return;
         }
 
         if (target != cachedTarget) {
             updateTargetCache(target);
         }
-        displayHealth = Mth.lerp(smoothingFactor(frameDelta, 18.0f), displayHealth,
-                Math.max(0.0f, target.getHealth()));
+
+        float health = Math.max(0.0f, target.getHealth());
+        float maxHealth = Math.max(1.0f, target.getMaxHealth());
+        updateHealthAnimation(health, maxHealth, delta);
 
         float width = 154.0f * HUD_SCALE;
         float cardHeight = 44.0f * HUD_SCALE;
@@ -173,50 +228,68 @@ public final class TargetHud extends Module {
 
         int scaledWidth = mc.getWindow().getGuiScaledWidth();
         int scaledHeight = mc.getWindow().getGuiScaledHeight();
-        if (posX < 0.0f || posY < 0.0f) {
-            posX = 20.0f;
-            posY = scaledHeight * 0.32f;
-        }
-        if (renderX < 0.0f || renderY < 0.0f) {
-            renderX = posX;
-            renderY = posY;
-        }
-
-        double windowScale = Math.max(1.0, mc.getWindow().getGuiScale());
-        double mouseX = mc.mouseHandler.xpos() / windowScale;
-        double mouseY = mc.mouseHandler.ypos() / windowScale;
-        boolean mouseDown = GLFW.glfwGetMouseButton(mc.getWindow().getWindow(),
-                GLFW.GLFW_MOUSE_BUTTON_LEFT) == GLFW.GLFW_PRESS;
-
-        if (mouseDown && !dragging && anim > 0.5f
-                && mouseX >= renderX && mouseX <= renderX + width
-                && mouseY >= renderY && mouseY <= renderY + totalHeight) {
-            dragging = true;
-            grabX = (float) mouseX - renderX;
-            grabY = (float) mouseY - renderY;
-        }
-        if (!mouseDown) {
-            dragging = false;
-        }
+        ensurePosition(scaledHeight);
 
         float maxX = Math.max(2.0f, scaledWidth - width - 2.0f);
         float maxY = Math.max(2.0f, scaledHeight - totalHeight - 2.0f);
+
+        // [+] Курсор и кнопки читаются из HudPointer: элемент больше не дёргает GLFW сам
+        // и видит нажатия при открытом экране (нужно для ПКМ-меню в чате).
+        float pointerX = (float) HudPointer.getX();
+        float pointerY = (float) HudPointer.getY();
+        boolean leftDown = HudPointer.isLeftDown();
+        boolean rightDown = HudPointer.isRightDown();
+
+        if (!cursorReady) {
+            cursorX = pointerX;
+            cursorY = pointerY;
+            cursorReady = true;
+        } else {
+            float cursorFactor = smoothingFactor(delta, CURSOR_SMOOTHING);
+            cursorX += (pointerX - cursorX) * cursorFactor;
+            cursorY += (pointerY - cursorY) * cursorFactor;
+        }
+
+        boolean hovered = anim > DRAG_ANIM_THRESHOLD
+                && pointerX >= renderX && pointerX <= renderX + width
+                && pointerY >= renderY && pointerY <= renderY + totalHeight;
+
+        // [+] ПКМ по элементу при открытом экране (в чате) открывает меню настроек.
+        // В бою ПКМ не перехватываем: там курсор захвачен, а клик ставит блок.
+        if (rightDown && !lastRightDown && hovered && mc.screen != null
+                && !(mc.screen instanceof HudSettingsScreen)) {
+            HudSettingsController.requestOpen(this);
+        }
+
+        if (leftDown && !lastLeftDown && hovered) {
+            dragging = true;
+            grabX = pointerX - posX;
+            grabY = pointerY - posY;
+        }
+        if (!leftDown) {
+            dragging = false;
+        }
+        lastLeftDown = leftDown;
+        lastRightDown = rightDown;
+
         if (dragging) {
-            posX = Mth.clamp((float) mouseX - grabX, 2.0f, maxX);
-            posY = Mth.clamp((float) mouseY - grabY, 2.0f, maxY);
+            posX = Mth.clamp(pointerX - grabX, 2.0f, maxX);
+            posY = Mth.clamp(pointerY - grabY, 2.0f, maxY);
         } else {
             posX = Mth.clamp(posX, 2.0f, maxX);
             posY = Mth.clamp(posY, 2.0f, maxY);
         }
 
-        float positionFactor = smoothingFactor(frameDelta, POSITION_SMOOTHING);
-        renderX = Mth.lerp(positionFactor, renderX, posX);
-        renderY = Mth.lerp(positionFactor, renderY, posY);
+        updatePosition(delta);
 
         float x = renderX;
         float y = renderY;
         float animationAlpha = smoothStep(anim);
         float opacityFactor = animationAlpha * HUD_OPACITY;
+        if (opacityFactor <= 0.004f) {
+            return;
+        }
+
         float visualScale = 0.96f + 0.04f * anim;
         float centerX = x + width * 0.5f;
         float centerY = y + totalHeight * 0.5f;
@@ -225,7 +298,8 @@ public final class TargetHud extends Module {
         stack.scale(visualScale, visualScale, 1.0f);
         stack.translate(-centerX, -centerY, 0.0f);
 
-        float healthRatio = Mth.clamp(displayHealth / Math.max(1.0f, target.getMaxHealth()), 0.0f, 1.0f);
+        float healthRatio = Mth.clamp(displayHealth / maxHealth, 0.0f, 1.0f);
+        float ghostRatio = Mth.clamp(ghostHealth / maxHealth, 0.0f, 1.0f);
         int themeColor = ThemeManager.getColor();
         int accentColor = getAccentColor(healthRatio, themeColor);
         int accent = ColorUtils.multAlpha(accentColor, opacityFactor);
@@ -268,12 +342,18 @@ public final class TargetHud extends Module {
                     textColor, nameSize);
         }
 
+        // [+] Число HP подсвечивается красным на вспышке урона, чтобы просадка читалась мгновенно.
+        int healthNumberColor = damageFlash > 0.01f
+                ? ColorUtils.overCol(textColor, ColorUtils.multAlpha(HEALTH_RED, opacityFactor),
+                        damageFlash * FLASH_ON_TEXT)
+                : textColor;
+
         updateVitalsText(healthSize);
         float detailsY = y + 20.5f * HUD_SCALE;
         float textX = infoX;
         GuiFonts.SF_MEDIUM.draw(stack, HEALTH_PREFIX, textX, detailsY, mutedColor, healthSize);
         textX += healthPrefixWidth;
-        GuiFonts.SF_MEDIUM.draw(stack, healthText, textX, detailsY, textColor, healthSize);
+        GuiFonts.SF_MEDIUM.draw(stack, healthText, textX, detailsY, healthNumberColor, healthSize);
         textX += healthTextWidth + 3.0f * HUD_SCALE;
         if (cachedAbsorptionTenths > 0 && textX + absorptionTextWidth <= infoRight) {
             GuiFonts.SF_MEDIUM.draw(stack, absorptionText, textX, detailsY,
@@ -289,18 +369,31 @@ public final class TargetHud extends Module {
         float barRadius = barHeight * 0.5f;
         GuiRender.roundedRect(stack, barX, barY, barWidth, barHeight, barRadius, trackColor);
 
-        float healthWidth = innerWidth * healthRatio;
         float innerX = barX + HUD_SCALE;
         float innerY = barY + HUD_SCALE;
+        float healthWidth = innerWidth * healthRatio;
+        float ghostWidth = innerWidth * Math.max(0.0f, ghostRatio - healthRatio);
+        if (ghostWidth > 0.5f && innerHeight > 0.0f) {
+            GuiRender.roundedRect(stack, innerX + healthWidth, innerY, ghostWidth, innerHeight,
+                    innerHeight * 0.5f, ColorUtils.multAlpha(HEALTH_RED, 0.8f * opacityFactor));
+        }
+        if (damageFlash > 0.01f) {
+            GuiRender.drawGlow(stack, barX - 1.0f, barY - 1.0f, barWidth + 2.0f, barHeight + 2.0f,
+                    barRadius, 2.5f * HUD_SCALE, 3,
+                    ColorUtils.multAlpha(HEALTH_RED, 0.55f * damageFlash * opacityFactor));
+        }
         if (healthWidth > 0.5f && innerHeight > 0.0f) {
             GuiRender.roundedRect(stack, innerX, innerY, healthWidth, innerHeight,
-                    innerHeight * 0.5f, accent);
+                    innerHeight * 0.5f, damageFlash > 0.01f
+                            ? ColorUtils.overCol(accent, ColorUtils.multAlpha(WHITE, opacityFactor),
+                                    damageFlash * FLASH_ON_BAR)
+                            : accent);
         }
 
         float absorption = Math.max(0.0f, target.getAbsorptionAmount());
         if (innerWidth > healthWidth && innerHeight > 0.0f) {
             float absorptionWidth = Math.min(innerWidth - healthWidth,
-                    innerWidth * absorption / Math.max(1.0f, target.getMaxHealth()));
+                    innerWidth * absorption / maxHealth);
             if (absorptionWidth > 0.5f) {
                 int absorptionColor = ColorUtils.multAlpha(ABSORPTION_COLOR, opacityFactor);
                 GuiRender.roundedRect(stack, innerX + healthWidth, innerY, absorptionWidth, innerHeight,
@@ -332,6 +425,92 @@ public final class TargetHud extends Module {
         stack.popPose();
     }
 
+    // [+] Приоритет источника цели: то, на что смотрит игрок, — затем удержанная цель,
+    // затем сам игрок клиента, чтобы панель не пропадала из HUD.
+    // null возвращается только когда показ себя выключен и держать больше нечего.
+    private LivingEntity resolveTarget(Minecraft mc, long now) {
+        Entity picked = mc.crosshairPickEntity;
+        if (picked instanceof LivingEntity living && living != mc.getCameraEntity() && living.isAlive()
+                && !(living instanceof Player player && FriendManager.isFriend(player))) {
+            lastSeen = now;
+            return living;
+        }
+
+        if (target != null && target != mc.player && target.isAlive()
+                && now - lastSeen <= TARGET_HOLD_TIME_MS) {
+            return target;
+        }
+
+        return showSelf.get() ? mc.player : null;
+    }
+
+    private void ensurePosition(int scaledHeight) {
+        if (posX >= 0.0f && posY >= 0.0f) {
+            return;
+        }
+        posX = DEFAULT_POS_X;
+        posY = scaledHeight * DEFAULT_POS_Y_FRACTION;
+        positionSnap = true;
+    }
+
+    // [+] Пружина с подшагами: кадр не зависит от FPS, а позиция не «телепортируется» по кадрам.
+    private void updatePosition(float delta) {
+        if (positionSnap) {
+            positionSnap = false;
+            renderX = posX;
+            renderY = posY;
+            velocityX = 0.0f;
+            velocityY = 0.0f;
+            return;
+        }
+
+        if (delta <= 0.0f) {
+            return;
+        }
+
+        int steps = Mth.clamp((int) Math.ceil(delta / MAX_SUB_STEP), 1, MAX_SUB_STEPS);
+        float step = delta / steps;
+        for (int i = 0; i < steps; i++) {
+            velocityX += ((posX - renderX) * POSITION_STIFFNESS - velocityX * POSITION_DAMPING) * step;
+            velocityY += ((posY - renderY) * POSITION_STIFFNESS - velocityY * POSITION_DAMPING) * step;
+            velocityX = Mth.clamp(velocityX, -MAX_POSITION_SPEED, MAX_POSITION_SPEED);
+            velocityY = Mth.clamp(velocityY, -MAX_POSITION_SPEED, MAX_POSITION_SPEED);
+            renderX += velocityX * step;
+            renderY += velocityY * step;
+        }
+    }
+
+    // [+] Полоса HP: плавное схождение к текущему значению, «призрак» полученного урона
+    // с задержкой и вспышка, затухающая после удара.
+    private void updateHealthAnimation(float health, float maxHealth, float delta) {
+        if (health < previousHealth - 1.0E-4f) {
+            float lost = (previousHealth - health) / maxHealth;
+            damageFlash = Math.min(1.0f, Math.max(damageFlash, FLASH_MIN) + lost * FLASH_PER_HEALTH);
+            ghostHold = GHOST_HOLD_SECONDS;
+            ghostHealth = Math.max(ghostHealth, previousHealth);
+        } else if (health > previousHealth + 1.0E-4f) {
+            ghostHealth = health;
+            ghostHold = 0.0f;
+        }
+        previousHealth = health;
+
+        displayHealth = approach(displayHealth, health, delta, HEALTH_SMOOTHING);
+
+        if (ghostHold > 0.0f) {
+            ghostHold = Math.max(0.0f, ghostHold - delta);
+        } else {
+            ghostHealth = approach(ghostHealth, displayHealth, delta, GHOST_SMOOTHING);
+        }
+        ghostHealth = Math.max(ghostHealth, displayHealth);
+
+        if (damageFlash > 0.0f) {
+            damageFlash = approach(damageFlash, 0.0f, delta, FLASH_DECAY);
+            if (damageFlash < 0.01f) {
+                damageFlash = 0.0f;
+            }
+        }
+    }
+
     private float nextFrameDelta() {
         long now = System.nanoTime();
         if (lastFrameNanos == 0L) {
@@ -340,11 +519,15 @@ public final class TargetHud extends Module {
         }
         float delta = (now - lastFrameNanos) / 1_000_000_000.0f;
         lastFrameNanos = now;
-        return Mth.clamp(delta, 0.0f, 0.05f);
+        return Mth.clamp(delta, 0.0f, MAX_FRAME_DELTA);
     }
 
     private static float smoothingFactor(float delta, float speed) {
         return 1.0f - (float) Math.exp(-delta * speed);
+    }
+
+    private static float approach(float current, float target, float delta, float speed) {
+        return current + (target - current) * smoothingFactor(delta, speed);
     }
 
     private static float smoothStep(float value) {
@@ -363,6 +546,10 @@ public final class TargetHud extends Module {
         cachedAbsorptionTenths = Integer.MIN_VALUE;
         cachedVitalsSize = -1.0f;
         displayHealth = Math.max(0.0f, currentTarget.getHealth());
+        previousHealth = displayHealth;
+        ghostHealth = displayHealth;
+        ghostHold = 0.0f;
+        damageFlash = 0.0f;
     }
 
     private void updateDisplayName(float maxWidth, float size) {
@@ -524,7 +711,18 @@ public final class TargetHud extends Module {
         lastFrameNanos = 0L;
         anim = 0.0f;
         displayHealth = 0.0f;
+        previousHealth = 0.0f;
+        ghostHealth = 0.0f;
+        ghostHold = 0.0f;
+        damageFlash = 0.0f;
         dragging = false;
+        cursorReady = false;
+        velocityX = 0.0f;
+        velocityY = 0.0f;
+        // Края кнопок синхронизируем с текущим курсором: иначе после сброса зажатая ЛКМ/ПКМ
+        // сработала бы как новое нажатие.
+        lastLeftDown = HudPointer.isLeftDown();
+        lastRightDown = HudPointer.isRightDown();
         targetName = "";
         displayName = "";
         cachedNameWidth = -1.0f;

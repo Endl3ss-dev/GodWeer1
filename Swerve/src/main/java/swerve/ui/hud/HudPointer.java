@@ -11,6 +11,7 @@ public final class HudPointer {
     private static double x;
     private static double y;
     private static boolean leftDown;
+    private static boolean rightDown;
     private static boolean pressPending;
 
     private HudPointer() {
@@ -21,10 +22,12 @@ public final class HudPointer {
         x = minecraft.mouseHandler.xpos() / windowScale;
         y = minecraft.mouseHandler.ypos() / windowScale;
 
-        boolean down = GLFW.glfwGetMouseButton(minecraft.getWindow().getWindow(),
-                GLFW.GLFW_MOUSE_BUTTON_LEFT) == GLFW.GLFW_PRESS;
+        long window = minecraft.getWindow().getWindow();
+        boolean down = GLFW.glfwGetMouseButton(window, GLFW.GLFW_MOUSE_BUTTON_LEFT) == GLFW.GLFW_PRESS;
         pressPending = down && !leftDown;
         leftDown = down;
+        // [+] ПКМ: элемент по ней открывает своё меню настроек (ПКМ в чате).
+        rightDown = GLFW.glfwGetMouseButton(window, GLFW.GLFW_MOUSE_BUTTON_RIGHT) == GLFW.GLFW_PRESS;
     }
 
     public static double getX() {
@@ -39,10 +42,22 @@ public final class HudPointer {
         return leftDown;
     }
 
+    // Состояние ПКМ за текущий кадр: фронт нажатия элементы вычисляют сами,
+    // чтобы не отбирать событие у арбитража перетаскивания HudManager.
+    public static boolean isRightDown() {
+        return rightDown;
+    }
+
     // true ровно один кадр — на фронте нажатия. Сброс флага защищает от повторного захвата элемента.
     public static boolean consumePress() {
         boolean pending = pressPending;
         pressPending = false;
         return pending;
+    }
+
+    // [+] Клик, сделанный по GUI (например, в чате), не должен доживать до первого кадра
+    // без экрана и запускать перетаскивание HUD-элемента.
+    public static void discardPress() {
+        pressPending = false;
     }
 }

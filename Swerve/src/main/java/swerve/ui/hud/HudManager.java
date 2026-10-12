@@ -30,6 +30,7 @@ public final class HudManager {
         initialized = true;
 
         HudPositionStore.load();
+        HudSettingsController.init();
         HudRenderCallback.EVENT.register((context, deltaTracker) -> render(context));
     }
 
@@ -45,13 +46,20 @@ public final class HudManager {
             return;
         }
 
-        // Драг только в мире без открытых экранов — иначе элементы перехватывали бы клики GUI.
+        // [+] Курсор опрашивается всегда: элементы читают кнопки и при открытом экране
+        // (ПКМ по элементу в чате открывает меню настроек). Драг по-прежнему только без экранов,
+        // иначе элементы перехватывали бы клики GUI.
+        HudPointer.update(minecraft);
+
         if (minecraft.screen == null) {
-            HudPointer.update(minecraft);
             updateDrag(minecraft);
-        } else if (dragTarget != null) {
-            dragTarget.endDrag();
-            dragTarget = null;
+        } else {
+            // Клик по GUI не должен доживать до драга HUD после закрытия экрана.
+            HudPointer.discardPress();
+            if (dragTarget != null) {
+                dragTarget.endDrag();
+                dragTarget = null;
+            }
         }
 
         for (int i = 0, size = ELEMENTS.size(); i < size; i++) {
