@@ -38,16 +38,14 @@ public final class HudSettingsScreen extends Screen {
     private static final float PANEL_WIDTH = 152.0f;
     private static final float PANEL_RADIUS = 8.0f;
     private static final float SIDE_PADDING = 8.0f;
-    private static final float TOP_PADDING = 6.5f;
-    private static final float HEADER_HEIGHT = 34.0f;
-    private static final float FOOTER_HEIGHT = 15.0f;
-    private static final float ROW_GAP = 1.5f;
+    private static final float HEADER_HEIGHT = 12.5f;
+    private static final float BOTTOM_PADDING = 6.0f;
+    private static final float ROW_GAP = 1.0f;
     private static final float ROW_RADIUS = 4.0f;
-    private static final float BOOLEAN_HEIGHT = 13.0f;
-    private static final float SLIDER_HEIGHT = 21.0f;
-    private static final float MODE_HEIGHT = 15.0f;
-    private static final float PLAIN_HEIGHT = 12.0f;
-    private static final float TITLE_SIZE = 9.0f;
+    private static final float BOOLEAN_HEIGHT = 11.0f;
+    private static final float SLIDER_HEIGHT = 17.0f;
+    private static final float MODE_HEIGHT = 13.0f;
+    private static final float PLAIN_HEIGHT = 10.0f;
     private static final float LABEL_SIZE = 7.0f;
     private static final float HINT_SIZE = 6.0f;
     private static final float TOGGLE_WIDTH = 17.0f;
@@ -57,15 +55,13 @@ public final class HudSettingsScreen extends Screen {
     private static final float TRACK_HEIGHT = 3.5f;
     private static final float KNOB_WIDTH = 5.0f;
     private static final float KNOB_HEIGHT = 6.5f;
-    private static final float ACCENT_WIDTH = 2.0f;
-    private static final float ACCENT_HEIGHT = 10.0f;
     private static final float SCROLL_STEP = 14.0f;
     private static final int SCRIM_ALPHA = 115;
 
     // [+] «Таблетка» переноса: за неё панель тащат, во время переноса виден только её контур.
     private static final float PILL_WIDTH = 30.0f;
-    private static final float PILL_HEIGHT = 5.0f;
-    private static final float PILL_Y = 5.0f;
+    private static final float PILL_HEIGHT = 4.5f;
+    private static final float PILL_Y = 4.0f;
     private static final float PILL_DOT = 1.6f;
     private static final float PANEL_MARGIN = 4.0f;
     private static final float PANEL_STIFFNESS = 900.0f;
@@ -217,9 +213,8 @@ public final class HudSettingsScreen extends Screen {
         stack.pushPose();
         stack.translate(this.panelX, this.panelY, 0.0f);
 
-        drawHeader(stack, theme, contentAlpha);
+        drawPill(stack, theme, contentAlpha);
         drawRows(stack, theme, contentAlpha);
-        drawFooter(stack, theme, contentAlpha);
 
         stack.popPose();
         stack.popPose();
@@ -228,8 +223,8 @@ public final class HudSettingsScreen extends Screen {
         GuiBlur.endFrame();
     }
 
-    private void drawHeader(PoseStack stack, int theme, float alpha) {
-        // «Таблетка» переноса: три точки по центру панели, при наведении подсвечивается темой.
+    // [+] Заголовок и подвал убраны: панель — это «таблетка» переноса и список настроек.
+    private void drawPill(PoseStack stack, int theme, float alpha) {
         float pillX = (PANEL_WIDTH - PILL_WIDTH) * 0.5f;
         GuiRender.roundedRect(stack, pillX, PILL_Y, PILL_WIDTH, PILL_HEIGHT, PILL_HEIGHT * 0.5f,
                 ColorUtils.multAlpha(ColorUtils.overCol(WHITE_16, ColorUtils.multAlpha(theme, 0.85f),
@@ -242,30 +237,10 @@ public final class HudSettingsScreen extends Screen {
                     PILL_DOT, PILL_DOT, PILL_DOT * 0.5f,
                     ColorUtils.multAlpha(PILL_DOT_COLOR, alpha));
         }
-
-        float titleY = TOP_PADDING + 6.5f;
-        GuiRender.roundedRect(stack, SIDE_PADDING, titleY + 0.5f, ACCENT_WIDTH, ACCENT_HEIGHT - 1.0f,
-                ACCENT_WIDTH * 0.5f, ColorUtils.multAlpha(theme, 0.9f * alpha));
-        GuiFonts.SF_BOLD.draw(stack, this.module.getDisplayName(), SIDE_PADDING + ACCENT_WIDTH + 5.0f,
-                titleY, ColorUtils.multAlpha(GuiTheme.disabledColor(), alpha), TITLE_SIZE);
-
-        String category = this.module.getCategory().getName();
-        float categoryWidth = GuiFonts.SF_MEDIUM.getWidth(category, HINT_SIZE);
-        GuiFonts.SF_MEDIUM.draw(stack, category, PANEL_WIDTH - SIDE_PADDING - categoryWidth, titleY + 3.0f,
-                ColorUtils.multAlpha(GuiTheme.textColor(), 0.55f * alpha), HINT_SIZE);
-
-        String description = fit(this.module.getDisplayDescription(), HINT_SIZE,
-                PANEL_WIDTH - SIDE_PADDING * 2.0f - ACCENT_WIDTH - 5.0f);
-        GuiFonts.SF_MEDIUM.draw(stack, description, SIDE_PADDING + ACCENT_WIDTH + 5.0f, titleY + 9.5f,
-                ColorUtils.multAlpha(GuiTheme.textColor(), 0.5f * alpha), HINT_SIZE);
-
-        GuiRender.roundedRect(stack, SIDE_PADDING, HEADER_HEIGHT - 4.0f,
-                PANEL_WIDTH - SIDE_PADDING * 2.0f, 0.75f, 0.375f,
-                ColorUtils.multAlpha(GuiTheme.textColor(), 0.10f * alpha));
     }
 
     private void drawRows(PoseStack stack, int theme, float alpha) {
-        float viewportHeight = this.panelHeight - HEADER_HEIGHT - FOOTER_HEIGHT;
+        float viewportHeight = this.panelHeight - HEADER_HEIGHT - BOTTOM_PADDING;
         if (viewportHeight <= 1.0f) {
             return;
         }
@@ -285,7 +260,7 @@ public final class HudSettingsScreen extends Screen {
             row.hoverAnim = Mathf.fast(row.hoverAnim, row.hovered ? 1.0f : 0.0f, GuiStyle.anim(14.0f));
 
             if (row.hoverAnim > 0.01f) {
-                GuiRender.roundedRect(stack, row.x - 3.0f, y - 1.0f, row.width + 6.0f, row.height + 2.0f,
+                GuiRender.roundedRect(stack, row.x - 3.0f, y - 0.5f, row.width + 6.0f, row.height + 1.0f,
                         ROW_RADIUS, ColorUtils.multAlpha(theme, 0.08f * row.hoverAnim * alpha));
             }
 
@@ -422,20 +397,6 @@ public final class HudSettingsScreen extends Screen {
                 ColorUtils.multAlpha(GuiTheme.disabledColor(), 0.9f * alpha), LABEL_SIZE);
     }
 
-    private void drawFooter(PoseStack stack, int theme, float alpha) {
-        float y = this.panelHeight - FOOTER_HEIGHT + 3.0f;
-        GuiRender.roundedRect(stack, SIDE_PADDING, y - 2.5f, PANEL_WIDTH - SIDE_PADDING * 2.0f,
-                0.75f, 0.375f, ColorUtils.multAlpha(ColorUtils.overCol(GuiTheme.textColor(), theme, 0.35f),
-                        0.10f * alpha));
-        GuiFonts.SF_MEDIUM.draw(stack, "ЛКМ — изменить", SIDE_PADDING, y,
-                ColorUtils.multAlpha(GuiTheme.textColor(), 0.5f * alpha), HINT_SIZE);
-
-        String close = "ПКМ — закрыть";
-        float closeWidth = GuiFonts.SF_MEDIUM.getWidth(close, HINT_SIZE);
-        GuiFonts.SF_MEDIUM.draw(stack, close, PANEL_WIDTH - SIDE_PADDING - closeWidth, y,
-                ColorUtils.multAlpha(GuiTheme.textColor(), 0.5f * alpha), HINT_SIZE);
-    }
-
     private void drawScrollbar(PoseStack stack, int theme, float alpha, float viewportHeight) {
         if (this.maxScroll <= 0.0f) {
             return;
@@ -454,7 +415,7 @@ public final class HudSettingsScreen extends Screen {
     }
 
     private void layout() {
-        float contentLimit = Math.max(24.0f, this.height - 40.0f - HEADER_HEIGHT - FOOTER_HEIGHT);
+        float contentLimit = Math.max(24.0f, this.height - 40.0f - HEADER_HEIGHT - BOTTOM_PADDING);
         float cursor = 0.0f;
 
         for (int i = 0, size = this.settings.size(); i < size; i++) {
@@ -485,7 +446,7 @@ public final class HudSettingsScreen extends Screen {
         this.scroll = Mth.clamp(this.scroll, 0.0f, this.maxScroll);
 
         float visibleContent = Math.min(this.contentHeight, contentLimit);
-        this.panelHeight = HEADER_HEIGHT + visibleContent + FOOTER_HEIGHT;
+        this.panelHeight = HEADER_HEIGHT + visibleContent + BOTTOM_PADDING;
 
         // [+] Панель живёт в своей точке экрана: цель зажимается в границы окна,
         // а сама панель догоняет цель пружиной (при переносе — контуром под курсором).
@@ -579,7 +540,7 @@ public final class HudSettingsScreen extends Screen {
         boolean insidePanel = insidePanel(mouseX, mouseY);
         boolean insideViewport = insidePanel
                 && mouseY >= this.panelY + HEADER_HEIGHT
-                && mouseY <= this.panelY + this.panelHeight - FOOTER_HEIGHT;
+                && mouseY <= this.panelY + this.panelHeight - BOTTOM_PADDING;
 
         // [+] Подсветка «таблетки» переноса — единственная интерактивная ручка в шапке.
         this.hoveredPill = overPill(mouseX, mouseY) || this.draggingPanel;
@@ -641,7 +602,8 @@ public final class HudSettingsScreen extends Screen {
             return true;
         }
 
-        if (mouseY < this.panelY + HEADER_HEIGHT || mouseY > this.panelY + this.panelHeight - FOOTER_HEIGHT) {
+        if (mouseY < this.panelY + HEADER_HEIGHT
+                || mouseY > this.panelY + this.panelHeight - BOTTOM_PADDING) {
             return true;
         }
 
