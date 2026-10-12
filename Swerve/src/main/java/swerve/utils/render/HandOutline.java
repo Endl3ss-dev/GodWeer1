@@ -59,6 +59,14 @@ public final class HandOutline {
     private static long wantedSince;
     private static long lastReport;
 
+    // [!] glReadPixels — синхронный stall пайплайна, а маска нужна только hover-тесту.
+    // Читаем её на движении курсора и минимум раз в 4 кадра: чаще — простой GPU,
+    // реже — maskAt устареет и isHandCoveredAt начнёт отвечать false.
+    private static final int GRID_REFRESH_MASK = 3;
+    private static float lastPointerX = Float.NaN;
+    private static float lastPointerY = Float.NaN;
+    private static int gridCounter;
+
     private HandOutline() {
     }
 
@@ -75,7 +83,9 @@ public final class HandOutline {
 
     public static void setOutline(float alpha, float width) {
         outlineAlpha = alpha < 0.0F ? 0.0F : (alpha > 1.0F ? 1.0F : alpha);
-        outlineWidth = width < 1.0F ? 1.0F : (width > 8.0F ? 8.0F : width);
+        // [!] Нижняя граница совпадает с минимумом настройки «Размер обводки» (0.5):
+        // раньше всё, что меньше 1.0, молча подменялось единицей.
+        outlineWidth = width < 0.5F ? 0.5F : (width > 8.0F ? 8.0F : width);
     }
 
     public static boolean isShaderReady() {
@@ -152,10 +162,12 @@ public final class HandOutline {
                 return;
             }
 
-            copyGrid(guiWidth, guiHeight);
-            readGrid();
-            maskReady = true;
-            maskAt = System.nanoTime();
+            if (gridNeedsRefresh(minecraft)) {
+                copyGrid(guiWidth, guiHeight);
+                readGrid();
+                maskReady = true;
+                maskAt = System.nanoTime();
+            }
 
             if (outlineAlpha > 0.004F) {
                 drawOutline(main, guiWidth, guiHeight);
@@ -268,6 +280,10 @@ public final class HandOutline {
         depthTaken = false;
         frameWidth = -1;
         frameHeight = -1;
+        // NaN != NaN — следующий кадр редактора прочитает маску сразу, без ожидания счётчика.
+        lastPointerX = Float.NaN;
+        lastPointerY = Float.NaN;
+        gridCounter = 0;
     }
 
     private static boolean ensureTargets() {
@@ -375,6 +391,16 @@ public final class HandOutline {
         RenderSystem.setShader(CoreShaders.POSITION_TEX_COLOR);
         guiQuad(guiWidth, guiHeight);
         RenderSystem.setShaderColor(1.0F, 1.0F, 1.0F, 1.0F);
+    }
+
+    private static boolean gridNeedsRefresh(Minecraft minecraft) {
+        float pointerX = (float) minecraft.mouseHandler.xpos();
+        float pointerY = (float) minecraft.mouseHandler.ypos();
+        boolean moved = pointerX != lastPointerX || pointerY != lastPointerY;
+        lastPointerX = pointerX;
+        lastPointerY = pointerY;
+        gridCounter = (gridCounter + 1) & 0xFFFF;
+        return moved || (gridCounter & GRID_REFRESH_MASK) == 0;
     }
 
     private static void readGrid() {

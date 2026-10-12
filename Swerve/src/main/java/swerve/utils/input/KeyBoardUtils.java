@@ -2,7 +2,6 @@ package swerve.utils.input;
 
 import swerve.managers.ModuleManager;
 import swerve.modules.Module;
-import swerve.modules.impl.render.ViewModel;
 
 import net.minecraft.client.Minecraft;
 
@@ -43,23 +42,10 @@ public final class KeyBoardUtils {
         toggleByKey(MOUSE_BUTTON_OFFSET + button);
     }
 
-    // Скролл отдаётся ViewModel, пока он тащит руку (только при открытом экране).
-    // true — событие съедено, ванильный скролл нужно отменить.
-    public static boolean callScroll(double yOffset) {
-        if (yOffset == 0.0D || Minecraft.getInstance().screen == null) {
-            return false;
-        }
-
-        ViewModel viewModel = ModuleManager.get(ViewModel.class);
-        return viewModel != null && viewModel.onScroll(yOffset);
-    }
-
-    // Клик отдаётся ViewModel: двойной клик по руке в чате начинает перетаскивание.
-    // true — событие съедено, экран (чат) его получать не должен.
-    public static boolean callMousePress(int button, int action) {
-        ViewModel viewModel = ModuleManager.get(ViewModel.class);
-        return viewModel != null && viewModel.onMousePress(button, action);
-    }
+    // [-] callScroll / callMousePress удалены: они звали заглушки ViewModel.onScroll(double)
+    // и ViewModel.onMousePress(int, int), которые всегда возвращали false, — перехвата не
+    // происходило никогда. Редактор рук получает ввод одной точкой — ClickGuiScreen;
+    // перехват до Screen ломал бы скролл панелей и клики островка на остальных вкладках.
 
     // Индексный цикл: метод дёргается из колбэка ввода, итератор здесь лишняя аллокация.
     private static void toggleByKey(int key) {
