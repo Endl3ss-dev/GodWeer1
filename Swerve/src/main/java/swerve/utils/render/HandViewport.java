@@ -17,93 +17,56 @@ public final class HandViewport {
     private static final int OFF = 1;
     private static final int SLOTS = 2;
 
-    private static final float BASIS_STEP = 0.25F;
-    private static final long STALE_NANOS = 250_000_000L;
-    private static final float MIN_UNITS = 1.0E-3F;
+    private static final float BASIS_STEP = 0.125F;
+    private static final float MIN_DETERMINANT = 1.0E-3F;
+    private static final long STALE_NANOS = 350_000_000L;
+
+    private static final int FAILURE_NONE = 0;
+    private static final int FAILURE_SIZE = 1;
+    private static final int FAILURE_MATRIX = 2;
+    private static final int FAILURE_PROJECTION = 3;
+    private static final int FAILURE_JACOBIAN = 4;
 
     private static final Matrix4f COMBINED = new Matrix4f();
-    private static final float[] POINT = new float[2];
-    private static final float[] BASIS_X = new float[2];
-    private static final float[] BASIS_Y = new float[2];
+    private static final float[] PROJECTED = new float[2];
 
-    private static final float[] BASE_PPU_X = new float[SLOTS];
-    private static final float[] BASE_PPU_Y = new float[SLOTS];
-    private static final boolean[] baseCaptured = new boolean[SLOTS];
-
-    private static final boolean[] captured = new boolean[SLOTS];
-    private static final long[] capturedAt = new long[SLOTS];
-    private static final float[] anchorX = new float[SLOTS];
-    private static final float[] anchorY = new float[SLOTS];
-    private static final float[] unitX = new float[SLOTS];
-    private static final float[] unitY = new float[SLOTS];
+    private static final boolean[] CAPTURED = new boolean[SLOTS];
+    private static final boolean[] INVERSE_VALID = new boolean[SLOTS];
+    private static final long[] CAPTURED_AT = new long[SLOTS];
+    private static final float[] ANCHOR_X = new float[SLOTS];
+    private static final float[] ANCHOR_Y = new float[SLOTS];
+    private static final float[] INVERSE_00 = new float[SLOTS];
+    private static final float[] INVERSE_01 = new float[SLOTS];
+    private static final float[] INVERSE_10 = new float[SLOTS];
+    private static final float[] INVERSE_11 = new float[SLOTS];
+    private static final float[] HIT_RADIUS_SQ = new float[SLOTS];
 
     private static boolean wanted;
-    private static String lastFailure = "";
+    private static int lastFailure;
     private static long lastFailureLog;
 
     private HandViewport() {
     }
 
-    public static void setWanted(boolean value) {
+    public static void beginFrame(boolean value) {
         wanted = value;
+        CAPTURED[MAIN] = false;
+        CAPTURED[OFF] = false;
+        INVERSE_VALID[MAIN] = false;
+        INVERSE_VALID[OFF] = false;
+        if (!value) {
+            lastFailure = FAILURE_NONE;
+        }
     }
 
-    public static boolean isWanted() {
-        return wanted;
-    }
-
-    // [!] База редактора: пиксели-на-единицу в той точке poseStack, где ViewModel кладёт
-    // своё смещение (до translate/scale). Раньше здесь считались матрица и глубина, которые
-    // никто не читал, а drag() делил дельту курсора на уже отмасштабированный ppu — при
-    // масштабе руки != 1 рука отставала от курсора ровно в scale раз.
-    public static void captureBase(InteractionHand hand, PoseStack poseStack, float handX, float handY, float handZ) {
+    public static void capture(InteractionHand hand, PoseStack poseStack,
+                               float anchorX, float anchorY, float anchorZ,
+                               float offsetX, float offsetY, float scale) {
+        if (!wanted || poseStack == null) {
+            return;
+        }
         int slot = slot(hand);
-        if (slot < 0 || poseStack == null) {
-            return;
-        }
-
-        Minecraft minecraft = Minecraft.getInstance();
-        int width = minecraft.getWindow().getGuiScaledWidth();
-        int height = minecraft.getWindow().getGuiScaledHeight();
-        PoseStack.Pose pose = poseStack.last();
-        Matrix4fc projection = RenderSystem.getProjectionMatrix();
-        Matrix4fc modelView = RenderSystem.getModelViewMatrix();
-        if (width <= 0 || height <= 0 || pose == null || projection == null || modelView == null) {
-            baseCaptured[slot] = false;
-            return;
-        }
-
-        COMBINED.set(projection).mul(modelView).mul(pose.pose());
-
-        if (!project(COMBINED, handX, handY, handZ, POINT, width, height)) {
-            baseCaptured[slot] = false;
-            return;
-        }
-
-        float centerX = POINT[0];
-        float centerY = POINT[1];
-
-        if (!project(COMBINED, handX + BASIS_STEP, handY, handZ, BASIS_X, width, height)
-                || !project(COMBINED, handX, handY + BASIS_STEP, handZ, BASIS_Y, width, height)) {
-            baseCaptured[slot] = false;
-            return;
-        }
-
-        float pixelsX = Math.abs(BASIS_X[0] - centerX) / BASIS_STEP;
-        float pixelsY = Math.abs(BASIS_Y[1] - centerY) / BASIS_STEP;
-        if (pixelsX < MIN_UNITS || pixelsY < MIN_UNITS) {
-            baseCaptured[slot] = false;
-            return;
-        }
-
-        BASE_PPU_X[slot] = pixelsX;
-        BASE_PPU_Y[slot] = pixelsY;
-        baseCaptured[slot] = true;
-    }
-
-    public static void capture(InteractionHand hand, PoseStack poseStack, float handX, float handY, float handZ) {
-        int slot = slot(hand);
-        if (slot < 0 || poseStack == null) {
+        if (slot < 0) {
             return;
         }
 
@@ -111,103 +74,127 @@ public final class HandViewport {
         int width = minecraft.getWindow().getGuiScaledWidth();
         int height = minecraft.getWindow().getGuiScaledHeight();
         if (width <= 0 || height <= 0) {
-            fail(slot, "gui size is " + width + "x" + height);
+            fail(slot, FAILURE_SIZE);
             return;
         }
 
         PoseStack.Pose pose = poseStack.last();
-        if (pose == null) {
-            fail(slot, "empty pose stack");
-            return;
-        }
-
         Matrix4fc projection = RenderSystem.getProjectionMatrix();
         Matrix4fc modelView = RenderSystem.getModelViewMatrix();
-        if (projection == null || modelView == null) {
-            fail(slot, "no projection/modelview in RenderSystem");
+        if (pose == null || projection == null || modelView == null) {
+            fail(slot, FAILURE_MATRIX);
             return;
         }
 
         COMBINED.set(projection).mul(modelView).mul(pose.pose());
 
-        if (!project(COMBINED, handX, handY, handZ, POINT, width, height)) {
-            fail(slot, "anchor projection rejected");
+        float pointX = anchorX + offsetX;
+        float pointY = anchorY + offsetY;
+        if (!project(COMBINED, pointX, pointY, anchorZ, width, height)) {
+            fail(slot, FAILURE_PROJECTION);
             return;
         }
+        float centerX = PROJECTED[0];
+        float centerY = PROJECTED[1];
 
-        float centerX = POINT[0];
-        float centerY = POINT[1];
-
-        if (!project(COMBINED, handX + BASIS_STEP, handY, handZ, BASIS_X, width, height)
-                || !project(COMBINED, handX, handY + BASIS_STEP, handZ, BASIS_Y, width, height)) {
-            fail(slot, "basis projection rejected");
+        if (!project(COMBINED, pointX + BASIS_STEP, pointY, anchorZ, width, height)) {
+            fail(slot, FAILURE_PROJECTION);
             return;
         }
+        float xBasisX = PROJECTED[0];
+        float xBasisY = PROJECTED[1];
 
-        float pixelsX = Math.abs(BASIS_X[0] - centerX) / BASIS_STEP;
-        float pixelsY = Math.abs(BASIS_Y[1] - centerY) / BASIS_STEP;
-        if (pixelsX < MIN_UNITS || pixelsY < MIN_UNITS) {
-            fail(slot, "degenerate scale " + pixelsX + "/" + pixelsY);
+        if (!project(COMBINED, pointX, pointY + BASIS_STEP, anchorZ, width, height)) {
+            fail(slot, FAILURE_PROJECTION);
             return;
         }
+        float yBasisX = PROJECTED[0];
+        float yBasisY = PROJECTED[1];
 
-        anchorX[slot] = centerX;
-        anchorY[slot] = centerY;
-        unitX[slot] = pixelsX;
-        unitY[slot] = pixelsY;
-        captured[slot] = true;
-        capturedAt[slot] = System.nanoTime();
-        lastFailure = "";
+        float j00 = (xBasisX - centerX) / BASIS_STEP;
+        float j10 = (xBasisY - centerY) / BASIS_STEP;
+        float j01 = (yBasisX - centerX) / BASIS_STEP;
+        float j11 = (yBasisY - centerY) / BASIS_STEP;
+        float determinant = j00 * j11 - j01 * j10;
+
+        ANCHOR_X[slot] = centerX;
+        ANCHOR_Y[slot] = centerY;
+        CAPTURED[slot] = true;
+        CAPTURED_AT[slot] = System.nanoTime();
+
+        float ppuX = (float) Math.sqrt(j00 * j00 + j10 * j10);
+        float ppuY = (float) Math.sqrt(j01 * j01 + j11 * j11);
+        float radius = clamp(Math.max(ppuX, ppuY) * 0.55F * Math.max(SCALE_FLOOR, scale), 28.0F, 96.0F);
+        HIT_RADIUS_SQ[slot] = radius * radius;
+
+        if (Float.isFinite(determinant) && Math.abs(determinant) >= MIN_DETERMINANT) {
+            float inverseDeterminant = 1.0F / determinant;
+            INVERSE_00[slot] = j11 * inverseDeterminant;
+            INVERSE_01[slot] = -j01 * inverseDeterminant;
+            INVERSE_10[slot] = -j10 * inverseDeterminant;
+            INVERSE_11[slot] = j00 * inverseDeterminant;
+            INVERSE_VALID[slot] = true;
+            lastFailure = FAILURE_NONE;
+        } else {
+            INVERSE_VALID[slot] = false;
+            lastFailure = FAILURE_JACOBIAN;
+        }
     }
+
+    private static final float SCALE_FLOOR = 0.2F;
 
     public static boolean isReady(InteractionHand hand) {
         int slot = slot(hand);
-        if (slot < 0 || !captured[slot]) {
-            return false;
-        }
-        if (System.nanoTime() - capturedAt[slot] > STALE_NANOS) {
-            captured[slot] = false;
-            return false;
-        }
-        return true;
+        return slot >= 0 && CAPTURED[slot] && System.nanoTime() - CAPTURED_AT[slot] <= STALE_NANOS;
     }
 
-    public static float basePixelsPerUnitX(InteractionHand hand) {
+    public static boolean hasInverse(InteractionHand hand) {
         int slot = slot(hand);
-        return slot < 0 || !baseCaptured[slot] ? 0.0F : BASE_PPU_X[slot];
-    }
-
-    public static float basePixelsPerUnitY(InteractionHand hand) {
-        int slot = slot(hand);
-        return slot < 0 || !baseCaptured[slot] ? 0.0F : BASE_PPU_Y[slot];
-    }
-
-    public static boolean isAnyReady() {
-        return isReady(InteractionHand.MAIN_HAND) || isReady(InteractionHand.OFF_HAND);
+        return slot >= 0 && isReady(hand) && INVERSE_VALID[slot];
     }
 
     public static float anchorX(InteractionHand hand) {
         int slot = slot(hand);
-        return slot < 0 ? 0.0F : anchorX[slot];
+        return slot < 0 ? 0.0F : ANCHOR_X[slot];
     }
 
     public static float anchorY(InteractionHand hand) {
         int slot = slot(hand);
-        return slot < 0 ? 0.0F : anchorY[slot];
+        return slot < 0 ? 0.0F : ANCHOR_Y[slot];
     }
 
-    public static float pixelsPerUnitX(InteractionHand hand) {
+    public static float inverse00(InteractionHand hand) {
         int slot = slot(hand);
-        return slot < 0 ? 0.0F : unitX[slot];
+        return slot < 0 ? 0.0F : INVERSE_00[slot];
     }
 
-    public static float pixelsPerUnitY(InteractionHand hand) {
+    public static float inverse01(InteractionHand hand) {
         int slot = slot(hand);
-        return slot < 0 ? 0.0F : unitY[slot];
+        return slot < 0 ? 0.0F : INVERSE_01[slot];
+    }
+
+    public static float inverse10(InteractionHand hand) {
+        int slot = slot(hand);
+        return slot < 0 ? 0.0F : INVERSE_10[slot];
+    }
+
+    public static float inverse11(InteractionHand hand) {
+        int slot = slot(hand);
+        return slot < 0 ? 0.0F : INVERSE_11[slot];
+    }
+
+    public static boolean isNear(InteractionHand hand, float mouseX, float mouseY) {
+        int slot = slot(hand);
+        if (slot < 0 || !isReady(hand)) {
+            return false;
+        }
+        float dx = mouseX - ANCHOR_X[slot];
+        float dy = mouseY - ANCHOR_Y[slot];
+        return dx * dx + dy * dy <= HIT_RADIUS_SQ[slot];
     }
 
     public static boolean hasAny() {
-        return isAnyReady();
+        return isReady(InteractionHand.MAIN_HAND) || isReady(InteractionHand.OFF_HAND);
     }
 
     public static float mouseGuiX(Minecraft minecraft) {
@@ -215,7 +202,8 @@ public final class HandViewport {
         if (screenWidth <= 0) {
             return 0.0F;
         }
-        return (float) (minecraft.mouseHandler.xpos() * (double) minecraft.getWindow().getGuiScaledWidth() / (double) screenWidth);
+        return (float) (minecraft.mouseHandler.xpos()
+                * (double) minecraft.getWindow().getGuiScaledWidth() / (double) screenWidth);
     }
 
     public static float mouseGuiY(Minecraft minecraft) {
@@ -223,35 +211,21 @@ public final class HandViewport {
         if (screenHeight <= 0) {
             return 0.0F;
         }
-        return (float) (minecraft.mouseHandler.ypos() * (double) minecraft.getWindow().getGuiScaledHeight() / (double) screenHeight);
-    }
-
-    public static double guiScale(Minecraft minecraft) {
-        return Math.max(1.0D, minecraft.getWindow().getGuiScale());
-    }
-
-    public static void consume() {
-        captured[MAIN] = false;
-        captured[OFF] = false;
+        return (float) (minecraft.mouseHandler.ypos()
+                * (double) minecraft.getWindow().getGuiScaledHeight() / (double) screenHeight);
     }
 
     public static void reset() {
-        consume();
-        baseCaptured[MAIN] = false;
-        baseCaptured[OFF] = false;
-        BASE_PPU_X[MAIN] = 0.0F;
-        BASE_PPU_Y[MAIN] = 0.0F;
-        BASE_PPU_X[OFF] = 0.0F;
-        BASE_PPU_Y[OFF] = 0.0F;
-        anchorX[MAIN] = 0.0F;
-        anchorY[MAIN] = 0.0F;
-        anchorX[OFF] = 0.0F;
-        anchorY[OFF] = 0.0F;
-        unitX[MAIN] = 0.0F;
-        unitY[MAIN] = 0.0F;
-        unitX[OFF] = 0.0F;
-        unitY[OFF] = 0.0F;
-        lastFailure = "";
+        wanted = false;
+        CAPTURED[MAIN] = false;
+        CAPTURED[OFF] = false;
+        INVERSE_VALID[MAIN] = false;
+        INVERSE_VALID[OFF] = false;
+        ANCHOR_X[MAIN] = 0.0F;
+        ANCHOR_Y[MAIN] = 0.0F;
+        ANCHOR_X[OFF] = 0.0F;
+        ANCHOR_Y[OFF] = 0.0F;
+        lastFailure = FAILURE_NONE;
     }
 
     public static void reportStale() {
@@ -260,12 +234,20 @@ public final class HandViewport {
             return;
         }
         lastFailureLog = now;
-        Swerve.LOGGER.warn("ViewModel: hand anchor is not captured ({})",
-                lastFailure.isEmpty() ? "renderArmWithItem did not reach the inject point" : lastFailure);
+
+        String reason = switch (lastFailure) {
+            case FAILURE_SIZE -> "invalid GUI size";
+            case FAILURE_MATRIX -> "projection matrix is unavailable";
+            case FAILURE_PROJECTION -> "hand pivot is outside the projection";
+            case FAILURE_JACOBIAN -> "hand projection is degenerate";
+            default -> "renderArmWithItem did not reach the capture point";
+        };
+        Swerve.LOGGER.warn("ViewModel: hand pivot is unavailable ({})", reason);
     }
 
-    private static void fail(int slot, String reason) {
-        captured[slot] = false;
+    private static void fail(int slot, int reason) {
+        CAPTURED[slot] = false;
+        INVERSE_VALID[slot] = false;
         lastFailure = reason;
     }
 
@@ -276,22 +258,28 @@ public final class HandViewport {
         return hand == InteractionHand.OFF_HAND ? OFF : -1;
     }
 
-    private static boolean project(Matrix4fc matrix, float x, float y, float z, float[] out, int width, int height) {
+    private static boolean project(Matrix4fc matrix, float x, float y, float z, int width, int height) {
         float clipX = matrix.m00() * x + matrix.m10() * y + matrix.m20() * z + matrix.m30();
         float clipY = matrix.m01() * x + matrix.m11() * y + matrix.m21() * z + matrix.m31();
         float clipW = matrix.m03() * x + matrix.m13() * y + matrix.m23() * z + matrix.m33();
-        if (clipW <= 1.0E-6F) {
+        if (!Float.isFinite(clipW) || clipW <= 1.0E-6F) {
             return false;
         }
 
         float normalizedX = clipX / clipW;
         float normalizedY = clipY / clipW;
-        if (normalizedX < -4.0F || normalizedX > 4.0F || normalizedY < -4.0F || normalizedY > 4.0F) {
+        if (!Float.isFinite(normalizedX) || !Float.isFinite(normalizedY)
+                || normalizedX < -4.0F || normalizedX > 4.0F
+                || normalizedY < -4.0F || normalizedY > 4.0F) {
             return false;
         }
 
-        out[0] = (normalizedX * 0.5F + 0.5F) * (float) width;
-        out[1] = (1.0F - (normalizedY * 0.5F + 0.5F)) * (float) height;
+        PROJECTED[0] = (normalizedX * 0.5F + 0.5F) * width;
+        PROJECTED[1] = (1.0F - (normalizedY * 0.5F + 0.5F)) * height;
         return true;
+    }
+
+    private static float clamp(float value, float min, float max) {
+        return value < min ? min : Math.min(value, max);
     }
 }

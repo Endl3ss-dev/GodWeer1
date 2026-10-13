@@ -42,11 +42,6 @@ public final class KeyBoardUtils {
         toggleByKey(MOUSE_BUTTON_OFFSET + button);
     }
 
-    // [-] callScroll / callMousePress удалены: они звали заглушки ViewModel.onScroll(double)
-    // и ViewModel.onMousePress(int, int), которые всегда возвращали false, — перехвата не
-    // происходило никогда. Редактор рук получает ввод одной точкой — ClickGuiScreen;
-    // перехват до Screen ломал бы скролл панелей и клики островка на остальных вкладках.
-
     // Индексный цикл: метод дёргается из колбэка ввода, итератор здесь лишняя аллокация.
     private static void toggleByKey(int key) {
         List<Module> modules = ModuleManager.getModules();
