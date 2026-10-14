@@ -3,12 +3,15 @@ package swerve.mixins.client;
 import com.mojang.authlib.GameProfile;
 
 import swerve.Swerve;
+import swerve.utils.render.spatial.SpatialState;
 
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.gui.screens.Screen;
 
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 // Страховка к MixinUser: профиль локального игрока может собираться не из User.getName(),
@@ -24,5 +27,11 @@ public class MixinMinecraft {
             return;
         }
         cir.setReturnValue(new GameProfile(profile.getId(), Swerve.CLIENT_NICKNAME));
+    }
+
+    // [+] SpatialGui: смена экрана снимает перехват сразу (с анимацией закрытия), не дожидаясь кадра.
+    @Inject(method = "setScreen", at = @At("HEAD"))
+    private void swerve$spatialScreenChange(Screen screen, CallbackInfo ci) {
+        SpatialState.onScreenChange(screen);
     }
 }

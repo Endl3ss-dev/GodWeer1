@@ -5,8 +5,10 @@ import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 
+import swerve.modules.impl.render.SpatialGui;
 import swerve.modules.impl.render.ViewModel;
 import swerve.utils.render.HandOutline;
+import swerve.utils.render.spatial.SpatialState;
 
 import net.minecraft.client.player.AbstractClientPlayer;
 import net.minecraft.client.renderer.ItemInHandRenderer;
@@ -14,6 +16,7 @@ import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.HumanoidArm;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.Items;
 
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -38,6 +41,17 @@ public class MixinItemInHandRenderer {
     @Inject(method = "renderHandsWithItems", at = @At("RETURN"), require = 0)
     private void swerve$endHands(CallbackInfo ci) {
         HandOutline.afterHands();
+    }
+
+    // [+] SpatialGui: щит в руке закрывал бы панель от первого лица — при открытой панели не рисуется.
+    @Inject(method = "renderArmWithItem", at = @At("HEAD"), cancellable = true)
+    private void swerve$spatialHideShield(AbstractClientPlayer player, float partialTick, float pitch,
+                                          InteractionHand hand, float swingProgress, ItemStack item,
+                                          float equippedProgress, PoseStack poseStack, MultiBufferSource buffer,
+                                          int combinedLight, CallbackInfo ci) {
+        if (SpatialGui.HIDE_SHIELD && item.getItem() == Items.SHIELD && SpatialState.capturing()) {
+            ci.cancel();
+        }
     }
 
     // Единственный pushPose в renderArmWithItem: здесь ещё не применена ни одна ветка
