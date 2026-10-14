@@ -6,11 +6,28 @@
 	"mixins": [
 	],
 	"client": [
+		"accessor.GameRendererAccessor",
+		"accessor.MouseHandlerAccessor",
+		"client.MixinAbstractRecipeBookScreen",
+		"client.MixinGui",
+		"client.MixinInputConstants",
 		"client.MixinKeyboardHandler",
+		"client.MixinKeyboardInput",
+		"client.MixinLivingEntity",
+		"client.MixinLocalPlayer",
 		"client.MixinMinecraft",
 		"client.MixinMouseHandler",
+		"client.MixinOptions",
+		"client.MixinScreen",
 		"client.MixinUser",
-		"render.MixinItemInHandRenderer"
+		"client.MixinWindow",
+		"render.MixinCamera",
+		"render.MixinGameRenderer",
+		"render.MixinItemInHandRenderer",
+		"render.MixinLevelRenderer",
+		"render.MixinPlayerModel",
+		"render.MixinPlayerRenderer",
+		"render.MixinRenderTarget"
 	],
 	"injectors": {
 		"defaultRequire": 1
