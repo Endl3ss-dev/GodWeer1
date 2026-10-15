@@ -1,13 +1,17 @@
 package swerve.mixins.render;
 
+import com.llamalad7.mixinextras.injector.ModifyExpressionValue;
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 
 import com.mojang.blaze3d.pipeline.RenderTarget;
 import com.mojang.blaze3d.resource.GraphicsResourceAllocator;
+import com.mojang.blaze3d.vertex.PoseStack;
 
+import swerve.modules.impl.render.HandAnimations;
 import swerve.modules.impl.render.SpatialGui;
+import swerve.utils.render.anim.HandMotion;
 import swerve.utils.render.spatial.ScreenCapture;
 import swerve.utils.render.spatial.ScreenSurface;
 import swerve.utils.render.spatial.SpatialState;
@@ -109,5 +113,24 @@ public abstract class MixinGameRenderer {
         if (firstPerson && module != null && module.hideHands()) {
             ci.cancel();
         }
+    }
+
+    // [+] HandAnimations: боббинг рук при выключенном View Bobbing — единственный booleanValue() в методе.
+    @ModifyExpressionValue(method = "renderItemInHand", at = @At(value = "INVOKE",
+            target = "Ljava/lang/Boolean;booleanValue()Z"))
+    private boolean swerve$forceHandBob(boolean original) {
+        return original || HandAnimations.forceHandBob();
+    }
+
+    // [+] HandAnimations: множитель ванильного боббинга рук (только для рук, камера не трогается).
+    @WrapOperation(method = "renderItemInHand", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/client/renderer/GameRenderer;bobView(Lcom/mojang/blaze3d/vertex/PoseStack;F)V"))
+    private void swerve$handBob(GameRenderer instance, PoseStack poseStack, float partialTick, Operation<Void> original) {
+        HandAnimations module = HandAnimations.get();
+        if (module == null || !HandAnimations.overrideHandBob()) {
+            original.call(instance, poseStack, partialTick);
+            return;
+        }
+        HandMotion.applyHandBob(poseStack, partialTick, module.handBobScale());
     }
 }
