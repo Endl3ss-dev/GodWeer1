@@ -16,6 +16,7 @@ import swerve.modules.impl.movement.Speed;
 import swerve.modules.impl.hud.TargetHud;
 import swerve.modules.impl.render.Arrows;
 import swerve.modules.impl.render.ChinaHat;
+import swerve.modules.impl.render.HandAnimations;
 import swerve.modules.impl.render.SpatialGui;
 import swerve.modules.impl.render.Trails;
 import swerve.modules.impl.render.ViewModel;
@@ -62,6 +63,7 @@ public final class ModuleManager {
         register(new Arrows());
         register(new ViewModel());
         register(new SpatialGui());
+        register(new HandAnimations());
         register(new TargetHud());
         register(new ArrayListHud());
         register(new Watermark());

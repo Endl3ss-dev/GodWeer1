@@ -2,12 +2,14 @@ package swerve.mixins.client;
 
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 
+import swerve.utils.render.anim.HandMotion;
 import swerve.utils.render.spatial.SpatialAvatar;
 
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.util.Mth;
+import net.minecraft.world.entity.EntityEvent;
 
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -69,5 +71,13 @@ public abstract class MixinLocalPlayer {
         }
         float bob = Mth.lerp(partialTick, this.yBobO, this.yBob);
         return bob + Mth.wrapDegrees(Minecraft.getInstance().gameRenderer.getMainCamera().getYRot() - bob);
+    }
+
+    // [+] HandAnimations: блок щитом и его пробитие приходят событием сущности — толчок руки со щитом.
+    @Inject(method = "handleEntityEvent", at = @At("HEAD"))
+    private void swerve$handShieldEvent(byte id, CallbackInfo ci) {
+        if (id == EntityEvent.ATTACK_BLOCKED || id == EntityEvent.SHIELD_DISABLED) {
+            HandMotion.onShieldBlock(id == EntityEvent.SHIELD_DISABLED);
+        }
     }
 }
