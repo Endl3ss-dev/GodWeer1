@@ -14,7 +14,6 @@ import swerve.modules.ModuleCategory;
 import swerve.modules.api.setting.BooleanSetting;
 import swerve.modules.api.setting.FloatSetting;
 import swerve.modules.api.setting.ModeSetting;
-import swerve.ui.newgui.ClickGuiScreen;
 import swerve.ui.newgui.GuiFonts;
 import swerve.ui.newgui.GuiRender;
 import swerve.utils.animation.AnimationUtils;
@@ -669,9 +668,10 @@ public final class ViewModel extends Module {
         markDirty();
     }
 
+    // [!] Редактор рук жил во вкладке Hands старого ClickGUI. В портованном меню (Arcanic)
+    // такой вкладки нет, поэтому контекст редактора всегда выключен.
     public boolean editorContext() {
-        return Minecraft.getInstance().screen instanceof ClickGuiScreen
-                && ((ClickGuiScreen) Minecraft.getInstance().screen).isHandsTab();
+        return false;
     }
 
     public boolean editorReset(int button) {

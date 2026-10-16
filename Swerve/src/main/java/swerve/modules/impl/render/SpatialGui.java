@@ -5,7 +5,7 @@ import swerve.modules.ModuleCategory;
 import swerve.modules.api.setting.BooleanSetting;
 import swerve.modules.api.setting.FloatSetting;
 import swerve.modules.api.setting.ModeSetting;
-import swerve.ui.newgui.ClickGuiScreen;
+import swerve.ui.menu.MenuScreen;
 import swerve.utils.animation.Easing;
 import swerve.utils.animation.Easings;
 import swerve.utils.render.spatial.SpatialState;
@@ -156,7 +156,7 @@ public final class SpatialGui extends Module {
         if (mc.level == null) {
             return false;
         }
-        if (screen instanceof ClickGuiScreen || screen instanceof TitleScreen || screen instanceof ChatScreen
+        if (screen instanceof MenuScreen || screen instanceof TitleScreen || screen instanceof ChatScreen
                 || screen instanceof ReceivingLevelScreen || screen instanceof LevelLoadingScreen) {
             return false;
         }
