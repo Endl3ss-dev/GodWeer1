@@ -627,23 +627,55 @@ public final class MenuScreen extends Screen {
     // ---- список модулей
     private void collectVisible() {
         visibleCount = 0;
-        String q = search.toLowerCase(java.util.Locale.ROOT);
+        String q = search;
         List<Module> pool = ModuleManager.getModules();
         for (int i = 0, size = pool.size(); i < size && visibleCount < MAX_VISIBLE; i++) {
             Module m = pool.get(i);
-            if (search.isEmpty()) {
+            if (q.isEmpty()) {
                 if (m.getCategory() != category) {
                     continue;
                 }
-            } else {
-                String name = m.getName().toLowerCase(java.util.Locale.ROOT);
-                String desc = m.getDescription().toLowerCase(java.util.Locale.ROOT);
-                if (!name.contains(q) && !desc.contains(q)) {
-                    continue;
-                }
+            } else if (!containsIgnoreCase(m.getName(), q) && !containsIgnoreCase(m.getDescription(), q)) {
+                continue;
             }
             visible[visibleCount++] = m;
         }
+    }
+
+    /** Индекс первого совпадения без копий строк: в кадре рендера аллокаций быть не должно. */
+    private static int indexOfIgnoreCase(String s, String q) {
+        int len = s.length();
+        int ql = q.length();
+        if (ql == 0) {
+            return 0;
+        }
+        if (ql > len) {
+            return -1;
+        }
+        for (int i = 0; i <= len - ql; i++) {
+            if (s.regionMatches(true, i, q, 0, ql)) {
+                return i;
+            }
+        }
+        return -1;
+    }
+
+    /** Поиск без регистрозависимых копий строк: в кадре рендера аллокаций быть не должно. */
+    private static boolean containsIgnoreCase(String s, String q) {
+        int len = s.length();
+        int ql = q.length();
+        if (ql == 0) {
+            return true;
+        }
+        if (ql > len) {
+            return false;
+        }
+        for (int i = 0; i <= len - ql; i++) {
+            if (s.regionMatches(true, i, q, 0, ql)) {
+                return true;
+            }
+        }
+        return false;
     }
 
     private void rows(GuiGraphics g) {
@@ -837,9 +869,7 @@ public final class MenuScreen extends Screen {
     }
 
     private void nameLit(GuiGraphics g, String name, int x, int y, int fs, int c) {
-        String lower = name.toLowerCase(java.util.Locale.ROOT);
-        String q = search.toLowerCase(java.util.Locale.ROOT);
-        int i = lower.indexOf(q);
+        int i = indexOfIgnoreCase(name, search);
         if (i < 0) {
             Px.text(g, name, x, y, Weight.MEDIUM, fs, c);
             return;
@@ -1182,10 +1212,10 @@ public final class MenuScreen extends Screen {
     }
 
     private static String numText(FloatSetting n, double v) {
-        String s = n.getIncrement() >= 1
-                ? String.valueOf((long) Math.round(v))
-                : String.format(java.util.Locale.ROOT, n.getIncrement() >= .1 ? "%.1f" : "%.2f", v);
-        return s;
+        if (n.getIncrement() >= 1) {
+            return String.valueOf((long) Math.round(v));
+        }
+        return String.valueOf(Math.round(v * 100.0) / 100.0);
     }
 
     int rowH(Setting s, int w) {
