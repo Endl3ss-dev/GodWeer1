@@ -8,7 +8,6 @@ import com.mojang.blaze3d.vertex.PoseStack;
 import swerve.modules.impl.render.SpatialGui;
 import swerve.modules.impl.render.ViewModel;
 import swerve.utils.render.HandOutline;
-import swerve.utils.render.anim.HandMotion;
 import swerve.utils.render.spatial.SpatialState;
 
 import net.minecraft.client.player.AbstractClientPlayer;
@@ -34,13 +33,12 @@ public class MixinItemInHandRenderer {
     // Границы отрисовки рук: здесь снимается глубина до и после, из разницы получается
     // силуэт рук для обводки и для точного ответа «курсор над рукой?».
     // require = 0: если имя метода в сборке другое, клиент живёт без обводки, но не падает.
-    // [!] Сигнатура расширена до параметров цели: HandAnimations нужны partialTick и игрок.
+    // [!] Сигнатура оставлена полной: инжект требует все параметры целевого метода.
     @Inject(method = "renderHandsWithItems", at = @At("HEAD"), require = 0)
     private void swerve$beginHands(float partialTick, PoseStack poseStack, MultiBufferSource.BufferSource buffer,
                                    LocalPlayer player, int combinedLight, CallbackInfo ci) {
         ViewModel.beginFrame();
         HandOutline.beforeHands();
-        HandMotion.beginFrame(player, partialTick);
     }
 
     @Inject(method = "renderHandsWithItems", at = @At("RETURN"), require = 0)
@@ -69,8 +67,7 @@ public class MixinItemInHandRenderer {
                                        InteractionHand hand, float swingProgress, ItemStack item,
                                        float equippedProgress, PoseStack poseStack, MultiBufferSource buffer,
                                        int combinedLight, CallbackInfo ci) {
-        // [+] HandAnimations раньше ViewModel: слои аддитивны, смещения/масштаб ViewModel ложатся сверху.
-        HandMotion.apply(poseStack, player, hand, item, ViewModel.equipProgress(0.0F));
+        // [+] Смещения и масштаб ViewModel — единственный слой поверх ванильной руки.
         ViewModel.applyTransform(poseStack, player, hand);
     }
 
@@ -92,9 +89,8 @@ public class MixinItemInHandRenderer {
                     target = "Lnet/minecraft/client/renderer/ItemInHandRenderer;applyItemArmTransform(Lcom/mojang/blaze3d/vertex/PoseStack;Lnet/minecraft/world/entity/HumanoidArm;F)V"))
     private void swerve$equip(ItemInHandRenderer instance, PoseStack poseStack, HumanoidArm arm,
                               float equippedProgress, Operation<Void> original) {
-        // [!] HandAnimations поверх ViewModel: при своей анимации смены ваниль держится в покое.
         float progress = ViewModel.equipProgress(equippedProgress);
-        original.call(instance, poseStack, arm, HandMotion.equipProgress(progress, ViewModel.equipProgress(0.0F)));
+        original.call(instance, poseStack, arm, progress);
     }
 
     // Пустая рука: renderPlayerArm считает свой сдвиг сам, поэтому в «Статично» взмах
@@ -108,13 +104,6 @@ public class MixinItemInHandRenderer {
         float progress = ViewModel.staticSwing() ? 0.0F : swingProgress;
         ViewModel.cancelArmDip(poseStack, arm, progress);
         float equip = ViewModel.equipProgress(equippedProgress);
-        original.call(instance, poseStack, buffer, combinedLight,
-                HandMotion.equipProgress(equip, ViewModel.equipProgress(0.0F)), progress, arm);
-    }
-
-    // [+] HandAnimations: успешное использование предмета — толчок руки вместо ванильного опускания.
-    @Inject(method = "itemUsed", at = @At("HEAD"))
-    private void swerve$handUsed(InteractionHand hand, CallbackInfo ci) {
-        HandMotion.onItemUsed(hand);
+        original.call(instance, poseStack, buffer, combinedLight, equip, progress, arm);
     }
 }
