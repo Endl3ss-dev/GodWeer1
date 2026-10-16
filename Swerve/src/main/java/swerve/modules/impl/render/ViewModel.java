@@ -341,6 +341,23 @@ public final class ViewModel extends Module {
         return module != null && module.isEnable() ? 1.0F : equippedProgress;
     }
 
+    // [+] Текущий сдвиг руки для HandAnimations: якорь поворотов должен совпадать с реальным местом руки.
+    public static float offsetX(InteractionHand hand) {
+        ViewModel module = instance;
+        if (module == null || !module.isEnable()) {
+            return 0.0F;
+        }
+        return hand == InteractionHand.MAIN_HAND ? module.mainOffsetX : module.offOffsetX;
+    }
+
+    public static float offsetY(InteractionHand hand) {
+        ViewModel module = instance;
+        if (module == null || !module.isEnable()) {
+            return 0.0F;
+        }
+        return hand == InteractionHand.MAIN_HAND ? module.mainOffsetY : module.offOffsetY;
+    }
+
     private void renderPreset(PoseStack poseStack, float swingProgress, HumanoidArm arm) {
         Minecraft minecraft = Minecraft.getInstance();
         if (onlyAura.get() && (minecraft.crosshairPickEntity == null || !isLiving(minecraft.crosshairPickEntity))) {
