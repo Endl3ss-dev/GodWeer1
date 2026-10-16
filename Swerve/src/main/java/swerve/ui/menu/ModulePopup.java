@@ -124,7 +124,8 @@ final class ModulePopup {
         String kt = cap ? "Нажми клавишу" : m.getKey() >= 0 ? KeyBoardUtils.getBindName(m.getKey()) : "—";
         menu.valueBox(g, kt, cx + cw, cy + (rh - menu.S(26)) / 2, cap, khv);
         if (live) {
-            menu.clipped(cx, cy, cw, rh, sc, t, b, MenuScreen.ACT_POPUP_KEY, mi);
+            // левая кнопка — назначить клавишу, правая — сбросить
+            menu.clipped(cx, cy, cw, rh, sc, t, b, MenuScreen.ACT_POPUP_KEY, MenuScreen.ACT_POPUP_KEY_RESET, mi);
         }
         g.pose().popPose();
         g.disableScissor();
