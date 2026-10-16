@@ -7,6 +7,7 @@ import swerve.modules.impl.combat.AutoGApple;
 import swerve.modules.impl.combat.AutoHeal;
 import swerve.modules.impl.combat.AutoPotion;
 import swerve.modules.impl.combat.ItemSwap;
+import swerve.modules.impl.combat.KillAura;
 import swerve.modules.impl.combat.SexAura;
 import swerve.modules.impl.hud.ArrayListHud;
 import swerve.modules.impl.hud.Notifications;
@@ -55,6 +56,8 @@ public final class ModuleManager {
         register(new AutoGApple());
         register(new AutoPotion());
         register(new SexAura());
+        // KillAura идёт после SexAura: поворот ауры применяется позже и затирает поворот SexAura в том же тике.
+        register(new KillAura());
         register(new ItemSwap());
         register(new Speed());
         register(new DrinkUse());
