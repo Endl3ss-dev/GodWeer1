@@ -46,7 +46,7 @@ public final class MenuAnim {
 
     // ---- настройки: по 6 значений на настройку (индекс = модуль * 16 + номер настройки)
     public static final int SETTING_BASE = MODULE_BASE + MAX_MODULES * MOD_STRIDE;
-    public static final int SET_STRIDE = 6;
+    public static final int SET_STRIDE = 7;
     public static final int MAX_SETTINGS = 1024;
     public static final int SET_ROW = 0;
     public static final int SET_BOOL = 1;
@@ -54,10 +54,12 @@ public final class MenuAnim {
     public static final int SET_NUM_KNOB = 3;
     public static final int SET_SEGMENT = 4;
     public static final int SET_DROPDOWN = 5;
+    /** Положение бегунка числовой строки (пружина). */
+    public static final int SET_NUM_POS = 6;
 
-    // ---- настройки меню: по 2 значения на пункт
+    // ---- настройки меню: по 4 значения на пункт (подсветка, значение, позиция бегунка, бегунок)
     public static final int PREFS_BASE = SETTING_BASE + MAX_SETTINGS * SET_STRIDE;
-    public static final int PREFS_SIZE = 8;
+    public static final int PREFS_SIZE = 32;
 
     // ---- прокрутка: по одному значению на контекст
     public static final int SCROLL_BASE = PREFS_BASE + PREFS_SIZE;
@@ -77,6 +79,9 @@ public final class MenuAnim {
     private final long[] tweenStart = new long[SIZE];
     private final boolean[] tweenSet = new boolean[SIZE];
 
+    /** Множитель скорости анимаций (настройка меню). */
+    public static float speedMul = 1f;
+
     private long last = System.nanoTime();
     private float dt = 1 / 60f;
 
@@ -89,10 +94,10 @@ public final class MenuAnim {
     /** Пружина: значение подтягивается к цели экспоненциально, скорость задаётся вызывающим. */
     public float to(int key, float target, float speed) {
         float v = spring[key];
-        if (!MenuTheme.animations) {
+        if (!MenuPrefs.animations) {
             v = target;
         } else {
-            v += (target - v) * (1 - (float) Math.exp(-dt * speed));
+            v += (target - v) * (1 - (float) Math.exp(-dt * speed * speedMul));
         }
         if (Math.abs(target - v) < .0015f) {
             v = target;
@@ -104,7 +109,7 @@ public final class MenuAnim {
     /** Тайм-твин: линейная интерполяция с плавным входом и выходом за заданное время. */
     public float tween(int key, float target, int ms) {
         long now = System.currentTimeMillis();
-        if (!tweenSet[key] || !MenuTheme.animations) {
+        if (!tweenSet[key] || !MenuPrefs.animations) {
             tweenSet[key] = true;
             tweenFrom[key] = target;
             tweenTo[key] = target;
@@ -123,7 +128,7 @@ public final class MenuAnim {
     }
 
     private float current(int key, long now) {
-        long dur = Math.max(1, tweenDur[key]);
+        long dur = Math.max(1, (long) (tweenDur[key] / Math.max(.2f, speedMul)));
         double p = Math.min(1, (now - tweenStart[key]) / (double) dur);
         double e = p < .5 ? 4 * p * p * p : 1 - Math.pow(-2 * p + 2, 3) / 2;
         return (float) (tweenFrom[key] + (tweenTo[key] - tweenFrom[key]) * e);

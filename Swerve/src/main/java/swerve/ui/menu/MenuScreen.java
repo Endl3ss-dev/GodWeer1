@@ -11,6 +11,8 @@ import swerve.modules.api.setting.ModeSetting;
 import swerve.modules.api.setting.Setting;
 import swerve.modules.api.setting.TextSetting;
 import swerve.ui.menu.MenuText.Weight;
+import swerve.ui.newgui.GuiBlur;
+import swerve.ui.newgui.GuiTheme;
 import swerve.utils.input.KeyBoardUtils;
 
 import net.minecraft.client.Minecraft;
@@ -315,8 +317,26 @@ public final class MenuScreen extends Screen {
     }
 
     @Override
+    public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float pt) {
+        // в 1.21.4 нет ванильного renderBlurredBackground — используем свой Kawase-блюр
+        if (MenuPrefs.blur && Minecraft.getInstance().level != null) {
+            float strength = GuiTheme.blurStrength();
+            if (strength > 0f) {
+                Minecraft mc = Minecraft.getInstance();
+                GuiBlur.draw(g.pose(), 0f, 0f, mc.getWindow().getGuiScaledWidth(),
+                        mc.getWindow().getGuiScaledHeight(), 0f, strength);
+            }
+        }
+    }
+
+    @Override
     public void render(GuiGraphics g, int mouseX, int mouseY, float pt) {
+        // снимок мира для размытия берётся до отрисовки GUI, иначе панели попадают в блюр друг друга
+        if (MenuPrefs.blur && Minecraft.getInstance().level != null) {
+            GuiBlur.beginFrame(GuiTheme.blurStrength());
+        }
         draw(g, mouseX, mouseY, pt);
+        GuiBlur.endFrame();
     }
 
     private void draw(GuiGraphics g, int mouseX, int mouseY, float pt) {
@@ -328,7 +348,7 @@ public final class MenuScreen extends Screen {
         my = Px.px(mouseY);
         int sw = Px.width();
         int sh = Px.height();
-        u = (float) Math.max(.45, Math.min(2.2, Math.min(sh / 1080.0, sw / 1060.0) * MenuTheme.menuScale * .86));
+        u = (float) Math.max(.45, Math.min(2.2, Math.min(sh / 1080.0, sw / 1060.0) * MenuPrefs.menuScale() * .86));
         float open = an(MenuAnim.OPEN, closing ? 0 : 1, closing ? 18 : 8);
         if (closing && open < .02f) {
             super.onClose();
@@ -343,7 +363,7 @@ public final class MenuScreen extends Screen {
 
         Px.begin(g);
         float keep = Px.fade;
-        Px.rect(g, 0, 0, sw, sh, Px.a(0x05040A, (int) (255 * open)));
+        Px.rect(g, 0, 0, sw, sh, Px.a(0x05040A, (int) (255 * MenuPrefs.dim / 100f * open)));
         Px.fade = keep * Math.min(1, open * 1.3f);
         brand(g, sw / 2, py - S(58));
         g.pose().pushPose();
@@ -902,31 +922,40 @@ public final class MenuScreen extends Screen {
         MenuSound.play(MenuSound.POP);
     }
 
-    // ---- настройки меню (группа: иконка, заголовок, подзаголовок, строки)
+    // ---- настройки меню (порт MenuPrefs из Arcanic)
     private static final int PREF_SOUNDS = 0;
-    private static final int PREF_HOVER_SOUNDS = 1;
-    private static final int PREF_ANIMATIONS = 2;
-    private static final int PREF_SCALE = 3;
-    private static final int PREFS_SOUND = 0;
-    private static final int PREFS_THEME = 1;
-    private static final int PREFS_BEHAVIOR = 2;
+    private static final int PREF_VOLUME = 1;
+    private static final int PREF_HOVER_SOUNDS = 2;
+    private static final int PREF_BLUR = 3;
+    private static final int PREF_DIM = 4;
+    private static final int PREF_ANIMATIONS = 5;
+    private static final int PREF_ANIM_SPEED = 6;
+    private static final int PREF_SCALE = 7;
+    private static final int PREFS_PALETTE = 0;
+    private static final int PREFS_SOUND = 1;
+    private static final int PREFS_VIEW = 2;
+    private static final int PREFS_BEHAVIOR = 3;
     private static final int PREF_SCROLL = 9;
-    private static final float PREF_SCALE_MIN = .7f;
-    private static final float PREF_SCALE_MAX = 1.4f;
+    private static final float[] PREF_MIN = {0f, 0f, 0f, 0f, 0f, 0f, .5f, 70f};
+    private static final float[] PREF_MAX = {0f, 100f, 0f, 0f, 90f, 0f, 2f, 130f};
+    private static final float[] PREF_STEP = {0f, 5f, 0f, 0f, 5f, 0f, .1f, 5f};
 
     private record PrefGroup(String icon, String title, String subtitle, int[] rows) {
     }
 
     private static final PrefGroup[] PREFS = {
-            new PrefGroup("w.headset", "Звук", "Щелчки и отклик меню", new int[]{PREF_SOUNDS, PREF_HOVER_SOUNDS}),
-            new PrefGroup("w.swatch", "Вид", "Цветовые схемы меню", new int[0]),
-            new PrefGroup("w.bolt", "Поведение", "Анимации и размер меню", new int[]{PREF_ANIMATIONS, PREF_SCALE}),
+            new PrefGroup("w.rainbow", "Палитра", "Цветовые схемы меню", new int[0]),
+            new PrefGroup("w.headset", "Звук", "Щелчки и отклик меню",
+                    new int[]{PREF_SOUNDS, PREF_VOLUME, PREF_HOVER_SOUNDS}),
+            new PrefGroup("w.contrast", "Вид", "Фон, свет и подсказки", new int[]{PREF_BLUR, PREF_DIM}),
+            new PrefGroup("w.bolt", "Поведение", "Анимации, размер и положение",
+                    new int[]{PREF_ANIMATIONS, PREF_ANIM_SPEED, PREF_SCALE}),
     };
 
     private final int[] prefColY = new int[2];
-    private final int[] prefGx = new int[3];
-    private final int[] prefGy = new int[3];
-    private final int[] prefGh = new int[3];
+    private final int[] prefGx = new int[4];
+    private final int[] prefGy = new int[4];
+    private final int[] prefGh = new int[4];
     private final float[] prefSliderX = new float[8];
     private final float[] prefSliderW = new float[8];
 
@@ -1038,7 +1067,7 @@ public final class MenuScreen extends Screen {
             Px.fade = k * app;
             g.pose().pushPose();
             Px.translate(g, 0, Math.round((1 - app) * S(8)));
-            prefGroup(g, i, gx[i], gy[i], cw, gh[i], sc);
+            prefGroup(g, i, gx[i], gy[i], cw, gh[i], sc, app > .3f);
             g.pose().popPose();
             Px.fade = k;
         }
@@ -1051,8 +1080,8 @@ public final class MenuScreen extends Screen {
     /** Высота карточки группы настроек. */
     private int groupH(int group, int cw) {
         int h = S(64);
-        if (group == PREFS_THEME) {
-            return h + S(76) + S(10);
+        if (group == PREFS_PALETTE) {
+            return h + paletteH(cw - S(36)) + S(10);
         }
         int[] rows = PREFS[group].rows;
         for (int i = 0; i < rows.length; i++) {
@@ -1062,11 +1091,11 @@ public final class MenuScreen extends Screen {
     }
 
     private static int prefRowH(int pref) {
-        return pref == PREF_SCALE ? S(64) : S(40);
+        return PREF_STEP[pref] > 0f ? S(76) : S(46);
     }
 
     /** Карточка группы: иконка, заголовок, подзаголовок и строки настроек. */
-    private void prefGroup(GuiGraphics g, int group, int x, int y, int w, int h, float sc) {
+    private void prefGroup(GuiGraphics g, int group, int x, int y, int w, int h, float sc, boolean live) {
         boolean lt = light();
         int pad = S(18);
         int R = S(12);
@@ -1079,86 +1108,106 @@ public final class MenuScreen extends Screen {
         Px.text(g, PREFS[group].subtitle, x + pad + ib + S(12), y + S(36), Weight.MEDIUM, S(12), lt(T().dim(), 0xFF757D8A));
         Px.rect(g, x + pad, y + S(62), w - pad * 2, Math.max(1, S(1)), lt ? Px.a(T().text(), 18) : 0x12FFFFFF);
         int ry = y + S(64);
-        if (group == PREFS_THEME) {
-            paletteStrip(g, x + pad, ry, w - pad * 2, sc);
+        if (group == PREFS_PALETTE) {
+            paletteStrip(g, x + pad, ry, w - pad * 2, sc, live);
             return;
         }
         int[] rows = PREFS[group].rows;
         for (int i = 0; i < rows.length; i++) {
-            prefRow(g, rows[i], x + pad, ry, w - pad * 2, prefRowH(rows[i]), sc, top, bottom);
+            prefRow(g, rows[i], x + pad, ry, w - pad * 2, prefRowH(rows[i]), sc, top, bottom, live);
             ry += prefRowH(rows[i]);
         }
     }
 
     /** Строка настройки меню: подпись слева, значение справа. */
-    private void prefRow(GuiGraphics g, int pref, int x, int y, int w, int h, float sc, int t, int b) {
-        boolean hv = !blocked() && my >= t && my < b && hover(x, Math.round(y - sc), w, h);
+    private void prefRow(GuiGraphics g, int pref, int x, int y, int w, int h, float sc, int t, int b, boolean live) {
+        boolean hv = live && my >= t && my < b && hover(x, Math.round(y - sc), w, h);
         if (hv) {
             hot(HOT_PREF + pref);
         }
-        int animBase = MenuAnim.PREFS_BASE + pref * 2;
+        int animBase = MenuAnim.PREFS_BASE + pref * 4;
         float hk = an(animBase, hv ? 1 : 0, 18);
         switch (pref) {
-            case PREF_SOUNDS -> {
-                Px.text(g, "Звуки меню", x, y + (h - S(14)) / 2, Weight.MEDIUM, S(14), T().text());
-                toggle(g, x + w - S(44), y + (h - S(24)) / 2, S(44), S(24), MenuTheme.sounds ? 1 : 0, hk);
-                if (!blocked()) {
-                    region(x, y, w, h, ACT_PREF_BOOL, pref);
-                }
-            }
-            case PREF_HOVER_SOUNDS -> {
-                Px.text(g, "Звуки наведения", x, y + (h - S(14)) / 2, Weight.MEDIUM, S(14), T().text());
-                toggle(g, x + w - S(44), y + (h - S(24)) / 2, S(44), S(24), MenuTheme.hoverSounds ? 1 : 0, hk);
-                if (!blocked()) {
-                    region(x, y, w, h, ACT_PREF_BOOL, pref);
-                }
-            }
-            case PREF_ANIMATIONS -> {
-                Px.text(g, "Анимации", x, y + (h - S(14)) / 2, Weight.MEDIUM, S(14), T().text());
-                toggle(g, x + w - S(44), y + (h - S(24)) / 2, S(44), S(24), MenuTheme.animations ? 1 : 0, hk);
-                if (!blocked()) {
-                    region(x, y, w, h, ACT_PREF_BOOL, pref);
-                }
-            }
-            case PREF_SCALE -> {
-                Px.text(g, "Размер меню", x, y + S(6), Weight.MEDIUM, S(14), T().text());
-                float v = MenuTheme.menuScale;
-                float vk = an(animBase + 1, hk > .5f ? 1 : 0, 16);
-                Px.textRight(g, Math.round(v * 100) + "%", x + w, y + S(6), Weight.SEMIBOLD, S(13),
-                        Px.mix(accText(), lt(T().text(), 0xFFFFFFFF), vk));
-                int th = Math.max(2, S(3));
-                int kr = S(6);
-                int ty = y + h - S(22);
-                float f = (v - PREF_SCALE_MIN) / (PREF_SCALE_MAX - PREF_SCALE_MIN);
-                int kx = x + kr + Math.round((w - kr * 2) * f);
-                prefSliderX[pref] = x + kr;
-                prefSliderW[pref] = w - kr * 2;
-                Px.round(g, x, ty, w, th, th / 2, light() ? 0xFFDEDDE6 : Px.a(0xFFFFFF, 24));
-                Px.round(g, x, ty, Math.max(th, kx - x), th, th / 2, acc());
-                float kh = an(animBase + 1, hv ? .6f : 0, 20);
-                int outer = kr + Math.round(S(1.5f) * kh);
-                int inner = Math.max(1, Math.round(outer * .34f));
-                Px.circle(g, kx, ty + th / 2, outer, acc());
-                Px.circle(g, kx, ty + th / 2, inner, light() ? 0xFFFFFFFF : 0xFF12141C);
-                if (!blocked()) {
-                    int y0 = (int) Math.max(t, ty - S(14) - sc);
-                    int y1 = (int) Math.min(b, ty + S(20) - sc);
-                    if (y1 > y0) {
-                        region(x - S(10), y0, w + S(20), y1 - y0, ACT_PREF_SLIDER, pref);
-                    }
-                }
-            }
+            case PREF_SOUNDS -> prefToggle(g, pref, x, y, w, h, "Звуки меню", MenuPrefs.sounds, hk, sc, t, b, live);
+            case PREF_HOVER_SOUNDS -> prefToggle(g, pref, x, y, w, h, "Звук при наведении", MenuPrefs.hoverSounds, hk, sc, t, b, live);
+            case PREF_BLUR -> prefToggle(g, pref, x, y, w, h, "Размытие мира", MenuPrefs.blur, hk, sc, t, b, live);
+            case PREF_ANIMATIONS -> prefToggle(g, pref, x, y, w, h, "Анимации", MenuPrefs.animations, hk, sc, t, b, live);
+            case PREF_VOLUME -> prefNumber(g, pref, x, y, w, h, "Громкость", MenuPrefs.volume, hk, sc, t, b, live);
+            case PREF_DIM -> prefNumber(g, pref, x, y, w, h, "Затемнение", MenuPrefs.dim, hk, sc, t, b, live);
+            case PREF_ANIM_SPEED -> prefNumber(g, pref, x, y, w, h, "Скорость", MenuPrefs.animSpeed, hk, sc, t, b, live);
+            case PREF_SCALE -> prefNumber(g, pref, x, y, w, h, "Размер меню", MenuPrefs.scale, hk, sc, t, b, live);
             default -> {
             }
         }
     }
 
+    private void prefToggle(GuiGraphics g, int pref, int x, int y, int w, int h, String label, boolean on,
+                            float hk, float sc, int t, int b, boolean live) {
+        Px.text(g, label, x, y + (h - S(14)) / 2, Weight.MEDIUM, S(14), T().text());
+        toggle(g, x + w - S(44), y + (h - S(24)) / 2, S(44), S(24), on ? 1 : 0, hk);
+        if (live) {
+            clipped(x, y, w, h, sc, t, b, ACT_PREF_BOOL, pref);
+        }
+    }
+
+    /** Числовая строка: имя, значение, дорожка с бегунком и границы под ней. */
+    private void prefNumber(GuiGraphics g, int pref, int x, int y, int w, int h, String label, float value,
+                            float hk, float sc, int t, int b, boolean live) {
+        int animBase = MenuAnim.PREFS_BASE + pref * 4;
+        int ly = y + S(10);
+        Px.text(g, label, x, ly, Weight.MEDIUM, S(14), T().text());
+        float vk = an(animBase + 1, hk > .5f ? 1 : 0, 16);
+        Px.textRight(g, prefNumText(value, PREF_STEP[pref]), x + w, ly, Weight.SEMIBOLD, S(13),
+                Px.mix(accText(), lt(T().text(), 0xFFFFFFFF), vk));
+        int th = Math.max(2, S(3));
+        int kr = S(6);
+        int ty = y + h - S(28);
+        int rs = S(10);
+        int rc = lt(T().dim(), 0xFF5A616C);
+        Px.text(g, prefNumText(PREF_MIN[pref], PREF_STEP[pref]), x, ty + S(9), Weight.MEDIUM, rs, rc);
+        Px.textRight(g, prefNumText(PREF_MAX[pref], PREF_STEP[pref]), x + w, ty + S(9), Weight.MEDIUM, rs, rc);
+        float min = PREF_MIN[pref];
+        float max = PREF_MAX[pref];
+        float f = (value - min) / Math.max(.0001f, max - min);
+        int kx = x + kr + Math.round((w - kr * 2) * f);
+        prefSliderX[pref] = x + kr;
+        prefSliderW[pref] = w - kr * 2;
+        Px.round(g, x, ty, w, th, th / 2, light() ? 0xFFDEDDE6 : Px.a(0xFFFFFF, 24));
+        Px.round(g, x, ty, Math.max(th, kx - x), th, th / 2, acc());
+        float kh = an(animBase + 3, hk > .5f ? .6f : 0, 20);
+        int outer = kr + Math.round(S(1.5f) * kh);
+        int inner = Math.max(1, Math.round(outer * .34f));
+        Px.circle(g, kx, ty + th / 2, outer, acc());
+        Px.circle(g, kx, ty + th / 2, inner, light() ? 0xFFFFFFFF : 0xFF12141C);
+        if (live) {
+            clipped(x - S(10), ty - S(14), w + S(20), S(34), sc, t, b, ACT_PREF_SLIDER, pref);
+        }
+    }
+
+    private static String prefNumText(float v, float step) {
+        if (step >= 1f) {
+            return String.valueOf((long) Math.round(v));
+        }
+        return String.valueOf(Math.round(v * 100.0) / 100.0);
+    }
+
+    /** Число палитр в одной строке. */
+    private static int palettePerRow(int w) {
+        return Math.max(1, (w + S(10)) / (S(46) + S(10)));
+    }
+
+    /** Высота полосы палитр. */
+    private static int paletteH(int w) {
+        int rows = (MenuTheme.PALETTES.length + palettePerRow(w) - 1) / palettePerRow(w);
+        return rows * (S(46) + S(10)) - S(10);
+    }
+
     /** Полоса палитр: квадрат каждой темы в рамке, выбранная подсвечена акцентом. */
-    private void paletteStrip(GuiGraphics g, int x, int y, int w, float sc) {
+    private void paletteStrip(GuiGraphics g, int x, int y, int w, float sc, boolean live) {
         int n = MenuTheme.PALETTES.length;
         int cell = S(46);
         int gap = S(10);
-        int perRow = Math.max(1, (w + gap) / (cell + gap));
+        int perRow = palettePerRow(w);
         for (int i = 0; i < n; i++) {
             int c = i % perRow;
             int r = i / perRow;
@@ -1169,23 +1218,23 @@ public final class MenuScreen extends Screen {
             }
             MenuTheme.Palette p = MenuTheme.PALETTES[i];
             boolean sel = MenuTheme.palette == i;
-            boolean hv = !blocked() && hover(cx, cy, cell, cell);
+            boolean hv = live && hover(cx, cy, cell, cell);
             if (hv) {
                 hot(HOT_PALETTE + i);
             }
             Px.round(g, cx, cy, cell, cell, S(10), p.bg() | 0xFF000000);
-            Px.round(g, cx, cy, cell, cell, S(10), p.a() | 0xFF000000);
+            Px.round(g, cx + S(6), cy + cell - S(14), cell - S(12), S(8), S(4), p.a() | 0xFF000000);
             Px.outline(g, cx, cy, cell, cell, S(10), sel ? Px.a(MenuTheme.accent(), 220) : p.border());
             if (sel) {
                 Px.outline(g, cx - S(2), cy - S(2), cell + S(4), cell + S(4), S(12), Px.a(MenuTheme.accent(), 120));
             }
-            if (!blocked()) {
-                region(cx, cy, cell, cell, ACT_PALETTE, i);
+            if (live) {
+                clipped(cx, cy, cell, cell, sc, top, bottom, ACT_PALETTE, i);
             }
         }
     }
 
-
+    // ---- док страниц
     // ---- окно настроек модуля (всплывающее)
     int valueBox(GuiGraphics g, String v, int right, int y, boolean accent, boolean hv) {
         int bw = Math.max(S(compact ? 44 : 52), Px.textWidth(v, Weight.MEDIUM, S(13)) + S(compact ? 18 : 22));
@@ -1283,7 +1332,9 @@ public final class MenuScreen extends Screen {
             int rc = lt(T().dim(), 0xFF5A616C);
             Px.text(g, numText(n, n.getMin()), tx, ty + S(9), Weight.MEDIUM, rs, rc);
             Px.textRight(g, numText(n, n.getMax()), tx + tw2, ty + S(9), Weight.MEDIUM, rs, rc);
-            float f = (n.get() - n.getMin()) / Math.max(.0001f, n.getMax() - n.getMin());
+            float frac = (n.get() - n.getMin()) / Math.max(.0001f, n.getMax() - n.getMin());
+            boolean drag = dragAction == ACT_SLIDER && dragPayload == siGlobal;
+            float f = drag ? frac : an(animBase + MenuAnim.SET_NUM_POS, frac, 22);
             int kx = tx + kr + Math.round((tw2 - kr * 2) * f);
             int kcy = ty + th / 2;
             sliderX[siGlobal] = tx + kr;
@@ -1339,6 +1390,10 @@ public final class MenuScreen extends Screen {
                 int vh = S(30);
                 int vx = x + w - vw;
                 int vy = y + (h - vh) / 2;
+                modeDropX[siGlobal] = vx;
+                modeDropY[siGlobal] = vy;
+                modeDropW[siGlobal] = vw;
+                modeDropH[siGlobal] = vh;
                 boolean open = pop == md;
                 Px.round(g, vx, vy, vw, vh, S(5), open ? Px.a(MenuTheme.accent(), light() ? 22 : 36) : inset(hk > .5f));
                 Px.outline(g, vx, vy, vw, vh, S(5), open ? acc() : Px.a(T().text(), light() ? 30 : 16));
@@ -1447,6 +1502,16 @@ public final class MenuScreen extends Screen {
         Px.fade = k;
     }
 
+    /** GLFW-номер кнопки мыши -> индекс бинда Swerve (0 ЛКМ, 1 ПКМ, 2 СКМ). */
+    private static int mouseBindIndex(int glfwButton) {
+        return switch (glfwButton) {
+            case 0 -> 0;
+            case 2 -> 1;
+            case 1 -> 2;
+            default -> glfwButton;
+        };
+    }
+
     // ---- индексы модулей и настроек
     int moduleIndex(Module m) {
         List<Module> all = ModuleManager.getModules();
@@ -1484,13 +1549,13 @@ public final class MenuScreen extends Screen {
         double x = Px.px(mouseX);
         double y = Px.px(mouseY);
         if (binding != null && button >= 2) {
-            binding.setKey(KeyBoardUtils.createMouseBind(button - 1));
+            binding.setKey(KeyBoardUtils.createMouseBind(mouseBindIndex(button)));
             binding = null;
             MenuSound.play(MenuSound.SELECT);
             return true;
         }
         if (bindingSetting != null && button >= 2) {
-            bindingSetting.setKey(KeyBoardUtils.createMouseBind(button - 1));
+            bindingSetting.setKey(KeyBoardUtils.createMouseBind(mouseBindIndex(button)));
             bindingSetting = null;
             MenuSound.play(MenuSound.SELECT);
             return true;
@@ -1627,9 +1692,18 @@ public final class MenuScreen extends Screen {
                 if (s instanceof ModeSetting md) {
                     pop = pop == md ? null : md;
                     if (pop != null) {
-                        popW = Math.max(S(200), S(44));
-                        popX = cx0 + cw0 - popW;
-                        popY = (int) (my + S(10));
+                        // поповер раскрывается под кнопкой режима, прижат к её правому краю
+                        int vw = modeDropW[payload];
+                        popW = Math.max(S(200), vw);
+                        popX = modeDropX[payload] + vw - popW;
+                        float sc7 = an(MenuAnim.SCROLL_BASE + 7, scroll[7], 15);
+                        popY = Math.round(modeDropY[payload] - sc7 + modeDropH[payload] + S(6));
+                        // прокрутка сразу центрирует выбранный режим
+                        int ih = S(38);
+                        int rows = Math.min(md.getMods().size(), 8);
+                        int max = Math.max(0, (md.getMods().size() - rows) * ih);
+                        scroll[8] = Math.max(0, Math.min(max, (md.getIndex() - rows / 2) * ih));
+                        anim.set(MenuAnim.SCROLL_BASE + 8, scroll[8]);
                         popAt = now;
                         MenuSound.play(MenuSound.POP);
                     }
@@ -1674,12 +1748,14 @@ public final class MenuScreen extends Screen {
             }
             case ACT_PREF_BOOL -> {
                 switch (payload) {
-                    case PREF_SOUNDS -> MenuTheme.sounds = !MenuTheme.sounds;
-                    case PREF_HOVER_SOUNDS -> MenuTheme.hoverSounds = !MenuTheme.hoverSounds;
-                    case PREF_ANIMATIONS -> MenuTheme.animations = !MenuTheme.animations;
+                    case PREF_SOUNDS -> MenuPrefs.sounds = !MenuPrefs.sounds;
+                    case PREF_HOVER_SOUNDS -> MenuPrefs.hoverSounds = !MenuPrefs.hoverSounds;
+                    case PREF_BLUR -> MenuPrefs.blur = !MenuPrefs.blur;
+                    case PREF_ANIMATIONS -> MenuPrefs.animations = !MenuPrefs.animations;
                     default -> {
                     }
                 }
+                MenuPrefs.sync();
                 MenuSound.play(MenuSound.CLICK);
             }
             case ACT_PREF_SLIDER -> {
@@ -1689,11 +1765,11 @@ public final class MenuScreen extends Screen {
                 applyPrefSlider(payload, mx);
             }
             case ACT_ANIMATIONS -> {
-                MenuTheme.animations = !MenuTheme.animations;
+                MenuPrefs.animations = !MenuPrefs.animations;
                 MenuSound.play(MenuSound.CLICK);
             }
             case ACT_SOUNDS -> {
-                MenuTheme.sounds = !MenuTheme.sounds;
+                MenuPrefs.sounds = !MenuPrefs.sounds;
                 MenuSound.play(MenuSound.CLICK);
             }
             default -> {
@@ -1728,27 +1804,59 @@ public final class MenuScreen extends Screen {
         float v = n.getMin() + (n.getMax() - n.getMin()) * f;
         v = Math.round(v / Math.max(.0001f, n.getIncrement())) * n.getIncrement();
         n.setValue(v);
+        anim.set(MenuAnim.SETTING_BASE + global * MenuAnim.SET_STRIDE + MenuAnim.SET_NUM_POS, f);
         if (n.get() != before) {
             MenuSound.play(MenuSound.TICK, .75f + (float) f * .8f, .55f);
         }
     }
 
     private void applyPrefSlider(int pref, double at) {
-        if (pref != PREF_SCALE) {
+        float step = PREF_STEP[pref];
+        if (step <= 0f) {
             return;
         }
         float f = (float) ((at - prefSliderX[pref]) / Math.max(1, prefSliderW[pref]));
         f = Math.max(0, Math.min(1, f));
-        float v = PREF_SCALE_MIN + (PREF_SCALE_MAX - PREF_SCALE_MIN) * f;
-        v = Math.round(v * 20f) / 20f;
-        if (v != MenuTheme.menuScale) {
-            MenuTheme.menuScale = v;
+        float min = PREF_MIN[pref];
+        float max = PREF_MAX[pref];
+        float v = min + (max - min) * f;
+        v = Math.round(v / step) * step;
+        v = Math.round(v * 1000f) / 1000f;
+        if (v != prefValue(pref)) {
+            setPrefValue(pref, v);
+            MenuPrefs.sync();
             MenuSound.play(MenuSound.TICK, .8f + (float) f * .6f, .5f);
+        }
+    }
+
+    private static float prefValue(int pref) {
+        return switch (pref) {
+            case PREF_VOLUME -> MenuPrefs.volume;
+            case PREF_DIM -> MenuPrefs.dim;
+            case PREF_ANIM_SPEED -> MenuPrefs.animSpeed;
+            case PREF_SCALE -> MenuPrefs.scale;
+            default -> 0f;
+        };
+    }
+
+    private static void setPrefValue(int pref, float v) {
+        switch (pref) {
+            case PREF_VOLUME -> MenuPrefs.volume = v;
+            case PREF_DIM -> MenuPrefs.dim = v;
+            case PREF_ANIM_SPEED -> MenuPrefs.animSpeed = v;
+            case PREF_SCALE -> MenuPrefs.scale = v;
+            default -> {
+            }
         }
     }
 
     private final float[] sliderX = new float[MenuAnim.MAX_SETTINGS];
     private final float[] sliderW = new float[MenuAnim.MAX_SETTINGS];
+    // геометрия выпадающего списка режима (нужна для позиции поповера)
+    private final int[] modeDropX = new int[MenuAnim.MAX_SETTINGS];
+    private final int[] modeDropY = new int[MenuAnim.MAX_SETTINGS];
+    private final int[] modeDropW = new int[MenuAnim.MAX_SETTINGS];
+    private final int[] modeDropH = new int[MenuAnim.MAX_SETTINGS];
 
     @Override
     public boolean mouseDragged(double mouseX, double mouseY, int button, double dragX, double dragY) {

@@ -208,11 +208,6 @@ public final class MenuTheme {
     public static final int NIGHT = 0;
     public static final int LIGHT = 5;
 
-    /** Масштаб меню: 1.0 — как в Arcanic, меньше/больше — плотнее/просторнее. */
-    public static double menuScale = 1.0;
-    public static boolean animations = true;
-    public static boolean sounds = true;
-    public static boolean hoverSounds = true;
 
     // ---- плавная смена: каждый токен смешивается от старой палитры к новой
     private static Palette from;

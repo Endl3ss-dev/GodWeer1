@@ -58,10 +58,13 @@ public final class MenuSound {
     }
 
     public static void play(int sound, float pitch, float volume) {
-        if (!MenuTheme.sounds) {
+        if (!MenuPrefs.sounds || MenuPrefs.volume <= 0) {
             return;
         }
-        if (sound == HOVER && !MenuTheme.hoverSounds) {
+        if (sound == HOVER && !MenuPrefs.hoverSounds) {
+            return;
+        }
+        if (sound == TICK && !MenuPrefs.sliderSounds) {
             return;
         }
         long now = System.currentTimeMillis();
@@ -70,7 +73,7 @@ public final class MenuSound {
             return;
         }
         LAST[sound] = now;
-        ClientSoundPlayer.playSound(FILES[sound], volume * base(sound), pitch);
+        ClientSoundPlayer.playSound(FILES[sound], volume * base(sound) * (MenuPrefs.volume / 100f), pitch);
     }
 
     private static long gap(int sound) {
