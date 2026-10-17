@@ -7,26 +7,7 @@ import java.util.List;
 
 public final class ThemeManager {
 
-    /**
-     * Темы клиента.
-     *
-     * <p>Первые двенадцать — акценты палитр ClickGUI (меню): у них совпадают основной цвет
-     * и второй цвет градиента, поэтому HUD и меню читаются как одна тема.
-     * Дальше — старые однотонные акценты.
-     */
     private static final List<Theme> THEMES = List.of(
-            theme("Обсидиан", 0xFF8B5CF6, 0xFFB79CFF),
-            theme("Аметист", 0xFFA855F7, 0xFFE9D5FF),
-            theme("Полночь", 0xFF3B82F6, 0xFF93C5FD),
-            theme("Закат", 0xFFF97316, 0xFFFDBA74),
-            theme("Изумруд", 0xFF10B981, 0xFF6EE7B7),
-            theme("Светлая", 0xFF7C3AED, 0xFFA78BFA),
-            theme("Аврора", 0xFF8B5CF6, 0xFF22D3EE),
-            theme("Матрица", 0xFF22C55E, 0xFF86EFAC),
-            theme("Синтвейв", 0xFFEC4899, 0xFFA855F7),
-            theme("Призма", 0xFFA78BFA, 0xFFF0ABFC),
-            theme("Вихрь", 0xFF38BDF8, 0xFF818CF8),
-            theme("Неон", 0xFF22D3EE, 0xFFF472B6),
             theme("Lavender", 190, 143, 255),
             theme("Blood", 230, 50, 57),
             theme("Ocean", 95, 113, 191),
@@ -51,20 +32,13 @@ public final class ThemeManager {
     );
 
     private static Theme current = THEMES.get(0);
-    private static int currentIndex;
 
     private ThemeManager() {
     }
 
-    /** Однотонная тема: акцент и его затемнённая копия. */
     private static Theme theme(String name, int red, int green, int blue) {
         int base = ColorUtils.rgba(red, green, blue, 255);
         return new Theme(name, base, ColorUtils.darken(base, 0.35f));
-    }
-
-    /** Тема из двух цветов: акцент и второй цвет градиента. */
-    private static Theme theme(String name, int accent, int accent2) {
-        return new Theme(name, accent, accent2);
     }
 
     public static List<Theme> getThemes() {
@@ -75,23 +49,9 @@ public final class ThemeManager {
         return current;
     }
 
-    /** Индекс текущей темы — для подсветки выбранного свотча. */
-    public static int getCurrentIndex() {
-        return currentIndex;
-    }
-
     public static void setCurrent(Theme theme) {
         if (theme != null && THEMES.contains(theme)) {
             current = theme;
-            currentIndex = THEMES.indexOf(theme);
-        }
-    }
-
-    /** Выбор темы по индексу (список тем в меню). */
-    public static void setCurrent(int index) {
-        if (index >= 0 && index < THEMES.size()) {
-            current = THEMES.get(index);
-            currentIndex = index;
         }
     }
 
