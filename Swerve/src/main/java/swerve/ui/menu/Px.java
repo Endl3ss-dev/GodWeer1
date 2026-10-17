@@ -17,12 +17,15 @@ import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.function.Function;
 
 /**
  * Примитивы отрисовки меню (порт Arcanic Visuals, GPL-3.0).
  *
- * <p>Адаптация на 1.21.4: у {@code GuiGraphics.blit} первым аргументом идёт RenderType-фабрика,
- * а UV — нормализованные float; слои (nextStratum) в 1.21.4 нет — порядок задаёт сам вызов.
+ * <p>Адаптация на 1.21.4: у {@code GuiGraphics.blit} первым аргументом идёт RenderType-фабрика
+ * (для GUI — {@code guiTextured}, у {@code text} формат требует UV2 и вызов падает),
+ * а u/v задаются в пикселях текстуры — нормировку делает сам blit;
+ * слои (nextStratum) в 1.21.4 нет — порядок задаёт сам вызов.
  * Все координаты — в реальных пикселях окна, матрица позы масштабируется в {@link #begin(GuiGraphics)}.
  */
 public final class Px {
@@ -54,6 +57,26 @@ public final class Px {
 
     /** Кватернион поворота: переиспользуется, чтобы в кадре не было new. */
     private static final Quaternionf ROT = new Quaternionf();
+
+    /**
+     * Кэш RenderType для GUI-текстур.
+     *
+     * <p>В 1.21.4 {@code RenderType.text} собирается из формата {@code POSITION_COLOR_TEX_LIGHTMAP},
+     * а {@code GuiGraphics.innerBlit} не пишет UV2 — вызов падает с «Missing elements in vertex: UV2».
+     * Для GUI нужен {@code RenderType.guiTextured} (формат {@code POSITION_TEX_COLOR}).
+     * Фабрика создаёт новый RenderType на каждый вызов, поэтому типы кэшируются по текстуре.
+     */
+    private static final Map<ResourceLocation, RenderType> RT_CACHE = new HashMap<>();
+    private static final Function<ResourceLocation, RenderType> GUI_TEX = Px::guiTexture;
+
+    private static RenderType guiTexture(ResourceLocation tex) {
+        RenderType rt = RT_CACHE.get(tex);
+        if (rt == null) {
+            rt = RenderType.guiTextured(tex);
+            RT_CACHE.put(tex, rt);
+        }
+        return rt;
+    }
 
     static {
         try (var in = Px.class.getResourceAsStream("/assets/swerve/menu/atlas.json")) {
@@ -249,14 +272,14 @@ public final class Px {
             return;
         }
         // В 1.21.4 u/v в blit задаются в пикселях текстуры, а не в долях.
-        g.blit(RenderType::text, ATLAS, x, y, u, v, w, h, w, h, atlasW, atlasH, f(c));
+        g.blit(GUI_TEX, ATLAS, x, y, u, v, w, h, w, h, atlasW, atlasH, f(c));
     }
 
     private static void stretched(GuiGraphics g, int x, int y, int w, int h, int u, int v, int uw, int vh, int c) {
         if (w <= 0 || h <= 0) {
             return;
         }
-        g.blit(RenderType::text, ATLAS, x, y, u, v, w, h, uw, vh, atlasW, atlasH, f(c));
+        g.blit(GUI_TEX, ATLAS, x, y, u, v, w, h, uw, vh, atlasW, atlasH, f(c));
     }
 
     /** Скруглённый прямоугольник со сглаживанием по краям. */
@@ -409,7 +432,7 @@ public final class Px {
         if (w <= 0 || h <= 0 || (c >>> 24) == 0) {
             return;
         }
-        g.blit(RenderType::text, GLOW, x, y, 0f, 0f, w, h, 256, 256, 256, 256, c);
+        g.blit(GUI_TEX, GLOW, x, y, 0f, 0f, w, h, 256, 256, 256, 256, c);
     }
 
     private static final int CH_M = 48;
@@ -425,7 +448,7 @@ public final class Px {
             return;
         }
         n = Math.min(n, CH_M);
-        g.blit(RenderType::text, CHAMFER, x, y, n * (n - 1) / 2f, row * (float) CH_M,
+        g.blit(GUI_TEX, CHAMFER, x, y, n * (n - 1) / 2f, row * (float) CH_M,
                 n, n, n, n, CH_W, CH_H, f(c));
     }
 
@@ -611,7 +634,7 @@ public final class Px {
         ResourceLocation tex = Swerve.id("textures/gui/kit/icons_" + px + ".png");
         int texW = kitCols * px;
         int texH = kitRows * px;
-        g.blit(RenderType::text, tex, x, y,
+        g.blit(GUI_TEX, tex, x, y,
                 (cell % kitCols) * px, (cell / kitCols) * px,
                 px, px, px, px, texW, texH, c);
     }
