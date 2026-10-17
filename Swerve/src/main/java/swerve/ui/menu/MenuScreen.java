@@ -148,6 +148,8 @@ public final class MenuScreen extends Screen {
     Module binding;
     private BindSetting bindingSetting;
     private int bindingSettingIndex = -1;
+    /** Символ, который нужно проглотить: он приходит от клавиши, только что назначенной в бинд. */
+    private boolean swallowChar;
 
     private ModeSetting pop;
     private int popX;
@@ -300,7 +302,9 @@ public final class MenuScreen extends Screen {
         int m = Math.max(2, Math.round(th * .15f));
         int ks = (th - m * 2) / 2 * 2;
         int kx = tx + m + Math.round((tw - m * 2 - ks) * on);
-        Px.round(g, kx, ty + m, ks, ks, ks / 2, Px.mix(lt ? 0xFFFFFFFF : 0xFF757D8A, lt ? 0xFFFFFFFF : 0xFF12141C, on));
+        // во включённом состоянии ручка лежит на заливке акцентом — нужен контрастный цвет
+        int knobOn = Px.onAccent(acc());
+        Px.round(g, kx, ty + m, ks, ks, ks / 2, Px.mix(lt ? 0xFFFFFFFF : 0xFF757D8A, knobOn, on));
     }
 
     private int keycap(GuiGraphics g, String t, int x, int y, int fs) {
@@ -601,7 +605,10 @@ public final class MenuScreen extends Screen {
                 float sc = .6f + .4f * vis;
                 Px.scale(g, sc, sc);
             }
-            glyph(g, i == 0 ? "moon-s" : "sun-s", -gs / 2, -gs / 2, gs, c);
+            // полумесяц смещён вправо-вниз внутри клетки — поднимаем на пиксель к центру круга
+            int ox = i == 0 ? -S(1) : 0;
+            int oy = i == 0 ? -S(1) : 0;
+            glyph(g, i == 0 ? "moon-s" : "sun-s", -gs / 2 + ox, -gs / 2 + oy, gs, c);
             g.pose().popPose();
             Px.fade = kf;
         }
@@ -1278,10 +1285,33 @@ public final class MenuScreen extends Screen {
         if (s instanceof ModeSetting md && segmented(md, w)) {
             return S(compact ? 70 : 82);
         }
-        if (s instanceof ListSetting) {
-            return S(compact ? 66 : 76);
+        if (s instanceof ListSetting ls) {
+            // чипы могут переноситься на вторую строку — высота растёт
+            return S(compact ? 66 : 76) + (listRows(ls, w) - 1) * S(32);
         }
         return S(compact ? 40 : 46);
+    }
+
+    /**
+     * Число строк чипов у настройки-списка.
+     *
+     * <p>Считается по той же логике переноса, что и в отрисовке, иначе подпись следующей
+     * строки налезает на чипы.
+     */
+    private int listRows(ListSetting ls, int w) {
+        List<BooleanSetting> options = ls.getSettings();
+        int rows = 1;
+        int ox = 0;
+        for (int i = 0; i < options.size(); i++) {
+            int bw = Px.textWidth(options.get(i).name(), Weight.MEDIUM, S(12)) + S(20);
+            if (ox > 0 && ox + bw > w) {
+                rows++;
+                ox = bw + S(8);
+            } else {
+                ox += bw + S(8);
+            }
+        }
+        return rows;
     }
 
     int settings(GuiGraphics g, Module m, int x, int y, int w, float sc, int t, int b, boolean live) {
@@ -1371,6 +1401,8 @@ public final class MenuScreen extends Screen {
                 int t0 = x + in + Math.round(segW * thumb);
                 int t1 = x + in + Math.round(segW * (thumb + 1));
                 Px.round(g, t0, sy + in, t1 - t0, sh - in * 2, S(4), acc());
+                // текст выбранного сегмента ложится на заливку акцентом: берём контрастный цвет
+                int onThumb = Px.onAccent(acc());
                 for (int i = 0; i < n; i++) {
                     String mode = md.getMods().get(i);
                     float a = Math.max(0, 1 - Math.abs(thumb - i));
@@ -1382,7 +1414,7 @@ public final class MenuScreen extends Screen {
                     }
                     Px.textCenter(g, mode, (s0 + s1) / 2, sy + (sh - S(12)) / 2,
                             a > .5f ? Weight.SEMIBOLD : Weight.MEDIUM, S(12),
-                            Px.mix(sh2 ? T().text() : T().muted(), 0xFFFFFFFF, a));
+                            Px.mix(sh2 ? T().text() : T().muted(), onThumb, a));
                     if (live && md.getIndex() != i) {
                         clipped(s0, sy, s1 - s0, sh, sc, t, b, ACT_MODE_ITEM, siGlobal * 16 + i);
                     }
@@ -1423,6 +1455,11 @@ public final class MenuScreen extends Screen {
                 BooleanSetting option = options.get(i);
                 String on = option.name();
                 int bw = Px.textWidth(on, Weight.MEDIUM, S(12)) + S(20);
+                // перенос на новую строку до отрисовки, чтобы чип не вылезал за правый край
+                if (ox > x && ox + bw > x + w) {
+                    ox = x;
+                    oy += S(32);
+                }
                 boolean ohv = live && hover(ox, Math.round(oy - sc), bw, S(26));
                 Px.round(g, ox, oy, bw, S(26), S(6), option.get() ? Px.a(MenuTheme.accent(), light() ? 26 : 40) : inset(ohv));
                 Px.outline(g, ox, oy, bw, S(26), S(6), option.get() ? acc() : Px.a(T().text(), light() ? 30 : 16));
@@ -1432,10 +1469,6 @@ public final class MenuScreen extends Screen {
                     clipped(ox, oy, bw, S(26), sc, t, b, ACT_LIST_ITEM, siGlobal * 16 + i);
                 }
                 ox += bw + S(8);
-                if (ox > x + w - S(40)) {
-                    ox = x;
-                    oy += S(32);
-                }
             }
         } else if (s instanceof BindSetting bs) {
             Px.text(g, name, x, y + (h - S(14)) / 2, Weight.MEDIUM, S(14), label);
@@ -1918,6 +1951,8 @@ public final class MenuScreen extends Screen {
 
     @Override
     public boolean keyPressed(int key, int scanCode, int modifiers) {
+        // новая клавиша сбрасывает «съеденный» символ от прошлого назначения бинда
+        swallowChar = false;
         if (binding != null) {
             if (key == GLFW.GLFW_KEY_ESCAPE) {
                 binding = null;
@@ -1931,6 +1966,7 @@ public final class MenuScreen extends Screen {
             }
             binding.setKey(key);
             binding = null;
+            swallowChar = true;
             MenuSound.play(MenuSound.SELECT);
             return true;
         }
@@ -1947,6 +1983,7 @@ public final class MenuScreen extends Screen {
             }
             bindingSetting.setKey(key);
             bindingSetting = null;
+            swallowChar = true;
             MenuSound.play(MenuSound.SELECT);
             return true;
         }
@@ -2018,6 +2055,11 @@ public final class MenuScreen extends Screen {
 
     @Override
     public boolean charTyped(char codePoint, int modifiers) {
+        // символ той же клавиши, что только что назначили в бинд, не должен попасть в поиск
+        if (swallowChar) {
+            swallowChar = false;
+            return true;
+        }
         String s = String.valueOf(codePoint);
         if (s.isEmpty() || codePoint < 32 || pop != null || binding != null || bindingSetting != null) {
             return false;

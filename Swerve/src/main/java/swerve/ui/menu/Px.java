@@ -645,6 +645,20 @@ public final class Px {
         return (Math.max(0, Math.min(255, alpha)) << 24) | (c & 0xFFFFFF);
     }
 
+    /**
+     * Контрастный цвет поверх заливки: тёмный на светлом акценте, белый на тёмном.
+     *
+     * <p>Нужен там, где текст лежит на заливке акцентом (сегменты, тумблеры):
+     * на светлых палитрах белый текст на акценте не читается.
+     */
+    public static int onAccent(int c) {
+        int r = (c >> 16) & 255;
+        int g = (c >> 8) & 255;
+        int b = c & 255;
+        int lum = (r * 299 + g * 587 + b * 114) / 1000;
+        return lum > 150 ? 0xFF12141C : 0xFFFFFFFF;
+    }
+
     public static int am(int c, float k) {
         return a(c, (int) ((c >>> 24) * Math.max(0, Math.min(1, k))));
     }
