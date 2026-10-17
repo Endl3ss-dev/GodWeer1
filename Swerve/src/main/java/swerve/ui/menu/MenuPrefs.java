@@ -39,4 +39,9 @@ public final class MenuPrefs {
     public static float menuScale() {
         return scale / 100f;
     }
+
+    /** Применяет настройки к анимациям (порт MenuPrefs.sync из Arcanic). */
+    public static void sync() {
+        MenuAnim.speedMul = animations ? animSpeed : 1f;
+    }
 }

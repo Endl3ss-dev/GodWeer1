@@ -217,6 +217,14 @@ public final class MenuText {
     }
 
     private static void setUniform(net.minecraft.client.renderer.CompiledShaderProgram shader, String name,
+                                   float x, float y) {
+        var uniform = shader.getUniform(name);
+        if (uniform != null) {
+            uniform.set(x, y);
+        }
+    }
+
+    private static void setUniform(net.minecraft.client.renderer.CompiledShaderProgram shader, String name,
                                    float x, float y, float z, float w) {
         var uniform = shader.getUniform(name);
         if (uniform != null) {

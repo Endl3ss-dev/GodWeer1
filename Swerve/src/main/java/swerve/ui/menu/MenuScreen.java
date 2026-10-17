@@ -318,8 +318,12 @@ public final class MenuScreen extends Screen {
 
     @Override
     public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float pt) {
+        if (Minecraft.getInstance().level == null) {
+            super.renderBackground(g, mouseX, mouseY, pt);
+            return;
+        }
         // в 1.21.4 нет ванильного renderBlurredBackground — используем свой Kawase-блюр
-        if (MenuPrefs.blur && Minecraft.getInstance().level != null) {
+        if (MenuPrefs.blur) {
             float strength = GuiTheme.blurStrength();
             if (strength > 0f) {
                 Minecraft mc = Minecraft.getInstance();
@@ -383,7 +387,7 @@ public final class MenuScreen extends Screen {
             MenuSound.play(MenuSound.HOVER, 1 + (hot % 7) * .015f, 1);
         }
         lastHot = hot;
-        hot = null;
+        hot = 0;
     }
 
     private void brand(GuiGraphics g, int cx, int y) {
@@ -467,7 +471,7 @@ public final class MenuScreen extends Screen {
             labels = SETTINGS_TABS;
             active = 0;
         }
-        int many = labels.length > 6;
+        boolean many = labels.length > 6;
         int fs = S(many ? 13 : 14);
         int is = S(many ? 14 : 15);
         int ip = S(many ? 9 : 12);
@@ -1090,7 +1094,7 @@ public final class MenuScreen extends Screen {
         return h + S(10);
     }
 
-    private static int prefRowH(int pref) {
+    private int prefRowH(int pref) {
         return PREF_STEP[pref] > 0f ? S(76) : S(46);
     }
 
@@ -1192,12 +1196,12 @@ public final class MenuScreen extends Screen {
     }
 
     /** Число палитр в одной строке. */
-    private static int palettePerRow(int w) {
+    private int palettePerRow(int w) {
         return Math.max(1, (w + S(10)) / (S(46) + S(10)));
     }
 
     /** Высота полосы палитр. */
-    private static int paletteH(int w) {
+    private int paletteH(int w) {
         int rows = (MenuTheme.PALETTES.length + palettePerRow(w) - 1) / palettePerRow(w);
         return rows * (S(46) + S(10)) - S(10);
     }
@@ -1419,7 +1423,7 @@ public final class MenuScreen extends Screen {
                 BooleanSetting option = options.get(i);
                 String on = option.name();
                 int bw = Px.textWidth(on, Weight.MEDIUM, S(12)) + S(20);
-                boolean ohv = live && hover(ox, oy - sc, bw, S(26));
+                boolean ohv = live && hover(ox, Math.round(oy - sc), bw, S(26));
                 Px.round(g, ox, oy, bw, S(26), S(6), option.get() ? Px.a(MenuTheme.accent(), light() ? 26 : 40) : inset(ohv));
                 Px.outline(g, ox, oy, bw, S(26), S(6), option.get() ? acc() : Px.a(T().text(), light() ? 30 : 16));
                 Px.textCenter(g, on, ox + bw / 2, oy + (S(26) - S(12)) / 2, Weight.MEDIUM, S(12),
@@ -1437,13 +1441,13 @@ public final class MenuScreen extends Screen {
             Px.text(g, name, x, y + (h - S(14)) / 2, Weight.MEDIUM, S(14), label);
             boolean cap = bindingSetting == bs;
             String kt = cap ? "Нажми клавишу" : bs.getKey() >= 0 ? KeyBoardUtils.getBindName(bs.getKey()) : "—";
-            valueBox(g, kt, x + w, y + (h - S(26)) / 2, cap, hv > .5f);
+            valueBox(g, kt, x + w, y + (h - S(26)) / 2, cap, hv);
             if (live) {
                 clipped(x, y, w, h, sc, t, b, ACT_BIND_SETTING, siGlobal);
             }
         } else if (s instanceof TextSetting ts) {
             Px.text(g, name, x, y + (h - S(14)) / 2, Weight.MEDIUM, S(14), label);
-            valueBox(g, ts.get(), x + w, y + (h - S(26)) / 2, false, hv > .5f);
+            valueBox(g, ts.get(), x + w, y + (h - S(26)) / 2, false, hv);
         }
     }
 
@@ -2049,10 +2053,4 @@ public final class MenuScreen extends Screen {
         }
     }
 
-    @Override
-    public void renderBackground(GuiGraphics g, int mouseX, int mouseY, float pt) {
-        if (Minecraft.getInstance().level == null) {
-            super.renderBackground(g, mouseX, mouseY, pt);
-        }
-    }
 }

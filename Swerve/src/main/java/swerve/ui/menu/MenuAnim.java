@@ -9,7 +9,7 @@ package swerve.ui.menu;
  */
 public final class MenuAnim {
 
-    private MenuAnim() {
+    MenuAnim() {
     }
 
     // ---- глобальные ключи
