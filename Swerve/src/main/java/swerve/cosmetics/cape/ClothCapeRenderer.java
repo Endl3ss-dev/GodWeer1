@@ -33,7 +33,6 @@ import net.minecraft.world.entity.EquipmentSlot;
 import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 import org.joml.Vector3f;
-import org.joml.Vector4f;
 
 /**
  * Плащ как 16 гнутых сегментов по физике ткани, с лёгким покачиванием на ветру.
@@ -69,7 +68,6 @@ public class ClothCapeRenderer {
     private final Vector3f normal = new Vector3f();
     private final Vector3f upper = new Vector3f();
     private final Vector3f lower = new Vector3f();
-    private final Vector4f scratch4 = new Vector4f();
     private final Quaternionf rotX = new Quaternionf();
     private final Quaternionf rotY = new Quaternionf();
 
@@ -110,22 +108,24 @@ public class ClothCapeRenderer {
             applySegmentPose(segments[i], body, sim, partialTick, i, underwater);
             Matrix4f current = segments[i];
             Matrix4f previous = segments[Math.max(i - 1, 0)];
-            frontNormals[i].set(normalVec(
+            Vector3f front = normalVec(
                     previous,
                     previous,
                     current,
                     HALF_WIDTH, i * SEGMENT, -DEPTH,
                     -HALF_WIDTH, i * SEGMENT, -DEPTH,
                     HALF_WIDTH, (i + 1) * SEGMENT, -DEPTH,
-                    flip));
-            backNormals[i].set(normalVec(
+                    flip);
+            frontNormals[i].set(front.x, front.y, front.z);
+            Vector3f back = normalVec(
                     previous,
                     previous,
                     current,
                     HALF_WIDTH, (i + 1) * SEGMENT, 0.0F,
                     -HALF_WIDTH, (i + 1) * SEGMENT, 0.0F,
                     HALF_WIDTH, i * SEGMENT, 0.0F,
-                    flip));
+                    flip);
+            backNormals[i].set(back.x, back.y, back.z);
         }
 
         for (int i = 0; i < PART_COUNT; i++) {
@@ -235,14 +235,16 @@ public class ClothCapeRenderer {
         float dz = sim.lerpZ(0, partialTick) - sim.lerpZ(part, partialTick);
         float bend = getRotation(partialTick, part, sim);
         float wind = naturalWindSwing(part, underwater);
-        // [!] В JOML версии 1.21.4 нет Quaternionf.rotationDegrees и Matrix4f.mulPose:
-        //     угол переводится в радианы, а quaternion домножается методом mul.
-        out.mul(rotX.rotationX((float) Math.toRadians(6.0F + wind)));
-        out.mul(rotY.rotationY((float) Math.toRadians(180.0F)));
+        // [!] В JOML версии 1.21.4 нет Quaternionf.rotationDegrees, Matrix4f.mulPose и
+        //     Matrix4f.mul(Quaternionf). Угол переводится в радианы, кватернион
+        //     применяется через rotate(Quaternionfc) — так же, как это делает
+        //     PoseStack.mulPose(Quaternionf) в Minecraft 1.21.4.
+        out.rotate(rotX.rotationX((float) Math.toRadians(6.0F + wind)));
+        out.rotate(rotY.rotationY((float) Math.toRadians(180.0F)));
         out.translate(-dz / 16.0F, dy / 16.0F, dx / 16.0F);
         out.translate(0.0F, 0.03F, -0.03F);
         out.translate(0.0F, part / 16.0F, 0.0F);
-        out.mul(rotX.rotationX((float) Math.toRadians(-bend)));
+        out.rotate(rotX.rotationX((float) Math.toRadians(-bend)));
         out.translate(0.0F, -part / 16.0F, 0.0F);
         out.translate(0.0F, -0.03F, 0.03F);
     }
@@ -300,9 +302,7 @@ public class ClothCapeRenderer {
     }
 
     private void transform(Matrix4f matrix, Vector3f point) {
-        scratch4.set(point.x, point.y, point.z, 1.0F);
-        matrix.transform(scratch4);
-        point.set(scratch4.x, scratch4.y, scratch4.z);
+        matrix.transformPosition(point.x, point.y, point.z, point);
     }
 
     private void vertex(
