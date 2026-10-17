@@ -14,7 +14,6 @@ import swerve.modules.ModuleCategory;
 import swerve.modules.api.setting.BooleanSetting;
 import swerve.modules.api.setting.FloatSetting;
 import swerve.modules.api.setting.ModeSetting;
-import swerve.ui.newgui.ClickGuiScreen;
 import swerve.ui.newgui.GuiFonts;
 import swerve.ui.newgui.GuiRender;
 import swerve.utils.animation.AnimationUtils;
@@ -339,23 +338,6 @@ public final class ViewModel extends Module {
     public static float equipProgress(float equippedProgress) {
         ViewModel module = instance;
         return module != null && module.isEnable() ? 1.0F : equippedProgress;
-    }
-
-    // [+] Текущий сдвиг руки для HandAnimations: якорь поворотов должен совпадать с реальным местом руки.
-    public static float offsetX(InteractionHand hand) {
-        ViewModel module = instance;
-        if (module == null || !module.isEnable()) {
-            return 0.0F;
-        }
-        return hand == InteractionHand.MAIN_HAND ? module.mainOffsetX : module.offOffsetX;
-    }
-
-    public static float offsetY(InteractionHand hand) {
-        ViewModel module = instance;
-        if (module == null || !module.isEnable()) {
-            return 0.0F;
-        }
-        return hand == InteractionHand.MAIN_HAND ? module.mainOffsetY : module.offOffsetY;
     }
 
     private void renderPreset(PoseStack poseStack, float swingProgress, HumanoidArm arm) {
@@ -686,9 +668,10 @@ public final class ViewModel extends Module {
         markDirty();
     }
 
+    // [!] Редактор рук жил во вкладке Hands старого ClickGUI. В портованном меню (Arcanic)
+    // такой вкладки нет, поэтому контекст редактора всегда выключен.
     public boolean editorContext() {
-        return Minecraft.getInstance().screen instanceof ClickGuiScreen
-                && ((ClickGuiScreen) Minecraft.getInstance().screen).isHandsTab();
+        return false;
     }
 
     public boolean editorReset(int button) {

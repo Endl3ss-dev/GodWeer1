@@ -37,8 +37,8 @@ public class MixinMouseHandler {
     private double swerve$preReleaseY;
 
     // Мышиные бинды модулей. [-] Перехват клика/колеса для ViewModel удалён: он шёл через
-    // заглушки, всегда возвращавшие false, а реальный редактор рук живёт в ClickGuiScreen
-    // (он и так получает эти события от Screen). Отмена здесь обрезала бы островок и панели.
+    // заглушки, всегда возвращавшие false, а ввод меню получает от Screen напрямую.
+    // Отмена здесь обрезала бы островок и панели.
     @Inject(method = "onPress", at = @At("HEAD"))
     private void swerve$onMousePress(long window, int button, int action, int modifiers, CallbackInfo ci) {
         if (window != Minecraft.getInstance().getWindow().getWindow()) {

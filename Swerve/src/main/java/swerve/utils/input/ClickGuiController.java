@@ -1,6 +1,6 @@
 package swerve.utils.input;
 
-import swerve.ui.newgui.ClickGuiScreen;
+import swerve.ui.menu.MenuScreen;
 
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 
@@ -24,7 +24,7 @@ public final class ClickGuiController {
                 return;
             }
 
-            client.setScreen(new ClickGuiScreen());
+            client.setScreen(new MenuScreen());
         });
     }
 

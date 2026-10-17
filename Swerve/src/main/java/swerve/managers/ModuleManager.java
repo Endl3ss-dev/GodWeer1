@@ -7,6 +7,7 @@ import swerve.modules.impl.combat.AutoGApple;
 import swerve.modules.impl.combat.AutoHeal;
 import swerve.modules.impl.combat.AutoPotion;
 import swerve.modules.impl.combat.ItemSwap;
+import swerve.modules.impl.combat.KillAura;
 import swerve.modules.impl.combat.SexAura;
 import swerve.modules.impl.hud.ArrayListHud;
 import swerve.modules.impl.hud.Notifications;
@@ -16,9 +17,9 @@ import swerve.modules.impl.movement.Speed;
 import swerve.modules.impl.hud.TargetHud;
 import swerve.modules.impl.render.Arrows;
 import swerve.modules.impl.render.ChinaHat;
-import swerve.modules.impl.render.HandAnimations;
 import swerve.modules.impl.render.SpatialGui;
 import swerve.modules.impl.render.Trails;
+import swerve.modules.impl.render.HandShader;
 import swerve.modules.impl.render.ViewModel;
 import swerve.ui.hud.HudManager;
 import swerve.utils.item.ConsumableUseController;
@@ -55,6 +56,8 @@ public final class ModuleManager {
         register(new AutoGApple());
         register(new AutoPotion());
         register(new SexAura());
+        // KillAura идёт после SexAura: поворот ауры применяется позже и затирает поворот SexAura в том же тике.
+        register(new KillAura());
         register(new ItemSwap());
         register(new Speed());
         register(new DrinkUse());
@@ -62,8 +65,8 @@ public final class ModuleManager {
         register(new ChinaHat());
         register(new Arrows());
         register(new ViewModel());
+        register(new HandShader());
         register(new SpatialGui());
-        register(new HandAnimations());
         register(new TargetHud());
         register(new ArrayListHud());
         register(new Watermark());
