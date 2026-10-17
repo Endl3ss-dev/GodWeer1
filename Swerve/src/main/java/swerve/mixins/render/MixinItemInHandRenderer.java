@@ -5,6 +5,7 @@ import com.llamalad7.mixinextras.injector.wrapoperation.WrapOperation;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 
+import swerve.modules.impl.render.HandShader;
 import swerve.modules.impl.render.SpatialGui;
 import swerve.modules.impl.render.ViewModel;
 import swerve.utils.render.HandOutline;
@@ -39,11 +40,14 @@ public class MixinItemInHandRenderer {
                                    LocalPlayer player, int combinedLight, CallbackInfo ci) {
         ViewModel.beginFrame();
         HandOutline.beforeHands();
+        // Шейдер рук: руки рисуются в отдельную текстуру, шейдер накладывается позже.
+        HandShader.begin();
     }
 
     @Inject(method = "renderHandsWithItems", at = @At("RETURN"), require = 0)
     private void swerve$endHands(CallbackInfo ci) {
         HandOutline.afterHands();
+        HandShader.finish();
     }
 
     // [+] SpatialGui: щит в руке закрывал бы панель от первого лица — при открытой панели не рисуется.

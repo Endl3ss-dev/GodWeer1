@@ -1,0 +1,17 @@
+{
+  "vertex": "swerve:core/hands/hand_shader",
+  "fragment": "swerve:core/hands/hand_shader",
+  "samplers": [
+    { "name": "Sampler0" },
+    { "name": "Sampler1" }
+  ],
+  "uniforms": [
+    { "name": "ModelViewMat", "type": "matrix4x4", "count": 16, "values": [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0] },
+    { "name": "ProjMat", "type": "matrix4x4", "count": 16, "values": [1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, 0.0, 1.0] },
+    { "name": "HandColor", "type": "float", "count": 4, "values": [1.0, 1.0, 1.0, 1.0] },
+    { "name": "Resolution", "type": "float", "count": 2, "values": [1.0, 1.0] },
+    { "name": "Time", "type": "float", "count": 1, "values": [0.0] },
+    { "name": "HandShaderMode", "type": "float", "count": 1, "values": [0.0] },
+    { "name": "HandShaderOnly", "type": "float", "count": 1, "values": [0.0] }
+  ]
+}

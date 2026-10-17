@@ -54,6 +54,7 @@ public final class ShaderUtils {
     public static final ShaderProgram HANDS_MASK_DIFF = register("hands", "hands_mask_diff", DefaultVertexFormat.POSITION_TEX_COLOR);
     public static final ShaderProgram HANDS_OVERLAY = register("hands", "hands_overlay", DefaultVertexFormat.POSITION_TEX_COLOR);
     public static final ShaderProgram HANDS_GLOW = register("hands", "hands_glow", DefaultVertexFormat.POSITION_TEX_COLOR);
+    public static final ShaderProgram HAND_SHADER = register("hands", "hand_shader", DefaultVertexFormat.POSITION_TEX_COLOR);
     public static final ShaderProgram HANDS_KAWASE_DOWN = register("hands", "hands_kawase_down", DefaultVertexFormat.POSITION_TEX_COLOR);
     public static final ShaderProgram HANDS_KAWASE_UP = register("hands", "hands_kawase_up", DefaultVertexFormat.POSITION_TEX_COLOR);
     public static final ShaderProgram HANDS_SMOKE = register("hands", "hands_smoke", DefaultVertexFormat.POSITION_TEX_COLOR);
