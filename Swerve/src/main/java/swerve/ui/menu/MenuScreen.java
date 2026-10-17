@@ -1,6 +1,7 @@
 package swerve.ui.menu;
 
 import swerve.managers.ModuleManager;
+import swerve.managers.ThemeManager;
 import swerve.modules.Module;
 import swerve.modules.ModuleCategory;
 import swerve.modules.api.setting.BindSetting;
@@ -13,6 +14,7 @@ import swerve.modules.api.setting.TextSetting;
 import swerve.ui.menu.MenuText.Weight;
 import swerve.ui.newgui.GuiBlur;
 import swerve.ui.newgui.GuiTheme;
+import swerve.utils.color.Theme;
 import swerve.utils.input.KeyBoardUtils;
 
 import net.minecraft.client.Minecraft;
@@ -88,6 +90,7 @@ public final class MenuScreen extends Screen {
     static final int ACT_POPOVER_ITEM = 23;
     static final int ACT_PREF_BOOL = 24;
     static final int ACT_PREF_SLIDER = 25;
+    static final int ACT_CLIENT_THEME = 26;
 
     // идентификаторы наведения (целые числа — без строк в кадре)
     private static final int HOT_THEME = 1;
@@ -102,6 +105,7 @@ public final class MenuScreen extends Screen {
     private static final int HOT_PALETTE = 8000;
     private static final int HOT_DOCK = 9000;
     private static final int HOT_PREF = 9500;
+    private static final int HOT_CLIENT_THEME = 9700;
 
     private static final int MAX_REGIONS = 512;
     private static final int MAX_VISIBLE = 64;
@@ -936,9 +940,10 @@ public final class MenuScreen extends Screen {
     private static final int PREF_ANIM_SPEED = 6;
     private static final int PREF_SCALE = 7;
     private static final int PREFS_PALETTE = 0;
-    private static final int PREFS_SOUND = 1;
-    private static final int PREFS_VIEW = 2;
-    private static final int PREFS_BEHAVIOR = 3;
+    private static final int PREFS_THEME = 1;
+    private static final int PREFS_SOUND = 2;
+    private static final int PREFS_VIEW = 3;
+    private static final int PREFS_BEHAVIOR = 4;
     private static final int PREF_SCROLL = 9;
     private static final float[] PREF_MIN = {0f, 0f, 0f, 0f, 0f, 0f, .5f, 70f};
     private static final float[] PREF_MAX = {0f, 100f, 0f, 0f, 90f, 0f, 2f, 130f};
@@ -949,6 +954,7 @@ public final class MenuScreen extends Screen {
 
     private static final PrefGroup[] PREFS = {
             new PrefGroup("w.rainbow", "Палитра", "Цветовые схемы меню", new int[0]),
+            new PrefGroup("w.swatch", "Тема клиента", "Акцент интерфейса и HUD", new int[0]),
             new PrefGroup("w.headset", "Звук", "Щелчки и отклик меню",
                     new int[]{PREF_SOUNDS, PREF_VOLUME, PREF_HOVER_SOUNDS}),
             new PrefGroup("w.contrast", "Вид", "Фон, свет и подсказки", new int[]{PREF_BLUR, PREF_DIM}),
@@ -957,9 +963,9 @@ public final class MenuScreen extends Screen {
     };
 
     private final int[] prefColY = new int[2];
-    private final int[] prefGx = new int[4];
-    private final int[] prefGy = new int[4];
-    private final int[] prefGh = new int[4];
+    private final int[] prefGx = new int[PREFS.length];
+    private final int[] prefGy = new int[PREFS.length];
+    private final int[] prefGh = new int[PREFS.length];
     private final float[] prefSliderX = new float[8];
     private final float[] prefSliderW = new float[8];
 
@@ -1087,6 +1093,9 @@ public final class MenuScreen extends Screen {
         if (group == PREFS_PALETTE) {
             return h + paletteH(cw - S(36)) + S(10);
         }
+        if (group == PREFS_THEME) {
+            return h + themeH(cw - S(36)) + S(10);
+        }
         int[] rows = PREFS[group].rows;
         for (int i = 0; i < rows.length; i++) {
             h += prefRowH(rows[i]);
@@ -1114,6 +1123,10 @@ public final class MenuScreen extends Screen {
         int ry = y + S(64);
         if (group == PREFS_PALETTE) {
             paletteStrip(g, x + pad, ry, w - pad * 2, sc, live);
+            return;
+        }
+        if (group == PREFS_THEME) {
+            themeStrip(g, x + pad, ry, w - pad * 2, sc, live);
             return;
         }
         int[] rows = PREFS[group].rows;
@@ -1234,6 +1247,53 @@ public final class MenuScreen extends Screen {
             }
             if (live) {
                 clipped(cx, cy, cell, cell, sc, top, bottom, ACT_PALETTE, i);
+            }
+        }
+    }
+
+    /** Число тем клиента в одной строке. */
+    private int themePerRow(int w) {
+        return Math.max(1, (w + S(8)) / (S(30) + S(8)));
+    }
+
+    /** Высота полосы тем клиента. */
+    private int themeH(int w) {
+        int rows = (ThemeManager.getThemes().size() + themePerRow(w) - 1) / themePerRow(w);
+        return rows * (S(30) + S(8)) - S(8);
+    }
+
+    /** Полоса тем клиента: акцент свотчем, второй цвет градиента — полоской снизу. */
+    private void themeStrip(GuiGraphics g, int x, int y, int w, float sc, boolean live) {
+        List<Theme> themes = ThemeManager.getThemes();
+        int n = themes.size();
+        int cell = S(30);
+        int gap = S(8);
+        int perRow = themePerRow(w);
+        int cur = ThemeManager.getCurrentIndex();
+        for (int i = 0; i < n; i++) {
+            int c = i % perRow;
+            int r = i / perRow;
+            int cx = x + c * (cell + gap);
+            int cy = y + r * (cell + gap);
+            if (cy + cell > bottom + S(20)) {
+                continue;
+            }
+            Theme t = themes.get(i);
+            int[] cols = t.getColors();
+            boolean sel = i == cur;
+            boolean hv = live && hover(cx, cy, cell, cell);
+            if (hv) {
+                hot(HOT_CLIENT_THEME + i);
+            }
+            Px.round(g, cx, cy, cell, cell, S(8), cols[0] | 0xFF000000);
+            Px.round(g, cx + S(4), cy + cell - S(9), cell - S(8), S(5), S(2),
+                    cols[cols.length - 1] | 0xFF000000);
+            Px.outline(g, cx, cy, cell, cell, S(8), sel ? Px.a(MenuTheme.accent(), 220) : 0x18FFFFFF);
+            if (sel) {
+                Px.outline(g, cx - S(2), cy - S(2), cell + S(4), cell + S(4), S(10), Px.a(MenuTheme.accent(), 120));
+            }
+            if (live) {
+                clipped(cx, cy, cell, cell, sc, top, bottom, ACT_CLIENT_THEME, i);
             }
         }
     }
@@ -1624,6 +1684,10 @@ public final class MenuScreen extends Screen {
             }
             case ACT_PALETTE -> {
                 MenuTheme.setPalette(payload);
+                MenuSound.play(MenuSound.SELECT);
+            }
+            case ACT_CLIENT_THEME -> {
+                ThemeManager.setCurrent(payload);
                 MenuSound.play(MenuSound.SELECT);
             }
             case ACT_SEARCH -> {
