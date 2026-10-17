@@ -1,5 +1,6 @@
 package swerve.ui.menu;
 
+import swerve.cosmetics.melee.MeleeState;
 import swerve.managers.ModuleManager;
 import swerve.modules.Module;
 import swerve.modules.ModuleCategory;
@@ -90,6 +91,9 @@ public final class MenuScreen extends Screen {
     static final int ACT_PREF_BOOL = 24;
     static final int ACT_PREF_SLIDER = 25;
     static final int ACT_COSMETIC = 26;
+    static final int ACT_MELEE_OPT = 27;
+    static final int ACT_MELEE_SCALE = 28;
+    static final int ACT_MELEE_SKIN = 29;
 
     // идентификаторы наведения (целые числа — без строк в кадре)
     private static final int HOT_THEME = 1;
@@ -654,7 +658,11 @@ public final class MenuScreen extends Screen {
         Px.vgrad(g, x, b - S(24), w, S(24), Px.a(colour, 0), Px.a(colour, max));
     }
 
+    /** Верх области прокрутки по контекстам (у ножей сетка ниже полосы настроек). */
+    final int[] scrollTop = new int[MenuAnim.SCROLL_SIZE];
+
     void scrollbar(GuiGraphics g, int x, int t, int b, int total, float sc, int context) {
+        scrollTop[context] = t;
         int view = b - t;
         if (total <= view) {
             return;
@@ -1711,6 +1719,17 @@ public final class MenuScreen extends Screen {
             }
             case ACT_DOCK -> dockClick(payload);
             case ACT_COSMETIC -> WardrobePage.toggle(this, payload);
+            case ACT_MELEE_SKIN -> WardrobePage.toggleMelee(this, payload);
+            case ACT_MELEE_OPT -> {
+                WardrobePage.toggleOption(payload);
+                MenuSound.play(MenuSound.CLICK);
+            }
+            case ACT_MELEE_SCALE -> {
+                dragAction = ACT_MELEE_SCALE;
+                dragPayload = payload;
+                dragging = true;
+                applyMeleeScale(mx);
+            }
             case ACT_POPUP_TOGGLE -> {
                 Module m = moduleByIndex(payload);
                 if (m != null) {
@@ -1870,6 +1889,23 @@ public final class MenuScreen extends Screen {
         }
     }
 
+    /** Размер ножа в третьем лице: позиция курсора по дорожке. */
+    private void applyMeleeScale(double at) {
+        int w = WardrobePage.scaleW;
+        if (w <= 0) {
+            return;
+        }
+        float f = (float) ((at - WardrobePage.scaleX) / Math.max(1, w));
+        f = Math.max(0, Math.min(1, f));
+        float min = MeleeState.SCALE_MIN;
+        float max = MeleeState.SCALE_MAX;
+        float v = Math.round((min + (max - min) * f) * 20f) / 20f;
+        if (Math.abs(v - MeleeState.thirdScale()) > 0.001f) {
+            MeleeState.thirdScale(v);
+            MenuSound.play(MenuSound.TICK, .8f + f * .6f, .5f);
+        }
+    }
+
     private void applyPrefSlider(int pref, double at) {
         float step = PREF_STEP[pref];
         if (step <= 0f) {
@@ -1930,13 +1966,18 @@ public final class MenuScreen extends Screen {
             applyPrefSlider(dragPayload, x);
             return true;
         }
+        if (dragAction == ACT_MELEE_SCALE) {
+            applyMeleeScale(x);
+            return true;
+        }
         if (dragAction == ACT_SCROLL) {
             int context = dragPayload;
-            int view = bottom - top;
+            int areaTop = scrollTop[context] > 0 ? scrollTop[context] : top;
+            int view = bottom - areaTop;
             int total = scrollTotal[context];
             if (total > view) {
                 int th = Math.max(S(40), view * view / total);
-                float v = (float) Math.max(0, Math.min(1, (y - top - th / 2.0) / Math.max(1, view - th))) * (total - view);
+                float v = (float) Math.max(0, Math.min(1, (y - areaTop - th / 2.0) / Math.max(1, view - th))) * (total - view);
                 scroll[context] = v;
                 anim.set(MenuAnim.SCROLL_BASE + context, v);
             }

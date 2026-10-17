@@ -8,6 +8,8 @@ import java.util.Map;
 import java.util.UUID;
 
 import net.minecraft.client.Minecraft;
+
+import swerve.cosmetics.melee.MeleeState;
 import net.minecraft.client.model.PlayerModel;
 import net.minecraft.client.renderer.MultiBufferSource;
 import net.minecraft.client.renderer.RenderType;
@@ -30,6 +32,9 @@ public final class Wearables {
 
     /** Слоты: крылья, рюкзак, питомец, головной убор. */
     public static final int SLOTS = 4;
+
+    /** Синхронизируемых значений: 4 слота гардероба и идентификатор ножа. */
+    public static final int SYNC_VALUES = 5;
 
     private static final int[] WORN = {-1, -1, -1, -1};
     private static final Map<UUID, int[]> REMOTE = new HashMap<>();
@@ -109,8 +114,8 @@ public final class Wearables {
             return false;
         }
         int p = i + MARKER.length();
-        int[] v = new int[4];
-        for (int s = 0; s < 4; s++) {
+        int n = Math.min(SYNC_VALUES, out.length);
+        for (int s = 0; s < n; s++) {
             while (p < text.length() && (text.charAt(p) == ' ' || text.charAt(p) == ',')) {
                 p++;
             }
@@ -119,18 +124,19 @@ public final class Wearables {
                 p++;
             }
             if (start == p) {
+                // старый формат: четыре слота гардероба без ножа
+                if (s == 4 && out.length > 4) {
+                    out[4] = 0;
+                    return true;
+                }
                 return false;
             }
             try {
-                v[s] = Integer.parseInt(text.substring(start, p));
+                out[s] = Integer.parseInt(text.substring(start, p));
             } catch (NumberFormatException e) {
                 return false;
             }
         }
-        out[0] = v[0];
-        out[1] = v[1];
-        out[2] = v[2];
-        out[3] = v[3];
         return true;
     }
 
@@ -139,7 +145,7 @@ public final class Wearables {
         if (!sync) {
             return;
         }
-        boolean empty = WORN[0] < 0 && WORN[1] < 0 && WORN[2] < 0 && WORN[3] < 0;
+        boolean empty = WORN[0] < 0 && WORN[1] < 0 && WORN[2] < 0 && WORN[3] < 0 && MeleeState.equippedId() == 0;
         long now = System.currentTimeMillis();
         if (!force && !dirty && (empty || now - lastSent < 30_000L)) {
             return;
@@ -153,7 +159,19 @@ public final class Wearables {
         }
         lastSent = now;
         dirty = false;
-        mc.getConnection().sendChat(MARKER + " " + WORN[0] + "," + WORN[1] + "," + WORN[2] + "," + WORN[3]);
+        mc.getConnection()
+                .sendChat(
+                        MARKER
+                                + " "
+                                + WORN[0]
+                                + ","
+                                + WORN[1]
+                                + ","
+                                + WORN[2]
+                                + ","
+                                + WORN[3]
+                                + ","
+                                + MeleeState.equippedId());
     }
 
     /** Отметить, что состояние изменилось (нужна пересылка). */

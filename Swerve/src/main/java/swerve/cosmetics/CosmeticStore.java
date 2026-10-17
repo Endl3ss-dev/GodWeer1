@@ -7,6 +7,7 @@ import com.google.gson.JsonParser;
 import net.fabricmc.loader.api.FabricLoader;
 
 import swerve.Swerve;
+import swerve.cosmetics.melee.MeleeState;
 
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -53,6 +54,30 @@ public final class CosmeticStore {
             if (sync != null && sync.isJsonPrimitive()) {
                 Wearables.sync(sync.getAsBoolean());
             }
+            JsonElement melee = o.get("melee");
+            if (melee != null && melee.isJsonObject()) {
+                JsonObject m = melee.getAsJsonObject();
+                JsonElement key = m.get("key");
+                if (key != null) {
+                    if (key.isJsonNull()) {
+                        MeleeState.unequip();
+                    } else if (key.isJsonPrimitive()) {
+                        MeleeState.equip(key.getAsString());
+                    }
+                }
+                JsonElement first = m.get("first");
+                if (first != null && first.isJsonPrimitive()) {
+                    MeleeState.firstPerson(first.getAsBoolean());
+                }
+                JsonElement third = m.get("third");
+                if (third != null && third.isJsonPrimitive()) {
+                    MeleeState.thirdPerson(third.getAsBoolean());
+                }
+                JsonElement scale = m.get("scale");
+                if (scale != null && scale.isJsonPrimitive()) {
+                    MeleeState.thirdScale(scale.getAsFloat());
+                }
+            }
         } catch (Exception e) {
             Swerve.LOGGER.warn("cosmetic store: {}", e.toString());
         } finally {
@@ -71,6 +96,12 @@ public final class CosmeticStore {
         }
         o.add("worn", arr);
         o.addProperty("sync", Wearables.sync());
+        JsonObject melee = new JsonObject();
+        melee.addProperty("key", MeleeState.equippedKey());
+        melee.addProperty("first", MeleeState.firstPerson());
+        melee.addProperty("third", MeleeState.thirdPerson());
+        melee.addProperty("scale", MeleeState.thirdScale());
+        o.add("melee", melee);
         try {
             Files.createDirectories(FILE.getParent());
             Files.writeString(FILE, o.toString(), StandardCharsets.UTF_8);

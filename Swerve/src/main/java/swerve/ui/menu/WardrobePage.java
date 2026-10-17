@@ -3,6 +3,9 @@ package swerve.ui.menu;
 import swerve.cosmetics.CosmeticCatalogue;
 import swerve.cosmetics.CosmeticItem;
 import swerve.cosmetics.Wearables;
+import swerve.cosmetics.melee.MeleeCatalog;
+import swerve.cosmetics.melee.MeleeDesign;
+import swerve.cosmetics.melee.MeleeState;
 import swerve.utils.client.NotificationManager;
 
 import java.util.List;
@@ -13,22 +16,33 @@ import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.resources.ResourceLocation;
 
 /**
- * Страница гардероба: крылья, рюкзак, питомец и головной убор.
+ * Страница гардероба: крылья, рюкзак, питомец, головной убор и ножи.
  *
  * <p>Сетка карточек с иконкой модели; клик по надетой модели снимает её.
  */
 final class WardrobePage {
 
-    static final String[] TITLES = {"Крылья", "Рюкзак", "Питомец", "Головной убор"};
-    static final String[] ICONS = {"wind", "bag", "paw-print", "wizard-hat"};
+    static final String[] TITLES = {"Крылья", "Рюкзак", "Питомец", "Головной убор", "Ножи"};
+    static final String[] ICONS = {"wind", "bag", "paw-print", "wizard-hat", "sword"};
+
+    /** Вкладка с ножами. */
+    static final int MELEE_SLOT = 4;
 
     /** Открытый слот гардероба. */
     static int slot;
+
+    /** Геометрия ползунка размера ножа (заполняется при отрисовке). */
+    static int scaleX;
+    static int scaleW;
 
     private WardrobePage() {
     }
 
     static void render(MenuScreen menu, GuiGraphics g) {
+        if (slot == MELEE_SLOT) {
+            renderMelee(menu, g);
+            return;
+        }
         List<CosmeticItem> items = CosmeticCatalogue.of(CosmeticCatalogue.SLOTS[slot]);
         int cols = 6;
         int gap = menu.S(10);
@@ -47,7 +61,8 @@ final class WardrobePage {
                 continue;
             }
             boolean worn = Wearables.isWorn(slot, it.n());
-            float hv = card(menu, g, it.n(), x, y, cw, ch, sc, worn);
+            float hv = card(menu, g, CosmeticCatalogue.icon(it.n()), x, y, cw, ch, sc, worn,
+                    MenuAnim.WARDROBE_BASE + (it.n() - 14) * MenuAnim.WARDROBE_STRIDE, it.n());
             label(menu, g, it.name(), x, y + ch - menu.S(30), cw, worn, hv);
             if (!menu.under()) {
                 menu.clipped(x, y, cw, ch, sc, menu.top, menu.bottom, MenuScreen.ACT_COSMETIC, it.n());
@@ -59,16 +74,107 @@ final class WardrobePage {
         menu.scrollbar(g, menu.cx0 + menu.cw0 + menu.S(14), menu.top, menu.bottom, total, sc, WardrobePage.SCROLL);
     }
 
+    // ---- ножи
+
+    /** Ножи: переключатели вида и ползунок размера, под ними сетка скинов. */
+    private static void renderMelee(MenuScreen menu, GuiGraphics g) {
+        int stripH = menu.S(46);
+        meleeStrip(menu, g, menu.cx0, menu.top, menu.cw0, stripH);
+        int gridTop = menu.top + stripH + menu.S(12);
+        List<MeleeDesign> skins = MeleeCatalog.all();
+        int cols = 6;
+        int gap = menu.S(10);
+        int cw = (menu.cw0 - gap * (cols - 1)) / cols;
+        int ch = cw + menu.S(30);
+        int total = ((skins.size() + cols - 1) / cols) * (ch + gap);
+        int sc = Math.round(menu.scrolled(WardrobePage.SCROLL, total, gridTop, menu.bottom));
+        g.enableScissor(menu.cx0 - menu.S(12), gridTop, menu.cx0 + menu.cw0 + menu.S(12), menu.bottom);
+        g.pose().pushPose();
+        Px.translate(g, 0, -sc);
+        for (int i = 0; i < skins.size(); i++) {
+            MeleeDesign design = skins.get(i);
+            int x = menu.cx0 + (i % cols) * (cw + gap);
+            int y = gridTop + (i / cols) * (ch + gap);
+            if (y - sc > menu.bottom || y + ch - sc < gridTop) {
+                continue;
+            }
+            boolean worn = design.getKey().equals(MeleeState.equippedKey());
+            float hv = card(menu, g, design.getIcon(), x, y, cw, ch, sc, worn,
+                    meleeAnimKey(i), 200 + i);
+            label(menu, g, design.getDisplayName(), x, y + ch - menu.S(30), cw, worn, hv);
+            if (!menu.under()) {
+                menu.clipped(x, y, cw, ch, sc, gridTop, menu.bottom, MenuScreen.ACT_MELEE_SKIN, i);
+            }
+        }
+        g.pose().popPose();
+        g.disableScissor();
+        menu.edges(g, menu.cx0 - menu.S(12), menu.cw0 + menu.S(24), gridTop, menu.bottom, sc, menu.baseColour());
+        menu.scrollbar(g, menu.cx0 + menu.cw0 + menu.S(14), gridTop, menu.bottom, total, sc, WardrobePage.SCROLL);
+    }
+
+    /** Полоса настроек ножа: вид от первого и третьего лица, размер в третьем. */
+    private static void meleeStrip(MenuScreen menu, GuiGraphics g, int x, int y, int w, int h) {
+        boolean lt = menu.light();
+        int R = menu.S(12);
+        Px.round(g, x, y, w, h, R, lt ? 0xF8F8F7FA : Px.a(menu.T().bg() | 0xFF000000, 0xF2));
+        Px.outline(g, x, y, w, h, R, lt ? Px.a(menu.T().text(), 22) : 0x18FFFFFF);
+        int pad = menu.S(18);
+        int rowY = y + (h - menu.S(24)) / 2;
+        int fs = menu.S(14);
+
+        // От первого лица
+        Px.text(g, "От первого лица", x + pad, rowY, Weight.MEDIUM, fs, menu.T().text());
+        int tw = menu.S(44);
+        int t1 = x + pad + menu.S(132);
+        menu.toggle(g, t1, rowY, tw, menu.S(24), MeleeState.firstPerson() ? 1 : 0, 0);
+        if (!menu.under()) {
+            menu.region(t1, rowY, tw, menu.S(24), MenuScreen.ACT_MELEE_OPT, 0);
+        }
+
+        // От третьего лица
+        int t2 = t1 + tw + menu.S(28);
+        Px.text(g, "От третьего лица", t2, rowY, Weight.MEDIUM, fs, menu.T().text());
+        int t2x = t2 + menu.S(132);
+        menu.toggle(g, t2x, rowY, tw, menu.S(24), MeleeState.thirdPerson() ? 1 : 0, 0);
+        if (!menu.under()) {
+            menu.region(t2x, rowY, tw, menu.S(24), MenuScreen.ACT_MELEE_OPT, 1);
+        }
+
+        // Размер в третьем лице
+        int right = x + w - pad;
+        String value = String.format(java.util.Locale.ROOT, "%.2f×", MeleeState.thirdScale());
+        Px.textRight(g, value, right, rowY, Weight.SEMIBOLD, menu.S(13), MenuScreen.accText());
+        int slw = menu.S(150);
+        int slx = right - menu.S(52) - slw;
+        int ty = rowY + menu.S(12);
+        Px.round(g, slx, ty - menu.S(2), slw, menu.S(4), menu.S(2), Px.a(menu.T().text(), lt ? 40 : 30));
+        float f = (MeleeState.thirdScale() - MeleeState.SCALE_MIN) / (MeleeState.SCALE_MAX - MeleeState.SCALE_MIN);
+        f = Math.max(0, Math.min(1, f));
+        int knob = menu.S(10);
+        int kx = slx + Math.round((slw - knob) * f);
+        Px.circle(g, kx + knob / 2, ty, knob / 2, MenuScreen.acc());
+        scaleX = slx;
+        scaleW = slw;
+        if (!menu.under()) {
+            menu.region(slx, ty - menu.S(9), slw, menu.S(18), MenuScreen.ACT_MELEE_SCALE, 0);
+        }
+    }
+
+    /** Ключ анимации карточки ножа. */
+    private static int meleeAnimKey(int index) {
+        return MenuAnim.WARDROBE_BASE + 104 + index * MenuAnim.WARDROBE_STRIDE;
+    }
+
     /** Карточка модели: подложка, иконка и галочка у надетой модели. */
-    private static float card(MenuScreen menu, GuiGraphics g, int n, int x, int y, int w, int h, float sc, boolean worn) {
+    private static float card(MenuScreen menu, GuiGraphics g, ResourceLocation icon, int x, int y, int w, int h,
+                              float sc, boolean worn, int animKey, int hotKey) {
         boolean hov = !menu.under() && menu.my >= menu.top && menu.my < menu.bottom
                 && menu.hover(x, Math.round(y - sc), w, h);
         if (hov) {
-            menu.hot(MenuScreen.HOT_WARDROBE + n);
+            menu.hot(MenuScreen.HOT_WARDROBE + hotKey);
         }
-        int key = MenuAnim.WARDROBE_BASE + (n - 14) * MenuAnim.WARDROBE_STRIDE;
-        float hv = menu.an(key, hov ? 1 : 0, 16);
-        float wa = menu.tw(key + 1, worn ? 1 : 0, 220);
+        float hv = menu.an(animKey, hov ? 1 : 0, 16);
+        float wa = menu.tw(animKey + 1, worn ? 1 : 0, 220);
         boolean lt = menu.light();
         int R = menu.S(9);
         Px.round(g, x, y, w, h, R, Px.mix(menu.plate(), lt ? 0xFFFFFFFF : Px.mix(menu.T().bg() | 0xFF000000, 0xFFFFFFFF, .07f), hv));
@@ -80,7 +186,6 @@ final class WardrobePage {
         int art = h - menu.S(44);
         int size = Math.min(w - menu.S(20), art);
         size = Math.round(size * (1 + .05f * hv));
-        ResourceLocation icon = CosmeticCatalogue.icon(n);
         float k = Px.fade;
         Px.fade = k * wa;
         Px.image(g, icon, x + (w - size) / 2, y + menu.S(10) + (art - size) / 2, size, size, 0xFFFFFFFF);
@@ -123,6 +228,33 @@ final class WardrobePage {
         }
         Wearables.send(true);
         menu.content(MenuSound.SELECT);
+    }
+
+    /** Надеть или снять нож. */
+    static void toggleMelee(MenuScreen menu, int index) {
+        List<MeleeDesign> skins = MeleeCatalog.all();
+        if (index < 0 || index >= skins.size()) {
+            return;
+        }
+        MeleeDesign design = skins.get(index);
+        if (design.getKey().equals(MeleeState.equippedKey())) {
+            MeleeState.unequip();
+            NotificationManager.info("Ножи", "снято");
+        } else {
+            MeleeState.equip(design.getKey());
+            NotificationManager.success("Ножи", design.getDisplayName());
+        }
+        Wearables.send(true);
+        menu.content(MenuSound.SELECT);
+    }
+
+    /** Переключатель вида ножа. */
+    static void toggleOption(int option) {
+        if (option == 0) {
+            MeleeState.firstPerson(!MeleeState.firstPerson());
+        } else {
+            MeleeState.thirdPerson(!MeleeState.thirdPerson());
+        }
     }
 
     private static String nameOf(int n) {

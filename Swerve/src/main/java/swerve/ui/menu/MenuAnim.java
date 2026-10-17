@@ -74,7 +74,7 @@ public final class MenuAnim {
     // ---- гардероб: по 2 значения на модель (подсветка, «надето»)
     public static final int WARDROBE_BASE = SCROLL_BASE + SCROLL_SIZE;
     public static final int WARDROBE_STRIDE = 2;
-    public static final int WARDROBE_SIZE = 128;
+    public static final int WARDROBE_SIZE = 192;
 
     public static final int SIZE = WARDROBE_BASE + WARDROBE_SIZE;
 

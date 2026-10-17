@@ -2,6 +2,7 @@ package swerve;
 
 import swerve.cosmetics.CosmeticStore;
 import swerve.cosmetics.Wearables;
+import swerve.cosmetics.melee.MeleeState;
 import swerve.managers.ModuleManager;
 import swerve.utils.input.ClickGuiController;
 
@@ -41,7 +42,11 @@ public class Swerve implements ClientModInitializer {
 
 		// Гардероб: сохранённые модели и синхронизация с другими клиентами.
 		CosmeticStore.load();
-		ClientTickEvents.END_CLIENT_TICK.register(client -> Wearables.send(false));
+		ClientTickEvents.END_CLIENT_TICK.register(client -> {
+			Wearables.send(false);
+			// Ножи: анимация играет, только пока нож реально рисуется.
+			MeleeState.tick();
+		});
 
 		LOGGER.info("{} v{} loaded in {} ms", MOD_NAME, MOD_VERSION, (System.nanoTime() - start) / 1_000_000L);
 	}

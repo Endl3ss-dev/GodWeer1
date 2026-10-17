@@ -8,6 +8,7 @@
 	"client": [
 		"accessor.GameRendererAccessor",
 		"accessor.MouseHandlerAccessor",
+		"accessor.ModelPartAccessor",
 		"client.MixinAbstractRecipeBookScreen",
 		"client.MixinChatComponent",
 		"client.MixinClientPacketListener",
@@ -25,6 +26,8 @@
 		"client.MixinWindow",
 		"render.MixinCamera",
 		"render.MixinLivingEntityRenderer",
+		"render.MixinMeleeHand",
+		"render.MixinMeleeThirdPerson",
 		"render.MixinGameRenderer",
 		"render.MixinItemInHandRenderer",
 		"render.MixinLevelRenderer",
