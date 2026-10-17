@@ -1,9 +1,12 @@
 package swerve;
 
+import swerve.cosmetics.CosmeticStore;
+import swerve.cosmetics.Wearables;
 import swerve.managers.ModuleManager;
 import swerve.utils.input.ClickGuiController;
 
 import net.fabricmc.api.ClientModInitializer;
+import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 
 import net.minecraft.resources.ResourceLocation;
 
@@ -35,6 +38,10 @@ public class Swerve implements ClientModInitializer {
 		// Шрифты грузятся лениво при первом обращении: на этом этапе GL-контекст ещё не готов.
 		ModuleManager.init();
 		ClickGuiController.init();
+
+		// Гардероб: сохранённые модели и синхронизация с другими клиентами.
+		CosmeticStore.load();
+		ClientTickEvents.END_CLIENT_TICK.register(client -> Wearables.send(false));
 
 		LOGGER.info("{} v{} loaded in {} ms", MOD_NAME, MOD_VERSION, (System.nanoTime() - start) / 1_000_000L);
 	}

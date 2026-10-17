@@ -35,7 +35,8 @@ public final class MenuScreen extends Screen {
 
     private enum Page {
         MODULES,
-        SETTINGS
+        SETTINGS,
+        COSMETICS
     }
 
     private static final ModuleCategory[] TABS = {
@@ -88,6 +89,7 @@ public final class MenuScreen extends Screen {
     static final int ACT_POPOVER_ITEM = 23;
     static final int ACT_PREF_BOOL = 24;
     static final int ACT_PREF_SLIDER = 25;
+    static final int ACT_COSMETIC = 26;
 
     // идентификаторы наведения (целые числа — без строк в кадре)
     private static final int HOT_THEME = 1;
@@ -102,6 +104,7 @@ public final class MenuScreen extends Screen {
     private static final int HOT_PALETTE = 8000;
     private static final int HOT_DOCK = 9000;
     private static final int HOT_PREF = 9500;
+    static final int HOT_WARDROBE = 12000;
 
     private static final int MAX_REGIONS = 512;
     private static final int MAX_VISIBLE = 64;
@@ -164,10 +167,10 @@ public final class MenuScreen extends Screen {
     int py;
     int pw;
     int ph;
-    private int cx0;
-    private int cw0;
-    private int top;
-    private int bottom;
+    int cx0;
+    int cw0;
+    int top;
+    int bottom;
 
     int ancX;
     int ancY;
@@ -252,7 +255,7 @@ public final class MenuScreen extends Screen {
         return blocked();
     }
 
-    private void region(int x, int y, int w, int h, int action, int payload) {
+    void region(int x, int y, int w, int h, int action, int payload) {
         region(x, y, w, h, action, ACT_NONE, payload);
     }
 
@@ -452,6 +455,8 @@ public final class MenuScreen extends Screen {
         bottom = py + ph - S(44);
         if (page == Page.MODULES) {
             rows(g);
+        } else if (page == Page.COSMETICS) {
+            WardrobePage.render(this, g);
         } else {
             settingsPage(g);
         }
@@ -471,6 +476,9 @@ public final class MenuScreen extends Screen {
                     }
                 }
             }
+        } else if (page == Page.COSMETICS) {
+            labels = WardrobePage.TITLES;
+            active = WardrobePage.slot;
         } else {
             labels = SETTINGS_TABS;
             active = 0;
@@ -508,7 +516,8 @@ public final class MenuScreen extends Screen {
             float hk = an(MenuAnim.TAB_HOVER + i, hv ? 1 : 0, 18);
             float ak = tw(MenuAnim.TAB_ACTIVE + i, on ? 1 : 0, 220);
             int c = Px.mix(Px.mix(lt(T().muted(), 0xFFB0B8C4), T().text(), hk * .6f), T().text(), ak);
-            String icon = page == Page.MODULES ? TAB_ICONS[i] : "sliders";
+            String icon = page == Page.MODULES ? TAB_ICONS[i]
+                    : page == Page.COSMETICS ? WardrobePage.ICONS[i] : "sliders";
             glyph(g, icon, xs[i] + ip, py2 + (ph2 - is) / 2, is, Px.mix(c, accText(), ak * .9f));
             Px.text(g, labels[i], xs[i] + ip + is + tg, py2 + (ph2 - fs) / 2, Weight.SEMIBOLD, fs, c);
             if (!under() && labels.length > 1) {
@@ -528,6 +537,13 @@ public final class MenuScreen extends Screen {
     }
 
     private void tabClick(int i) {
+        if (page == Page.COSMETICS) {
+            if (WardrobePage.slot != i) {
+                WardrobePage.slot = i;
+                content(MenuSound.TAB);
+            }
+            return;
+        }
         if (page == Page.MODULES) {
             if (category != TABS[i] || !search.isEmpty()) {
                 category = TABS[i];
@@ -538,7 +554,7 @@ public final class MenuScreen extends Screen {
         }
     }
 
-    private void content(int sound) {
+    void content(int sound) {
         contentAt = now;
         popMod = null;
         pop = null;
@@ -987,6 +1003,8 @@ public final class MenuScreen extends Screen {
         int activeIdx;
         if (page == Page.SETTINGS) {
             activeIdx = 3;
+        } else if (page == Page.COSMETICS) {
+            activeIdx = 1;
         } else if (categoryLocked) {
             activeIdx = category == ModuleCategory.RENDER ? 1 : 2;
         } else {
@@ -1037,17 +1055,14 @@ public final class MenuScreen extends Screen {
     }
 
     private void dockClick(int i) {
-        Page to = i == 3 ? Page.SETTINGS : Page.MODULES;
-        if (i == 1) {
-            category = ModuleCategory.RENDER;
-            categoryLocked = true;
-        } else if (i == 2) {
+        Page to = i == 3 ? Page.SETTINGS : i == 1 ? Page.COSMETICS : Page.MODULES;
+        if (i == 2) {
             category = ModuleCategory.INTERFACE;
             categoryLocked = true;
         } else if (i == 0) {
             categoryLocked = false;
         }
-        if (page == to && (i == 0 || i == 3)) {
+        if (page == to) {
             return;
         }
         page = to;
@@ -1695,6 +1710,7 @@ public final class MenuScreen extends Screen {
                 }
             }
             case ACT_DOCK -> dockClick(payload);
+            case ACT_COSMETIC -> WardrobePage.toggle(this, payload);
             case ACT_POPUP_TOGGLE -> {
                 Module m = moduleByIndex(payload);
                 if (m != null) {
@@ -1951,7 +1967,8 @@ public final class MenuScreen extends Screen {
             scroll[7] = scroll[7] - (float) scrollY * S(60);
             return true;
         }
-        int context = page == Page.MODULES ? (search.isEmpty() ? category.ordinal() : 6) : PREF_SCROLL;
+        int context = page == Page.MODULES ? (search.isEmpty() ? category.ordinal() : 6)
+                : page == Page.COSMETICS ? WardrobePage.SCROLL : PREF_SCROLL;
         scroll[context] = scroll[context] - (float) scrollY * S(76);
         return true;
     }

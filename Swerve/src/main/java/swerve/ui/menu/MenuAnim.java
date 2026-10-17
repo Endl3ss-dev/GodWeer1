@@ -70,7 +70,13 @@ public final class MenuAnim {
     /** подсветка ползунков прокрутки */
     public static final int SCROLL_BAR = 24;
     public static final int SCROLL_SIZE = 40;
-    public static final int SIZE = SCROLL_BASE + SCROLL_SIZE;
+
+    // ---- гардероб: по 2 значения на модель (подсветка, «надето»)
+    public static final int WARDROBE_BASE = SCROLL_BASE + SCROLL_SIZE;
+    public static final int WARDROBE_STRIDE = 2;
+    public static final int WARDROBE_SIZE = 128;
+
+    public static final int SIZE = WARDROBE_BASE + WARDROBE_SIZE;
 
     private final float[] spring = new float[SIZE];
     private final float[] tweenFrom = new float[SIZE];

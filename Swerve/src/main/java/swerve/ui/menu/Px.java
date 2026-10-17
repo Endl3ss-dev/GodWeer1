@@ -205,6 +205,11 @@ public final class Px {
             {"user-circle", "user-circle"},
             {"sword", "sword"},
             {"expand", "expand-h"},
+            // гардероб
+            {"wind", "leaf"},
+            {"bag", "bag"},
+            {"paw-print", "piggy"},
+            {"wizard-hat", "wizard-hat"},
         };
         for (String[] a : alias) {
             if (!KIT.containsKey(a[1])) {
@@ -275,8 +280,19 @@ public final class Px {
         g.blit(GUI_TEX, ATLAS, x, y, u, v, w, h, w, h, atlasW, atlasH, f(c));
     }
 
-    private static void stretched(GuiGraphics g, int x, int y, int w, int h, int u, int v, int uw, int vh, int c) {
+    /**
+     * Блит отдельной текстуры (иконки гардероба) в прямоугольник.
+     *
+     * <p>Источник — квадрат 128x128, как у иконок гардероба.
+     */
+    public static void image(GuiGraphics g, ResourceLocation tex, int x, int y, int w, int h, int c) {
         if (w <= 0 || h <= 0) {
+            return;
+        }
+        g.blit(GUI_TEX, tex, x, y, 0f, 0f, w, h, 128, 128, f(c));
+    }
+
+    private static void stretched(GuiGraphics g, int x, int y, int w, int h, int u, int v, int uw, int vh, int c) {        if (w <= 0 || h <= 0) {
             return;
         }
         g.blit(GUI_TEX, ATLAS, x, y, u, v, w, h, uw, vh, atlasW, atlasH, f(c));

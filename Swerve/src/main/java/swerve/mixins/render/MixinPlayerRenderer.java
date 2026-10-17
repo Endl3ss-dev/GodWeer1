@@ -1,5 +1,6 @@
 package swerve.mixins.render;
 
+import swerve.cosmetics.Wearables;
 import swerve.utils.render.spatial.SpatialAvatar;
 
 import net.minecraft.client.player.AbstractClientPlayer;
@@ -19,5 +20,7 @@ public class MixinPlayerRenderer {
             at = @At("TAIL"))
     private void swerve$spatialPose(AbstractClientPlayer player, PlayerRenderState state, float partialTick, CallbackInfo ci) {
         SpatialAvatar.applyPose(player, state);
+        // Гардероб: запоминаем игрока, чья модель сейчас будет нарисована.
+        Wearables.current(player);
     }
 }
