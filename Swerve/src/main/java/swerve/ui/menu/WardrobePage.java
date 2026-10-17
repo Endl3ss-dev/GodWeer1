@@ -3,6 +3,8 @@ package swerve.ui.menu;
 import swerve.cosmetics.CosmeticCatalogue;
 import swerve.cosmetics.CosmeticItem;
 import swerve.cosmetics.Wearables;
+import swerve.cosmetics.cape.CapeState;
+import swerve.cosmetics.cape.Capes;
 import swerve.cosmetics.melee.MeleeCatalog;
 import swerve.cosmetics.melee.MeleeDesign;
 import swerve.cosmetics.melee.MeleeState;
@@ -22,11 +24,14 @@ import net.minecraft.resources.ResourceLocation;
  */
 final class WardrobePage {
 
-    static final String[] TITLES = {"Крылья", "Рюкзак", "Питомец", "Головной убор", "Ножи"};
-    static final String[] ICONS = {"wind", "bag", "paw-print", "wizard-hat", "sword"};
+    static final String[] TITLES = {"Крылья", "Рюкзак", "Питомец", "Головной убор", "Ножи", "Плащи"};
+    static final String[] ICONS = {"wind", "bag", "paw-print", "wizard-hat", "sword", "award"};
 
     /** Вкладка с ножами. */
     static final int MELEE_SLOT = 4;
+
+    /** Вкладка с плащами. */
+    static final int CAPE_SLOT = 5;
 
     /** Открытый слот гардероба. */
     static int slot;
@@ -41,6 +46,10 @@ final class WardrobePage {
     static void render(MenuScreen menu, GuiGraphics g) {
         if (slot == MELEE_SLOT) {
             renderMelee(menu, g);
+            return;
+        }
+        if (slot == CAPE_SLOT) {
+            renderCapes(menu, g);
             return;
         }
         List<CosmeticItem> items = CosmeticCatalogue.of(CosmeticCatalogue.SLOTS[slot]);
@@ -160,9 +169,49 @@ final class WardrobePage {
         }
     }
 
+    // ---- плащи
+
+    /** Плащи: сетка рисунков, клик надевает или снимает плащ. */
+    private static void renderCapes(MenuScreen menu, GuiGraphics g) {
+        String[] designs = Capes.designs();
+        int cols = 4;
+        int gap = menu.S(10);
+        int cw = (menu.cw0 - gap * (cols - 1)) / cols;
+        int ch = cw + menu.S(30);
+        int total = ((designs.length + cols - 1) / cols) * (ch + gap);
+        int sc = Math.round(menu.scrolled(WardrobePage.SCROLL, total, menu.top, menu.bottom));
+        g.enableScissor(menu.cx0 - menu.S(12), menu.top, menu.cx0 + menu.cw0 + menu.S(12), menu.bottom);
+        g.pose().pushPose();
+        Px.translate(g, 0, -sc);
+        for (int i = 0; i < designs.length; i++) {
+            String design = designs[i];
+            int x = menu.cx0 + (i % cols) * (cw + gap);
+            int y = menu.top + menu.S(2) + (i / cols) * (ch + gap);
+            if (y - sc > menu.bottom || y + ch - sc < menu.top) {
+                continue;
+            }
+            boolean worn = design.equals(CapeState.design());
+            float hv = card(menu, g, Capes.preview(design), x, y, cw, ch, sc, worn,
+                    capeAnimKey(i), 300 + i);
+            label(menu, g, design, x, y + ch - menu.S(30), cw, worn, hv);
+            if (!menu.under()) {
+                menu.clipped(x, y, cw, ch, sc, menu.top, menu.bottom, MenuScreen.ACT_CAPE, i);
+            }
+        }
+        g.pose().popPose();
+        g.disableScissor();
+        menu.edges(g, menu.cx0 - menu.S(12), menu.cw0 + menu.S(24), menu.top, menu.bottom, sc, menu.baseColour());
+        menu.scrollbar(g, menu.cx0 + menu.cw0 + menu.S(14), menu.top, menu.bottom, total, sc, WardrobePage.SCROLL);
+    }
+
     /** Ключ анимации карточки ножа. */
     private static int meleeAnimKey(int index) {
         return MenuAnim.WARDROBE_BASE + 104 + index * MenuAnim.WARDROBE_STRIDE;
+    }
+
+    /** Ключ анимации карточки плаща. */
+    private static int capeAnimKey(int index) {
+        return MenuAnim.WARDROBE_BASE + 176 + index * MenuAnim.WARDROBE_STRIDE;
     }
 
     /** Карточка модели: подложка, иконка и галочка у надетой модели. */
@@ -186,10 +235,12 @@ final class WardrobePage {
         int art = h - menu.S(44);
         int size = Math.min(w - menu.S(20), art);
         size = Math.round(size * (1 + .05f * hv));
-        float k = Px.fade;
-        Px.fade = k * wa;
-        Px.image(g, icon, x + (w - size) / 2, y + menu.S(10) + (art - size) / 2, size, size, 0xFFFFFFFF);
-        Px.fade = k;
+        if (icon != null) {
+            float k = Px.fade;
+            Px.fade = k * wa;
+            Px.image(g, icon, x + (w - size) / 2, y + menu.S(10) + (art - size) / 2, size, size, 0xFFFFFFFF);
+            Px.fade = k;
+        }
         if (wa > .01f) {
             int r = menu.S(10);
             int ccx = x + w - menu.S(12) - r;
@@ -243,6 +294,24 @@ final class WardrobePage {
         } else {
             MeleeState.equip(design.getKey());
             NotificationManager.success("Ножи", design.getDisplayName());
+        }
+        Wearables.send(true);
+        menu.content(MenuSound.SELECT);
+    }
+
+    /** Надеть или снять плащ. */
+    static void toggleCape(MenuScreen menu, int index) {
+        String[] designs = Capes.designs();
+        if (index < 0 || index >= designs.length) {
+            return;
+        }
+        String design = designs[index];
+        if (design.equals(CapeState.design())) {
+            CapeState.unequip();
+            NotificationManager.info("Плащи", "снято");
+        } else {
+            CapeState.design(design);
+            NotificationManager.success("Плащи", design);
         }
         Wearables.send(true);
         menu.content(MenuSound.SELECT);

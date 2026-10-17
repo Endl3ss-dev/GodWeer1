@@ -1,6 +1,7 @@
 package swerve.mixins.render;
 
 import swerve.cosmetics.Wearables;
+import swerve.cosmetics.cape.Capes;
 import swerve.utils.render.spatial.SpatialAvatar;
 
 import net.minecraft.client.player.AbstractClientPlayer;
@@ -22,5 +23,9 @@ public class MixinPlayerRenderer {
         SpatialAvatar.applyPose(player, state);
         // Гардероб: запоминаем игрока, чья модель сейчас будет нарисована.
         Wearables.current(player);
+        // Свой плащ заменяет ванильный — иначе видны оба.
+        if (Capes.hasCape(player)) {
+            state.showCape = false;
+        }
     }
 }

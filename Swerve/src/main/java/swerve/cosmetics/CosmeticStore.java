@@ -7,6 +7,7 @@ import com.google.gson.JsonParser;
 import net.fabricmc.loader.api.FabricLoader;
 
 import swerve.Swerve;
+import swerve.cosmetics.cape.CapeState;
 import swerve.cosmetics.melee.MeleeState;
 
 import java.nio.charset.StandardCharsets;
@@ -78,6 +79,11 @@ public final class CosmeticStore {
                     MeleeState.thirdScale(scale.getAsFloat());
                 }
             }
+            JsonElement cape = o.get("cape");
+            if (cape != null && cape.isJsonPrimitive()) {
+                String design = cape.getAsString();
+                CapeState.design(design == null || design.isEmpty() ? null : design);
+            }
         } catch (Exception e) {
             Swerve.LOGGER.warn("cosmetic store: {}", e.toString());
         } finally {
@@ -102,6 +108,7 @@ public final class CosmeticStore {
         melee.addProperty("third", MeleeState.thirdPerson());
         melee.addProperty("scale", MeleeState.thirdScale());
         o.add("melee", melee);
+        o.addProperty("cape", CapeState.design());
         try {
             Files.createDirectories(FILE.getParent());
             Files.writeString(FILE, o.toString(), StandardCharsets.UTF_8);

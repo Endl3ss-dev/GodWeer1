@@ -1,6 +1,8 @@
 package swerve.mixins.render;
 
 import swerve.cosmetics.Wearables;
+import swerve.cosmetics.cape.Capes;
+import swerve.cosmetics.cape.ClothCapeRenderer;
 
 import com.mojang.blaze3d.vertex.PoseStack;
 
@@ -41,11 +43,17 @@ public class MixinLivingEntityRenderer {
             return;
         }
         int[] items = Wearables.stateOf(player);
-        if (items == null) {
-            return;
+        if (items != null) {
+            try {
+                Wearables.render(pm, pose, buffer, light, items);
+            } catch (RuntimeException ignored) {
+            }
         }
+        // Плащ: ткань на спине игрока, своя физика вместо ванильной.
         try {
-            Wearables.render(pm, pose, buffer, light, items);
+            if (Capes.hasCape(player)) {
+                ClothCapeRenderer.getInstance().render(pose, buffer, light, player, pm);
+            }
         } catch (RuntimeException ignored) {
         }
     }

@@ -9,6 +9,7 @@ import java.util.UUID;
 
 import net.minecraft.client.Minecraft;
 
+import swerve.cosmetics.cape.CapeState;
 import swerve.cosmetics.melee.MeleeState;
 import net.minecraft.client.model.PlayerModel;
 import net.minecraft.client.renderer.MultiBufferSource;
@@ -33,8 +34,8 @@ public final class Wearables {
     /** Слоты: крылья, рюкзак, питомец, головной убор. */
     public static final int SLOTS = 4;
 
-    /** Синхронизируемых значений: 4 слота гардероба и идентификатор ножа. */
-    public static final int SYNC_VALUES = 5;
+    /** Синхронизируемых значений: 4 слота гардероба, нож и плащ. */
+    public static final int SYNC_VALUES = 6;
 
     private static final int[] WORN = {-1, -1, -1, -1};
     private static final Map<UUID, int[]> REMOTE = new HashMap<>();
@@ -124,9 +125,11 @@ public final class Wearables {
                 p++;
             }
             if (start == p) {
-                // старый формат: четыре слота гардероба без ножа
-                if (s == 4 && out.length > 4) {
-                    out[4] = 0;
+                // старый формат: четыре слота гардероба без ножа и плаща
+                if (s >= 4) {
+                    for (int k = s; k < out.length; k++) {
+                        out[k] = 0;
+                    }
                     return true;
                 }
                 return false;
@@ -145,7 +148,12 @@ public final class Wearables {
         if (!sync) {
             return;
         }
-        boolean empty = WORN[0] < 0 && WORN[1] < 0 && WORN[2] < 0 && WORN[3] < 0 && MeleeState.equippedId() == 0;
+        boolean empty = WORN[0] < 0
+                && WORN[1] < 0
+                && WORN[2] < 0
+                && WORN[3] < 0
+                && MeleeState.equippedId() == 0
+                && CapeState.index() == 0;
         long now = System.currentTimeMillis();
         if (!force && !dirty && (empty || now - lastSent < 30_000L)) {
             return;
@@ -171,7 +179,9 @@ public final class Wearables {
                                 + ","
                                 + WORN[3]
                                 + ","
-                                + MeleeState.equippedId());
+                                + MeleeState.equippedId()
+                                + ","
+                                + CapeState.index());
     }
 
     /** Отметить, что состояние изменилось (нужна пересылка). */

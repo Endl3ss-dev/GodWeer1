@@ -1,6 +1,7 @@
 package swerve.mixins.client;
 
 import swerve.cosmetics.Wearables;
+import swerve.cosmetics.cape.CapeState;
 import swerve.cosmetics.melee.MeleeState;
 
 import java.util.UUID;
@@ -32,6 +33,7 @@ public class MixinClientPacketListener {
                 UUID sender = packet.sender();
                 Wearables.applyRemote(sender, v[0], v[1], v[2], v[3]);
                 MeleeState.applyRemote(sender, v[4]);
+                CapeState.applyRemote(sender, v[5]);
             }
         } catch (RuntimeException ignored) {
         }
@@ -44,6 +46,7 @@ public class MixinClientPacketListener {
             for (UUID id : packet.profileIds()) {
                 Wearables.forget(id);
                 MeleeState.forget(id);
+                CapeState.forget(id);
             }
         } catch (RuntimeException ignored) {
         }

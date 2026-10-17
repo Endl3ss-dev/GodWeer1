@@ -2,6 +2,8 @@ package swerve;
 
 import swerve.cosmetics.CosmeticStore;
 import swerve.cosmetics.Wearables;
+import swerve.cosmetics.cape.CapeTextures;
+import swerve.cosmetics.cape.ClothSimulations;
 import swerve.cosmetics.melee.MeleeState;
 import swerve.managers.ModuleManager;
 import swerve.utils.input.ClickGuiController;
@@ -46,6 +48,11 @@ public class Swerve implements ClientModInitializer {
 			Wearables.send(false);
 			// Ножи: анимация играет, только пока нож реально рисуется.
 			MeleeState.tick();
+			// Плащи: загрузка готовых кадров в GPU и физика ткани.
+			CapeTextures.pump(2_000_000L);
+			if (client.level != null) {
+				ClothSimulations.getInstance().tickAll(client.level);
+			}
 		});
 
 		LOGGER.info("{} v{} loaded in {} ms", MOD_NAME, MOD_VERSION, (System.nanoTime() - start) / 1_000_000L);

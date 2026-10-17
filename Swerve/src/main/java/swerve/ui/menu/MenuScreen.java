@@ -94,6 +94,7 @@ public final class MenuScreen extends Screen {
     static final int ACT_MELEE_OPT = 27;
     static final int ACT_MELEE_SCALE = 28;
     static final int ACT_MELEE_SKIN = 29;
+    static final int ACT_CAPE = 30;
 
     // идентификаторы наведения (целые числа — без строк в кадре)
     private static final int HOT_THEME = 1;
@@ -1720,6 +1721,7 @@ public final class MenuScreen extends Screen {
             case ACT_DOCK -> dockClick(payload);
             case ACT_COSMETIC -> WardrobePage.toggle(this, payload);
             case ACT_MELEE_SKIN -> WardrobePage.toggleMelee(this, payload);
+            case ACT_CAPE -> WardrobePage.toggleCape(this, payload);
             case ACT_MELEE_OPT -> {
                 WardrobePage.toggleOption(payload);
                 MenuSound.play(MenuSound.CLICK);
