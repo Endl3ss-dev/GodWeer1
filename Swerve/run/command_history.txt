@@ -1,8 +1,3 @@
-/summon minecraft:zombie
-/gamemode creative
-/gamemode survival
-/gamemode creative
-/give Player690 minecraft:golden_apple 65
 /summon minecraft:iron_golem
 /gamemode survival
 /summon minecraft:iron_golem
@@ -47,4 +42,9 @@
 /spawn
 /m _SyXaRiK n
 /l wd
+/shop
+/l wd
+/shop
+/spawn
+/scale 0.5
 /shop
