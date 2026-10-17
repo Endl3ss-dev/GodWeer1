@@ -393,11 +393,31 @@ public final class MenuTheme {
     }
 
     public static int accent() {
-        return p().a();
+        Palette f = from;
+        if (f == null) {
+            return base().a();
+        }
+        float t = transition();
+        if (t >= 1) {
+            from = null;
+            return base().a();
+        }
+        float e = t * t * (3 - 2 * t);
+        return mix(f.a(), base().a(), e);
     }
 
     public static int accent2() {
-        return p().b();
+        Palette f = from;
+        if (f == null) {
+            return base().b();
+        }
+        float t = transition();
+        if (t >= 1) {
+            from = null;
+            return base().b();
+        }
+        float e = t * t * (3 - 2 * t);
+        return mix(f.b(), base().b(), e);
     }
 
     public static int text() {
