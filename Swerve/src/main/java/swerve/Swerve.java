@@ -4,6 +4,7 @@ import swerve.cosmetics.CosmeticStore;
 import swerve.cosmetics.Wearables;
 import swerve.cosmetics.cape.CapeTextures;
 import swerve.cosmetics.cape.ClothSimulations;
+import swerve.cosmetics.melee.HandMovement;
 import swerve.cosmetics.melee.MeleeState;
 import swerve.managers.ModuleManager;
 import swerve.utils.input.ClickGuiController;
@@ -46,12 +47,15 @@ public class Swerve implements ClientModInitializer {
 		CosmeticStore.load();
 		ClientTickEvents.END_CLIENT_TICK.register(client -> {
 			Wearables.send(false);
-			// Ножи: анимация играет, только пока нож реально рисуется.
+			// Ножи: путь игрока для клипа бега, анимация играет, только пока нож рисуется.
+			HandMovement.tick(client);
 			MeleeState.tick();
 			// Плащи: загрузка готовых кадров в GPU и физика ткани.
 			CapeTextures.pump(2_000_000L);
 			if (client.level != null) {
 				ClothSimulations.getInstance().tickAll(client.level);
+			} else {
+				ClothSimulations.getInstance().clear();
 			}
 		});
 
