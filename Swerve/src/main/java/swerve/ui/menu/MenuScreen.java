@@ -629,12 +629,13 @@ public final class MenuScreen extends Screen {
     }
 
     void edges(GuiGraphics g, int x, int w, int t, int b, float sc, int colour) {
-        int fh = S(24);
+        int fh = S(28);
         int max = 240;
         if (sc > .5f) {
-            Px.vgrad(g, x, t, w, fh, Px.a(colour, (int) (Math.min(1, sc / S(24)) * max)), Px.a(colour, 0));
+            // мягкое затухание сверху: контент под градиентом остаётся виден, а не тонет в чёрной полосе
+            Px.vgrad(g, x, t, w, fh, Px.a(colour, (int) (Math.min(1, sc / S(24)) * 140)), Px.a(colour, 0));
         }
-        Px.vgrad(g, x, b - fh, w, fh, Px.a(colour, 0), Px.a(colour, max));
+        Px.vgrad(g, x, b - S(24), w, S(24), Px.a(colour, 0), Px.a(colour, max));
     }
 
     void scrollbar(GuiGraphics g, int x, int t, int b, int total, float sc, int context) {
@@ -995,6 +996,9 @@ public final class MenuScreen extends Screen {
         float tx = tw(MenuAnim.DOCK_X, x + pad + activeIdx * (bs + gap), 280);
         int txi = Math.round(tx);
         Px.circle(g, txi + bs / 2, ty + bs / 2, bs / 2, acc());
+        // иконка под кругом акцента лежит на его заливке — берём контрастный цвет
+        int cur = Math.round((tx - (x + pad)) / (float) (bs + gap));
+        int onCircle = Px.onAccent(acc());
         for (int i = 0; i < n; i++) {
             int bx = x + pad + i * (bs + gap);
             boolean hv = !under() && hover(bx, ty, bs, bs);
@@ -1007,8 +1011,11 @@ public final class MenuScreen extends Screen {
                 Px.circle(g, bx + bs / 2, ty + bs / 2, bs / 2, Px.a(T().text(), (int) (12 * hk * (1 - lit))));
             }
             int gs = S(20);
-            glyph(g, DOCK[i][0], bx + (bs - gs) / 2, ty + (bs - gs) / 2, gs,
-                    Px.mix(Px.mix(lt(0xFF8E89A0, 0xFF857E98), T().text(), hk), 0xFFFFFFFF, lit));
+            int iconCol = Px.mix(Px.mix(lt(0xFF8E89A0, 0xFF857E98), T().text(), hk), 0xFFFFFFFF, lit);
+            if (i == cur) {
+                iconCol = onCircle;
+            }
+            glyph(g, DOCK[i][0], bx + (bs - gs) / 2, ty + (bs - gs) / 2, gs, iconCol);
             if (hk > .02f) {
                 // подпись под доком
                 String t = DOCK[i][1];
