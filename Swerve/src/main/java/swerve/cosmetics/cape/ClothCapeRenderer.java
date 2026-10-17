@@ -226,7 +226,7 @@ public class ClothCapeRenderer {
     private void applySegmentPose(
             Matrix4f out, Matrix4f body, ClothSimulation sim, float partialTick, int part, boolean underwater) {
         out.set(body);
-        out.translate(0.0, 0.0, 0.125);
+        out.translate(0.0F, 0.0F, 0.125F);
         float dx = sim.lerpX(part, partialTick) - sim.lerpX(0, partialTick);
         if (dx > 0.0F) {
             dx = 0.0F; // плащ не заходит внутрь тела
@@ -235,14 +235,16 @@ public class ClothCapeRenderer {
         float dz = sim.lerpZ(0, partialTick) - sim.lerpZ(part, partialTick);
         float bend = getRotation(partialTick, part, sim);
         float wind = naturalWindSwing(part, underwater);
-        out.mulPose(rotX.rotationDegrees(6.0F + wind));
-        out.mulPose(rotY.rotationDegrees(180.0F));
+        // [!] В JOML версии 1.21.4 нет Quaternionf.rotationDegrees и Matrix4f.mulPose:
+        //     угол переводится в радианы, а quaternion домножается методом mul.
+        out.mul(rotX.rotationX((float) Math.toRadians(6.0F + wind)));
+        out.mul(rotY.rotationY((float) Math.toRadians(180.0F)));
         out.translate(-dz / 16.0F, dy / 16.0F, dx / 16.0F);
-        out.translate(0.0, 0.03, -0.03);
+        out.translate(0.0F, 0.03F, -0.03F);
         out.translate(0.0F, part / 16.0F, 0.0F);
-        out.mulPose(rotX.rotationDegrees(-bend));
+        out.mul(rotX.rotationX((float) Math.toRadians(-bend)));
         out.translate(0.0F, -part / 16.0F, 0.0F);
-        out.translate(0.0, -0.03, 0.03);
+        out.translate(0.0F, -0.03F, 0.03F);
     }
 
     private float getRotation(float partialTick, int part, ClothSimulation sim) {

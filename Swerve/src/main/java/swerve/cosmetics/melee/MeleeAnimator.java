@@ -180,7 +180,7 @@ public final class MeleeAnimator {
 
     private boolean heldChanged(AbstractClientPlayer player, InteractionHand hand) {
         Item item = player.getItemInHand(hand).getItem();
-        int slot = hand == InteractionHand.MAIN_HAND ? player.getInventory().getSelectedSlot() : OFF_HAND_SLOT;
+        int slot = hand == InteractionHand.MAIN_HAND ? player.getInventory().selected : OFF_HAND_SLOT;
         if (item == heldItem && slot == heldSlot) return false;
         heldItem = item;
         heldSlot = slot;

@@ -115,7 +115,9 @@ public final class MeleeRenderer {
         if (cubes.isEmpty()) return;
         var cube = cubes.getFirst();
         PoseStack pose = new PoseStack();
-        pose.last().set(handBase);
+        // [!] В 1.21.4 у Pose нет set(Pose): матрица и нормаль копируются по отдельности.
+        pose.last().pose().set(handBase.pose());
+        pose.last().normal().set(handBase.normal());
         pose.translate(0, handItemEquipProgress * EQUIP_DROP, 0);
         pose.mulPose(armPose.set(primaryBones.world[bone]).translate(ARM_ALIGN_X, ARM_ALIGN_Y, 0));
         if (handMirrored) pose.scale(-1, 1, 1);
@@ -439,7 +441,8 @@ public final class MeleeRenderer {
     /** Рендерер игрока: у локального он один и тот же, у чужих — свой. */
     private static PlayerRenderer playerRenderer(AbstractClientPlayer player) {
         try {
-            EntityRenderer<?> renderer =
+            // [!] В 1.21.4 у EntityRenderer два параметра типа.
+            EntityRenderer<?, ?> renderer =
                     Minecraft.getInstance().getEntityRenderDispatcher().getRenderer(player);
             return renderer instanceof PlayerRenderer pr ? pr : null;
         } catch (RuntimeException e) {

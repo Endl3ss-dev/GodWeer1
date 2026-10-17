@@ -81,7 +81,8 @@ public abstract class MixinMeleeThirdPerson {
 
     private static PlayerRenderer renderer(AbstractClientPlayer player) {
         try {
-            EntityRenderer<?> renderer =
+            // [!] В 1.21.4 у EntityRenderer два параметра типа.
+            EntityRenderer<?, ?> renderer =
                     Minecraft.getInstance().getEntityRenderDispatcher().getRenderer(player);
             return renderer instanceof PlayerRenderer pr ? pr : null;
         } catch (RuntimeException e) {
