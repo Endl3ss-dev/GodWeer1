@@ -14,6 +14,7 @@ import swerve.modules.impl.hud.Notifications;
 import swerve.modules.impl.hud.Watermark;
 import swerve.modules.impl.player.DrinkUse;
 import swerve.modules.impl.movement.Speed;
+import swerve.modules.impl.movement.ElytraFlight;
 import swerve.modules.impl.hud.TargetHud;
 import swerve.modules.impl.render.Arrows;
 import swerve.modules.impl.render.ChinaHat;
@@ -23,6 +24,7 @@ import swerve.modules.impl.render.HandShader;
 import swerve.modules.impl.render.ViewModel;
 import swerve.ui.hud.HudManager;
 import swerve.utils.item.ConsumableUseController;
+import swerve.utils.movement.ElytraFlightRotation;
 
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.Minecraft;
@@ -60,6 +62,7 @@ public final class ModuleManager {
         register(new KillAura());
         register(new ItemSwap());
         register(new Speed());
+        register(new ElytraFlight());
         register(new DrinkUse());
         register(new Trails());
         register(new ChinaHat());
@@ -76,6 +79,8 @@ public final class ModuleManager {
         FriendManager.init();
 
         if (!tickListenerRegistered) {
+            // AlphaDLC EventTick: Fabric START_CLIENT_TICK also runs at Minecraft.tick HEAD.
+            ClientTickEvents.START_CLIENT_TICK.register(ElytraFlightRotation::tick);
             ClientTickEvents.END_CLIENT_TICK.register(client -> tick());
             tickListenerRegistered = true;
         }

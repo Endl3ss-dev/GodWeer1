@@ -137,6 +137,10 @@ public final class KillAura extends Module {
         lastAttackTime = now;
     }
 
+    public Entity getTarget() {
+        return target;
+    }
+
     private boolean isValidTarget(LocalPlayer player, Entity candidate) {
         if (!(candidate instanceof LivingEntity living) || candidate == player) {
             return false;

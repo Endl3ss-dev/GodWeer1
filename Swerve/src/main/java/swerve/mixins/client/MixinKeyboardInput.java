@@ -1,5 +1,9 @@
 package swerve.mixins.client;
 
+import swerve.events.movement.MoveInputEvent;
+import swerve.managers.ModuleManager;
+import swerve.modules.impl.movement.ElytraFlight;
+import swerve.utils.movement.ElytraFlightRotation;
 import swerve.utils.render.spatial.SpatialMath;
 import swerve.utils.render.spatial.SpatialState;
 
@@ -16,6 +20,20 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 // признак движения вперёд (спринт) берётся до поворота импульсов.
 @Mixin(KeyboardInput.class)
 public abstract class MixinKeyboardInput extends ClientInput {
+
+    @Unique
+    private final MoveInputEvent swerve$moveInput = new MoveInputEvent();
+
+    // Adapted from AlphaDLC/src/main/java/zov/alphadlc/mixin/KeyboardInputMixin.java
+    @Inject(method = "tick", at = @At("TAIL"), order = 1100)
+    private void swerve$elytraMoveInput(CallbackInfo ci) {
+        ElytraFlight flight = ModuleManager.get(ElytraFlight.class);
+        if (!ElytraFlightRotation.isActive() && (flight == null || !flight.isEnable())) return;
+        swerve$moveInput.read(this);
+        ElytraFlightRotation.onMoveInput(swerve$moveInput);
+        if (flight != null && flight.isEnable()) flight.onMoveInput(swerve$moveInput);
+        swerve$moveInput.apply(this);
+    }
 
     @Unique
     private boolean swerve$rotating;

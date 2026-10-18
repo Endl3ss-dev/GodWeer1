@@ -1,9 +1,11 @@
 package swerve.mixins.render;
 
 import swerve.utils.render.spatial.CameraHandle;
+import swerve.utils.movement.ElytraFlightRotation;
 import swerve.utils.render.spatial.SpatialCamera;
 
 import net.minecraft.client.Camera;
+import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.BlockGetter;
 
@@ -11,6 +13,7 @@ import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
+import org.spongepowered.asm.mixin.injection.Redirect;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
 
 // SpatialGui: после ванильной установки камеры её позиция/углы переопределяются логикой панели.
@@ -23,6 +26,29 @@ public abstract class MixinCamera implements CameraHandle {
 
     @Shadow
     protected abstract void setRotation(float yRot, float xRot);
+
+    // Adapted from AlphaDLC/src/main/java/zov/alphadlc/mixin/CameraMixin.java
+    @Redirect(method = "setup", at = @At(value = "INVOKE",
+            target = "Lnet/minecraft/client/Camera;setRotation(FF)V"))
+    private void swerve$elytraCameraRotation(Camera camera, float yaw, float pitch,
+            BlockGetter level, Entity entity, boolean detached, boolean mirrored, float partialTick) {
+        // Do not apply the local player's free look to spectator cameras.
+        if (entity != Minecraft.getInstance().player) {
+            setRotation(yaw, pitch);
+            return;
+        }
+        ElytraFlightRotation.captureCamera(yaw, pitch);
+        if (ElytraFlightRotation.isActive()) {
+            yaw = ElytraFlightRotation.getFreeYaw();
+            pitch = ElytraFlightRotation.getFreePitch();
+        }
+        // Match AlphaDLC's RotationEvent order, including front-facing third person.
+        if (detached && mirrored) {
+            yaw += 180;
+            pitch = -pitch;
+        }
+        setRotation(yaw, pitch);
+    }
 
     @Inject(method = "setup", at = @At("TAIL"))
     private void swerve$spatialCamera(BlockGetter level, Entity entity, boolean detached, boolean mirrored,

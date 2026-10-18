@@ -3,6 +3,9 @@ package swerve.mixins.client;
 import com.llamalad7.mixinextras.injector.ModifyReturnValue;
 
 import swerve.utils.render.spatial.SpatialAvatar;
+import swerve.Swerve;
+import swerve.managers.ModuleManager;
+import swerve.modules.impl.movement.ElytraFlight;
 
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
@@ -37,6 +40,20 @@ public abstract class MixinLocalPlayer {
 
     @Unique
     private float swerve$yBobBefore;
+
+    // Adapted from AlphaDLC/src/main/java/zov/alphadlc/mixin/ClientPlayerEntityMixin.java
+    @Inject(method = "tick", at = @At("HEAD"))
+    private void swerve$elytraPlayerUpdate(CallbackInfo ci) {
+        ElytraFlight flight = ModuleManager.get(ElytraFlight.class);
+        if (flight != null && flight.isEnable()) {
+            try {
+                flight.onPlayerUpdate();
+            } catch (Exception exception) {
+                Swerve.LOGGER.error("Module 'ElytraFlight' failed during player update", exception);
+                flight.setEnabled(false);
+            }
+        }
+    }
 
     @Inject(method = "serverAiStep", at = @At("HEAD"))
     private void swerve$spatialCaptureBob(CallbackInfo ci) {
