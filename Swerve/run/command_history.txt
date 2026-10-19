@@ -1,50 +1,50 @@
-/summon minecraft:iron_golem
-/gamemode survival
-/summon minecraft:iron_golem
-/summon minecraft:zombie
-/give Player690 minecraft:potion
-/gamemode creative
-/effect clear
-/gamemode survival
-/effect clear
-/kill @e
-/gamemode creative
-/gamemode survival
-/effect clear
-/gamemode creative
-/gamemode survival
-/effect clear
-/lwd
-/l wd
-/give Player151 minecraft:netherite_sword
-/reg wd
-/gamemode creative
-/reg wd
-/hyb
-/hub
-/spawn
-/l wd
-/m _SyXaRiK
-/m _SyXaRiK q bratek
-/m _SyXaRiK gost
-/m _SyXaRiK nado bota?
-/m _SyXaRiK забыл кае включать...
-/m _SyXaRiK а?..
-/m _SyXaRiK вспаминаю
-/m _SyXaRiK плаген для работы удалил случайн
-/m _SyXaRiK
-/m _SyXaRiK все?
-/m _SyXaRiK
-/m _SyXaRiK все?
-/m _SyXaRiK .
-/m _SyXaRiK
-/m _SyXaRiK n
-/spawn
-/m _SyXaRiK n
-/l wd
-/shop
-/l wd
+/statistics _SyXaRiK
+/server surv-delta
+/statistics _SyXaRiK
+/server surv-gamma
+/statistics _SyXaRiK
+/server surv-lambda
+/statistics _SyXaRiK
+/server surv-beta
+/statistics _SyXaRiK
+/server surv-omega
+/statistics _SyXaRiK
+/server surv-alpha
+/statistics _SyXaRiK
+/server surv-sigma
+/statistics _SyXaRiK
 /shop
 /spawn
-/scale 0.5
+/rtp
 /shop
+/rtp
+/l wd
+/shop
+/casino
+/spawn
+/pay Fall66 125000000
+/rtp
+/spawn
+/shop
+/rtp
+/shop
+/spawn
+/pay DJON_26 100000000
+/pay Fall66 10000000
+/pay JonKu 30000000
+/pay Fall66 10000000
+/pay serza 50000000
+/pay JonKu 100000000
+/pay nastiasose 44000000
+/pay JonKu 1000000000
+/pay JonKu 100000000
+/l wd
+/m JonKu тай гм плс
+/m JonKu ат души
+/rtp
+/l wd
+/spawn
+/shop
+/pay Fall66 17000000
+/pay Fall66 53000000
+/pay ERLLINE 80000000

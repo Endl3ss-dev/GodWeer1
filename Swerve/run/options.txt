@@ -23,7 +23,7 @@ narrator:0
 particles:2
 reducedDebugInfo:false
 renderClouds:"false"
-renderDistance:2
+renderDistance:5
 simulationDistance:5
 screenEffectScale:0.0
 soundDevice:""
@@ -56,7 +56,7 @@ incompatibleResourcePacks:[]
 lastServer:mc.hypemc.pro
 lang:en_us
 chatVisibility:0
-chatOpacity:0.2323943661971831
+chatOpacity:0.15845070422535212
 chatLineSpacing:0.0
 textBackgroundOpacity:0.0
 backgroundForChatOnly:true
@@ -65,7 +65,7 @@ advancedItemTooltips:false
 pauseOnLostFocus:true
 overrideWidth:0
 overrideHeight:0
-chatHeightFocused:0.38028169014084506
+chatHeightFocused:0.27816901408450706
 chatDelay:0.0
 chatHeightUnfocused:0.5035211267605634
 chatScale:1.0
@@ -101,13 +101,13 @@ key_key.sprint:key.keyboard.left.shift
 key_key.drop:key.keyboard.q
 key_key.inventory:key.keyboard.e
 key_key.chat:key.keyboard.delete
-key_key.playerlist:key.keyboard.delete
+key_key.playerlist:key.keyboard.tab
 key_key.pickItem:key.mouse.middle
 key_key.command:key.keyboard.slash
 key_key.socialInteractions:key.keyboard.p
 key_key.screenshot:key.keyboard.f2
-key_key.togglePerspective:key.keyboard.tab
-key_key.smoothCamera:key.keyboard.z
+key_key.togglePerspective:key.keyboard.z
+key_key.smoothCamera:key.keyboard.unknown
 key_key.fullscreen:key.keyboard.f11
 key_key.spectatorOutlines:key.keyboard.unknown
 key_key.swapOffhand:key.keyboard.f
@@ -123,7 +123,7 @@ key_key.hotbar.6:key.keyboard.6
 key_key.hotbar.7:key.keyboard.7
 key_key.hotbar.8:key.keyboard.8
 key_key.hotbar.9:key.keyboard.9
-soundCategory_master:0.0
+soundCategory_master:1.0
 soundCategory_music:0.0
 soundCategory_record:1.0
 soundCategory_weather:1.0

@@ -1,10 +1,5 @@
-<<<<<<< Updated upstream
-[16:03:12] [main/INFO] (FabricLoader/GameProvider) Loading Minecraft 1.21.4 with Fabric Loader 0.19.3
-[16:03:14] [main/INFO] (FabricLoader) Loading 55 mods:
-=======
-[16:40:18] [main/INFO] (FabricLoader/GameProvider) Loading Minecraft 1.21.4 with Fabric Loader 0.19.3
-[16:40:18] [main/INFO] (FabricLoader) Loading 55 mods:
->>>>>>> Stashed changes
+[19:11:19] [main/INFO] (FabricLoader/GameProvider) Loading Minecraft 1.21.4 with Fabric Loader 0.19.3
+[19:11:21] [main/INFO] (FabricLoader) Loading 55 mods:
 	- fabric-api 0.119.4+1.21.4
 	- fabric-api-base 0.4.54+b47eab6b04
 	- fabric-api-lookup-api-v1 1.6.86+b1caf1e904
@@ -60,629 +55,703 @@
 	- minecraft 1.21.4
 	- mixinextras 0.5.4
 	- swerve 0.1
-<<<<<<< Updated upstream
-[16:03:16] [main/INFO] (FabricLoader/Mixin) SpongePowered MIXIN Subsystem Version=0.8.7 Source=file:/C:/Users/User/.gradle/caches/modules-2/files-2.1/net.fabricmc/sponge-mixin/0.17.3+mixin.0.8.7/41c4a3984a80f4679e759fb9f495587acc5cdac7/sponge-mixin-0.17.3+mixin.0.8.7.jar Service=Knot/Fabric Env=CLIENT
-[16:03:17] [main/INFO] (FabricLoader/Mixin) Loaded Fabric development mappings for mixin remapper!
-[16:03:17] [main/INFO] (FabricLoader/Mixin) Compatibility level set to JAVA_21
-[16:03:31] [main/INFO] (FabricLoader/MixinExtras|Service) Initializing MixinExtras via com.llamalad7.mixinextras.service.MixinExtrasServiceImpl(version=0.5.4).
-[16:03:36] [Datafixer Bootstrap/INFO] (Minecraft) 243 Datafixer optimizations took 2702 milliseconds
-[16:03:56] [Render thread/INFO] (Minecraft) Environment: Environment[sessionHost=https://sessionserver.mojang.com, servicesHost=https://api.minecraftservices.com, name=PROD]
-[16:03:57] [Render thread/INFO] (Minecraft) Setting user: SwerveClientTest
-[16:03:59] [Render thread/INFO] (Swerve) Swerve v0.1 loaded in 760 ms
-[16:03:59] [Render thread/INFO] (Indigo) [Indigo] Registering Indigo renderer!
-[16:04:01] [Render thread/INFO] (Minecraft) Backend library: LWJGL version 3.3.3-snapshot
-[16:04:06] [Render thread/INFO] (Minecraft) Reloading ResourceManager: vanilla, fabric, fabric-api, fabric-api-base, fabric-api-lookup-api-v1, fabric-biome-api-v1, fabric-block-api-v1, fabric-block-view-api-v2, fabric-blockrenderlayer-v1, fabric-client-gametest-api-v1, fabric-client-tags-api-v1, fabric-command-api-v1, fabric-command-api-v2, fabric-commands-v0, fabric-content-registries-v0, fabric-convention-tags-v1, fabric-convention-tags-v2, fabric-crash-report-info-v1, fabric-data-attachment-api-v1, fabric-data-generation-api-v1, fabric-dimensions-v1, fabric-entity-events-v1, fabric-events-interaction-v0, fabric-game-rule-api-v1, fabric-gametest-api-v1, fabric-item-api-v1, fabric-item-group-api-v1, fabric-key-binding-api-v1, fabric-keybindings-v0, fabric-lifecycle-events-v1, fabric-loot-api-v2, fabric-loot-api-v3, fabric-message-api-v1, fabric-model-loading-api-v1, fabric-networking-api-v1, fabric-object-builder-api-v1, fabric-particles-v1, fabric-recipe-api-v1, fabric-registry-sync-v0, fabric-renderer-api-v1, fabric-renderer-indigo, fabric-rendering-data-attachment-v1, fabric-rendering-fluids-v1, fabric-rendering-v1, fabric-resource-conditions-api-v1, fabric-resource-loader-v0, fabric-screen-api-v1, fabric-screen-handler-api-v1, fabric-sound-api-v1, fabric-tag-api-v1, fabric-transfer-api-v1, fabric-transitive-access-wideners-v1, fabricloader, swerve
-[16:04:08] [Worker-Main-1/INFO] (Minecraft) Found unifont_all_no_pua-16.0.01.hex, loading
-[16:04:08] [Worker-Main-1/INFO] (Minecraft) Found unifont_jp_patch-16.0.01.hex, loading
-[16:04:14] [Render thread/INFO] (Minecraft) OpenAL initialized on device OpenAL Soft on Динамики (Realtek High Definition Audio)
-[16:04:14] [Render thread/INFO] (Minecraft) Sound engine started
-[16:04:15] [Render thread/INFO] (Minecraft) Created: 1024x512x0 minecraft:textures/atlas/blocks.png-atlas
-[16:04:15] [Render thread/INFO] (Minecraft) Created: 256x256x0 minecraft:textures/atlas/signs.png-atlas
-[16:04:15] [Render thread/INFO] (Minecraft) Created: 512x512x0 minecraft:textures/atlas/banner_patterns.png-atlas
-[16:04:15] [Render thread/INFO] (Minecraft) Created: 512x512x0 minecraft:textures/atlas/shield_patterns.png-atlas
-[16:04:15] [Render thread/INFO] (Minecraft) Created: 2048x1024x0 minecraft:textures/atlas/armor_trims.png-atlas
-[16:04:15] [Render thread/INFO] (Minecraft) Created: 256x256x0 minecraft:textures/atlas/chest.png-atlas
-[16:04:15] [Render thread/INFO] (Minecraft) Created: 128x64x0 minecraft:textures/atlas/decorated_pot.png-atlas
-[16:04:15] [Render thread/INFO] (Minecraft) Created: 512x256x0 minecraft:textures/atlas/beds.png-atlas
-[16:04:15] [Render thread/INFO] (Minecraft) Created: 512x256x0 minecraft:textures/atlas/shulker_boxes.png-atlas
-[16:04:15] [Render thread/INFO] (Minecraft) Created: 64x64x0 minecraft:textures/atlas/map_decorations.png-atlas
-[16:04:15] [Render thread/INFO] (Minecraft) Created: 512x256x0 minecraft:textures/atlas/particles.png-atlas
-[16:04:15] [Render thread/INFO] (Minecraft) Created: 512x256x0 minecraft:textures/atlas/paintings.png-atlas
-[16:04:15] [Render thread/INFO] (Minecraft) Created: 256x128x0 minecraft:textures/atlas/mob_effects.png-atlas
-[16:04:15] [Render thread/INFO] (Minecraft) Created: 1024x512x0 minecraft:textures/atlas/gui.png-atlas
-[16:04:23] [Render thread/INFO] (Minecraft) Connecting to mc.hypemc.pro, 25565
-[16:04:28] [Render thread/INFO] (Minecraft) Connecting to mc.hypemc.pro, 25565
-[16:04:31] [Render thread/INFO] (Minecraft) Connecting to mc.hypemc.pro, 25565
-[16:04:33] [Render thread/INFO] (Minecraft) [System] [CHAT] ▏ Вы успешно авторизированы!
-[16:04:33] [Render thread/INFO] (Minecraft) [System] [CHAT] [*] Выбери сервер для игры используя порталы или компас.
-[16:04:34] [Render thread/INFO] (Minecraft) Loaded 23 advancements
-[16:04:36] [Render thread/INFO] (Minecraft) [System] [CHAT] Здесь нельзя использовать чат!
-[16:04:38] [Render thread/INFO] (Minecraft) [System] [CHAT] [*] Выбери сервер для игры используя порталы или компас.
-[16:04:43] [Render thread/INFO] (Minecraft) [System] [CHAT] [*] Выбери сервер для игры используя порталы или компас.
-[16:04:49] [Render thread/INFO] (Minecraft) [System] [CHAT] [*] Выбери сервер для игры используя порталы или компас.
-[16:04:53] [Render thread/INFO] (Minecraft) [System] [CHAT] [*] Выбери сервер для игры используя порталы или компас.
-[16:04:58] [Render thread/INFO] (Minecraft) [System] [CHAT] [*] Выбери сервер для игры используя порталы или компас.
-[16:04:59] [Render thread/INFO] (Minecraft) [System] [CHAT] Здесь нельзя использовать чат!
-[16:05:03] [Render thread/INFO] (Minecraft) [System] [CHAT] Здесь нельзя использовать чат!
-[16:05:03] [Render thread/INFO] (Minecraft) [System] [CHAT] [*] Выбери сервер для игры используя порталы или компас.
-[16:05:04] [Render thread/INFO] (Minecraft) [System] [CHAT] Здесь нельзя использовать чат!
-[16:05:06] [Render thread/INFO] (Minecraft) [System] [CHAT] Здесь нельзя использовать чат!
-[16:05:07] [Render thread/INFO] (Minecraft) [System] [CHAT] Здесь нельзя использовать чат!
-[16:05:08] [Render thread/INFO] (Minecraft) [System] [CHAT] [*] Выбери сервер для игры используя порталы или компас.
-[16:05:14] [Render thread/INFO] (Minecraft) [System] [CHAT] [*] Выбери сервер для игры используя порталы или компас.
-[16:05:15] [Render thread/INFO] (Minecraft) [System] [CHAT] ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
-[16:05:15] [Render thread/INFO] (Minecraft) [System] [CHAT]           Добро пожаловать на сервер HypeMC
-[16:05:15] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:05:15] [Render thread/INFO] (Minecraft) [System] [CHAT]       Возможности и описание доната - /donate
-[16:05:15] [Render thread/INFO] (Minecraft) [System] [CHAT]       Покупка доната на сайте: www.hypemc.pro
-[16:05:15] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:05:15] [Render thread/INFO] (Minecraft) [System] [CHAT]      Донат навсегда и не пропадает после вайпа!
-[16:05:15] [Render thread/INFO] (Minecraft) [System] [CHAT] ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
-[16:05:15] [Render thread/INFO] (Minecraft) Loaded 173 advancements
-[16:05:20] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 30 секунд весь мусор с карты будет удален!
-[16:05:30] [Render thread/INFO] (Minecraft) [System] [CHAT] › С вашего баланса снято $100
-[16:05:30] [Render thread/INFO] (Minecraft) [System] [CHAT] › С вашего баланса снято $100
-[16:05:34] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 15 секунд весь мусор с карты будет удален!
-[16:05:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:05:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Хочешь получить бесплатные подарки?
-[16:05:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Введи команду /free и забери свой приз!
-[16:05:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:05:44] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 5 секунд весь мусор с карты будет удален!
-[16:05:50] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » С карты было очищено 76 мусора!
-[16:05:59] [Render thread/INFO] (Minecraft) [System] [CHAT] › Подождите 1.49 сек. перед отправкой сообщения!
-[16:06:06] [Render thread/INFO] (Minecraft) [System] [CHAT] › Подождите 0.23 сек. перед отправкой сообщения!
-[16:06:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:06:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Купить донат на нашем сайте можно через:
-[16:06:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ СБП, T-Pay и любая банковская карта!
-[16:06:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната без комиссии на сайте - www.hypemc.pro
-[16:06:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:06:11] [Render thread/INFO] (Minecraft) [System] [CHAT]                                                        \n        ЧАТ-ИГРА\n  \n  Ответь на вопрос: 30 * 93 = ?\n  Награда: 3500$\n                                                       \n
-[16:06:16] [Render thread/INFO] (Minecraft) [System] [CHAT] Hey! Sorry, but you can't PvP here.
-[16:06:23] [Render thread/INFO] (Minecraft) [System] [CHAT] Spleef » На этой арене уже идет игра!
-[16:06:26] [Render thread/INFO] (Minecraft) [System] [CHAT] Spleef » Игрок gg_blox19 победил на арене spawn!
-[16:06:38] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓛ «пенгвин» [Владелец] kostiknuhrugbro ⇨ ты хто
-[16:06:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:06:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Хочешь банить нарушителей навсегда и по IP?
-[16:06:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупай донат [Консоль] всего за 8749 329 руб
-[16:06:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ У него есть: консоль, все команды WorldEdit и многое другое!
-[16:06:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:06:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
-[16:06:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:06:58] [Render thread/INFO] (Minecraft) [System] [CHAT] Вы находитесь на спавне!
-[16:06:58] [Render thread/INFO] (Minecraft) [System] [CHAT] Напишите /rtp чтобы начать выживать.
-[16:07:07] [Render thread/WARN] (Minecraft) Ignoring player info update for unknown player 054e83cb-e713-3906-8bc2-21b74b91a9aa ([UPDATE_GAME_MODE])
-[16:07:07] [Render thread/WARN] (Minecraft) Ignoring player info update for unknown player 054e83cb-e713-3906-8bc2-21b74b91a9aa ([UPDATE_GAME_MODE])
-[16:07:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:07:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Хотите купить донат, но сомневаетесь?
-[16:07:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Не бойтесь, мы не обманываем!
-[16:07:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Наш проект одобрен АО «Т-Банк»
-[16:07:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:07:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
-[16:07:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:07:11] [Render thread/INFO] (Minecraft) [System] [CHAT]                                                        \n        ЧАТ-ИГРА\n  \n  Никто не смог ответить на вопрос!\n  Правильный ответ: 2790\n                                                       \n
-[16:07:21] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 30 секунд весь мусор с карты будет удален!
-[16:07:36] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 15 секунд весь мусор с карты будет удален!
-[16:07:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:07:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Не знаешь какие возможности есть у доната?
-[16:07:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Напиши команду /donate и стань крутым!
-[16:07:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
-[16:07:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:07:38] [Render thread/INFO] (Minecraft) [System] [CHAT] Spleef » Игрок got356 победил на арене spawn!
-[16:07:46] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 5 секунд весь мусор с карты будет удален!
-[16:07:51] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » С карты было очищено 47 мусора!
-[16:08:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:08:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Все донат-привилегии покупаются навсегда,
-[16:08:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ выдаются моментально и на все сервера!
-[16:08:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
-[16:08:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:08:34] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶  soundmore vakutov старый бог здесь
-[16:08:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:08:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Только СЕГОДНЯ, мы увеличилиꜛ шансы +100% в кейсах!
-[16:08:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупая кейсы на нашем сервере, вы всегда окупитесь!
-[16:08:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:08:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка кейсов на сайте - www.hypemc.pro
-[16:08:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:08:49] [Render thread/INFO] (Minecraft) [System] [CHAT] Spleef » Игрок Pazl победил на арене spawn!
-[16:09:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:09:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Обвал цен! Огромные скидки до -90%!
-[16:09:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ [Создатель] (/ban, //set, доступ к приватам) всего за 1979 149 руб
-[16:09:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ [Консоль] (консоль, /banip, полный WorldEdit) всего за 2499 349 руб
-[16:09:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ [ЦЕЗАРЬ] (100% команд, /pex, /op) всего за 12479 479 руб
-[16:09:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:09:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
-[16:09:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:09:11] [Render thread/INFO] (Minecraft) [System] [CHAT]                                                        \n        ЧАТ-ИГРА\n  \n  Ответь на вопрос: 894 - 189 = ?\n  Награда: 700$\n                                                       \n
-[16:09:22] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 30 секунд весь мусор с карты будет удален!
-[16:09:37] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 15 секунд весь мусор с карты будет удален!
-[16:09:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:09:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Нашел читера?
-[16:09:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Подай на него жалобу - /report
-[16:09:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:09:47] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 5 секунд весь мусор с карты будет удален!
-[16:09:47] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓖ [Креатив] akva ⇨ All кто возьмет в клан?
-[16:09:51] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » С карты было очищено 104 мусора!
-[16:09:57] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓛ Banitor TERRA_RUN ⇨ -715
-[16:10:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:10:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Наша группа в VK - vk.com/hypemc
-[16:10:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Наш чат в VK - vk.cc/cSmvKz
-[16:10:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Наш канал в Telegram - telegram.me/hypemc
-[16:10:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Наш чат в Telegram - telegram.me/hypemc_chat
-[16:10:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:10:10] [Render thread/INFO] (Minecraft) [System] [CHAT] › Игрок Wayfs покинул игру во время PvP и был наказан!
-[16:10:11] [Render thread/INFO] (Minecraft) [System] [CHAT]                                                        \n        ЧАТ-ИГРА\n  \n  Никто не смог ответить на вопрос!\n  Правильный ответ: 705\n                                                       \n
-[16:10:13] [Render thread/INFO] (Minecraft) [System] [CHAT] › Подождите 1.45 сек. перед отправкой сообщения!
-[16:10:16] [Render thread/INFO] (Minecraft) [System] [CHAT] › Подождите 1.49 сек. перед отправкой сообщения!
-[16:10:19] [Render thread/INFO] (Minecraft) [System] [CHAT] › Подождите 1.5 сек. перед отправкой сообщения!
-[16:10:22] [Render thread/INFO] (Minecraft) [System] [CHAT] › Подождите 1.46 сек. перед отправкой сообщения!
-[16:10:27] [Render thread/INFO] (Minecraft) [System] [CHAT] Вы находитесь на спавне!
-[16:10:27] [Render thread/INFO] (Minecraft) [System] [CHAT] Напишите /rtp чтобы начать выживать.
-[16:10:38] [Render thread/INFO] (Minecraft) [System] [CHAT] › Подождите 1.47 сек. перед отправкой сообщения!
-[16:10:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:10:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Хочешь безлимитный доступ ко всем регионам?
-[16:10:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Тогда донат [Хелпер] всего за 1979 руб для тебя!
-[16:10:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
-[16:10:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:10:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶ [Цезарь] Fall66 joined the server
-[16:10:41] [Render thread/INFO] (Minecraft) [System] [CHAT] › Подождите 1.45 сек. перед отправкой сообщения!
-[16:10:44] [Render thread/INFO] (Minecraft) [System] [CHAT] › Подождите 1.44 сек. перед отправкой сообщения!
-[16:10:47] [Render thread/INFO] (Minecraft) [System] [CHAT] › Подождите 1.48 сек. перед отправкой сообщения!
-[16:10:50] [Render thread/INFO] (Minecraft) [System] [CHAT] › Подождите 1.48 сек. перед отправкой сообщения!
-[16:10:58] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶ [Игрок] Myxa_2 бледный.
-[16:11:01] [Render thread/INFO] (Minecraft) [System] [CHAT] Spleef » Игрок SwerveClientTest подключился к игре! (4/12)
-[16:11:04] [Render thread/INFO] (Minecraft) [System] [CHAT] Spleef » До запуска игры 15 секунд!
-[16:11:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:11:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Донат [ＨＹＰＥ] всего за 9479 4979 руб
-[16:11:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Может строить на спавне и банить навсегда
-[16:11:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка на нашем сайте - www.hypemc.pro
-[16:11:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:11:09] [Render thread/INFO] (Minecraft) [System] [CHAT] Spleef » До запуска игры 10 секунд!
-[16:11:10] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓖ [Креатив] akva ⇨ All кто возьмет в клан?
-[16:11:14] [Render thread/INFO] (Minecraft) [System] [CHAT] › Игрок beatiful_boy покинул игру во время PvP и был наказан!
-[16:11:14] [Render thread/INFO] (Minecraft) [System] [CHAT] Spleef » До запуска игры 5 секунд!
-[16:11:16] [Render thread/INFO] (Minecraft) [System] [CHAT] Spleef » До запуска игры 4 секунд!
-[16:11:16] [Render thread/INFO] (Minecraft) [System] [CHAT] Spleef » До запуска игры 3 секунд!
-[16:11:18] [Render thread/INFO] (Minecraft) [System] [CHAT] Spleef » До запуска игры 2 секунд!
-[16:11:18] [Render thread/INFO] (Minecraft) [System] [CHAT] Spleef » До запуска игры 1 секунд!
-[16:11:19] [Render thread/INFO] (Minecraft) [System] [CHAT] Spleef » Игрок sahas564 подключился к игре! (5/12)
-[16:11:22] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 30 секунд весь мусор с карты будет удален!
-[16:11:26] [Render thread/INFO] (Minecraft) [System] [CHAT] Spleef » Игрок Mr_Cat8 проиграл, осталось 4 игроков!
-[16:11:32] [Render thread/INFO] (Minecraft) Loaded 175 advancements
-[16:11:34] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓖ [Креатив] akva ⇨ All кто возьмет в клан?
-[16:11:38] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 15 секунд весь мусор с карты будет удален!
-[16:11:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:11:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Донат [ＳＴＡＦＦ] всего за 9479 руб
-[16:11:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Может //set в чужих регионах
-[16:11:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ И имеет доступ к RCON боту (VK/Telegram)
-[16:11:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:11:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка на нашем сайте - www.hypemc.pro
-[16:11:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:11:43] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶ ЛЮБЛЮ ОРАНЖЕВЫЙ Qweasy_Spyke кто я такой ?
-[16:11:43] [Render thread/INFO] (Minecraft) [System] [CHAT] Spleef » Вы проиграли, повезет в следующий раз!
-[16:11:47] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 5 секунд весь мусор с карты будет удален!
-[16:11:51] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓖ [Креатив] akva ⇨ All кто возьмет в клан?
-[16:11:53] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » С карты было очищено 112 мусора!
-[16:12:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:12:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Только сегодня [ЦЕЗАРЬ] + /OP всего за 479 рублей
-[16:12:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Только сегодня [ЦЕЗАРЬ] + /OP всего за 479 рублей
-[16:12:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Только сегодня [ЦЕЗАРЬ] + /OP всего за 479 рублей
-[16:12:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:12:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
-[16:12:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:12:11] [Render thread/INFO] (Minecraft) [System] [CHAT]                                                        \n        ЧАТ-ИГРА\n  \n  Ответь на вопрос: Какая звезда ближе всего к Земле?\n  Награда: 10000$\n                                                       \n
-[16:12:13] [Render thread/INFO] (Minecraft) [System] [CHAT] Spleef » Игрок gg_blox19 победил на арене spawn!
-[16:12:14] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶ Космическая KoCmiK_vl the eclipse starts
-[16:12:16] [Render thread/INFO] (Minecraft) [System] [CHAT]                                                        \n        ЧАТ-ИГРА\n  \n  Выиграл игрок: noobas853\n  Правильный ответ: Солнце\n                                                       \n
-[16:12:18] [Render thread/INFO] (Minecraft) [System] [CHAT]   
-[16:12:18] [Render thread/INFO] (Minecraft) [System] [CHAT] ▏ Вы заработали $1,000 за 10 минут игры.
-[16:12:18] [Render thread/INFO] (Minecraft) [System] [CHAT] ▏ Донат [Цезарь] получает по $500,000 (каждые 10 минут)
-[16:12:18] [Render thread/INFO] (Minecraft) [System] [CHAT]   
-[16:12:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:12:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Нужен креатив с бессмертием и бесконечными ресурсами?
-[16:12:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Но у тебя очень мало денег?
-[16:12:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Тогда купи донат [Креатив] всего за 249 15 руб!
-[16:12:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Ты не пожалеешь! А заодно убедишься, что мы не обманываем!
-[16:12:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:12:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка на нашем сайте - www.hypemc.pro
-[16:12:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:12:47] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶ Хелпер Phantom25341  qq al */Xd ?
-[16:13:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:13:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Тебя загриферили?
-[16:13:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Купи [Консоль] за 8749 329 руб и отомсти!
-[16:13:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Ты сможешь банить игроков навсегда по IP,
-[16:13:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ получишь КОНСОЛЬ и 100% команд!
-[16:13:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:13:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка на нашем сайте - www.hypemc.pro
-[16:13:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:13:18] [Render thread/INFO] (Minecraft) [System] [CHAT] › Подождите 1.43 сек. перед отправкой сообщения!
-[16:13:20] [Render thread/INFO] (Minecraft) [System] [CHAT] › Подождите 1.45 сек. перед отправкой сообщения!
-[16:13:23] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 30 секунд весь мусор с карты будет удален!
-[16:13:34] [Render thread/INFO] (Minecraft) [System] [CHAT] Spleef » Игрок Qweasy_Spyke победил на арене spawn!
-[16:13:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:13:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Друзья хвастаются донатом? Ты тоже хочешь быть ТОП игроком?
-[16:13:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Специально для тебя мы сделали скидки -90%!
-[16:13:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Донат [Консоль] всего за 8749 329 руб!
-[16:13:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:13:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка на нашем сайте - www.hypemc.pro
-[16:13:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:13:39] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 15 секунд весь мусор с карты будет удален!
-[16:13:49] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 5 секунд весь мусор с карты будет удален!
-[16:13:54] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » С карты было очищено 197 мусора!
-[16:14:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:14:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Донат покупать только на сайте: HypeMC.pro « нажми, чтобы открыть
-[16:14:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Донат покупать только на сайте: HypeMC.pro « нажми, чтобы открыть
-[16:14:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Донат покупать только на сайте: HypeMC.pro « нажми, чтобы открыть
-[16:14:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:14:16] [Render thread/INFO] (Minecraft) [System] [CHAT]                                                        \n        ЧАТ-ИГРА\n  \n  Ответь на вопрос: Сколько цветов в радуге?\n  Награда: 10000$\n                                                       \n
-[16:14:20] [Render thread/INFO] (Minecraft) [System] [CHAT]                                                        \n        ЧАТ-ИГРА\n  \n  Выиграл игрок: bacek\n  Правильный ответ: 7\n                                                       \n
-[16:14:27] [Render thread/INFO] (Minecraft) [System] [CHAT] Spleef » Игрок Mr_Cat8 победил на арене spawn!
-[16:14:32] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶ [Цезарь] DyadyaLesha2013 зашел на сервер!
-[16:14:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:14:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ От доната [Создатель] всего за 1979 149 руб
-[16:14:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Ты сможешь сетать топориком: //set, //walls, //replace
-[16:14:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка на нашем сайте - www.hypemc.pro
-[16:14:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:15:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:15:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Только сегодня, у тебя есть возможность купить донат [Консоль]
-[16:15:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ У него есть: 100% команд, доступ к чужим приватам, бан по IP - /banip
-[16:15:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Цена: 8749 329 рублей (навсегда) Покупка на сайте - www.hypemc.pro
-[16:15:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:15:16] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓛ Banitor TERRA_RUN ⇨ б
-[16:15:25] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 30 секунд весь мусор с карты будет удален!
-[16:15:25] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓛ Banitor TERRA_RUN ⇨ а
-[16:15:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:15:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Хочешь получить все команды и опку?
-[16:15:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Донат [ЦЕЗАРЬ] всего за 12479 479 руб может всё!
-[16:15:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
-[16:15:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:15:40] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 15 секунд весь мусор с карты будет удален!
-[16:15:45] [Render thread/INFO] (Minecraft) [System] [CHAT] Spleef » Игрок artekor победил на арене spawn!
-[16:15:50] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 5 секунд весь мусор с карты будет удален!
-[16:15:55] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » С карты было очищено 76 мусора!
-[16:16:07] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶ дмитрий daphap no you're just like me
-[16:16:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:16:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Хочешь быть в курсе всех новостей сервера?
-[16:16:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Подпишись на нашу группу ВКонтакте: vk.com/hypemc
-[16:16:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Подпишись на наш паблик в Telegram: telegram.me/hypemc
-[16:16:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:16:20] [Render thread/INFO] (Minecraft) [System] [CHAT]                                                        \n        ЧАТ-ИГРА\n  \n  Ответь на вопрос: 694 - 24 = ?\n  Награда: 8600$\n                                                       \n
-[16:16:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:16:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Тебя все обижают?
-[16:16:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Купи любой донат и докажи свою крутость!
-[16:16:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
-[16:16:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:16:47] [Render thread/INFO] (Minecraft) [System] [CHAT]                                                        \n        ЧАТ-ИГРА\n  \n  Выиграл игрок: 11111\n  Правильный ответ: 670\n                                                       \n
-[16:16:48] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶ ЛЮБЛЮ ОРАНЖЕВЫЙ Qweasy_Spyke кто я такой ?
-[16:16:57] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶  soundmore vakutov старый бог здесь
-[16:17:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:17:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Хочешь выдавать донат игрокам?
-[16:17:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупай донат [Сервер] всего за 12499 979 руб
-[16:17:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ У него есть: 100% команд, голограммы /dholo и другое!
-[16:17:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:17:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
-[16:17:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:17:15] [Render thread/INFO] (Minecraft) [System] [CHAT] Spleef » Игрок Mr_Cat8 победил на арене spawn!
-[16:17:26] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 30 секунд весь мусор с карты будет удален!
-[16:17:36] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓛ «JopaSrangiki» [Консоль] BADRAGYMBA ⇨ кто хочет тим или в клан тп ко мне
-[16:17:36] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶ Love_SyXaRiK savvaliy Зашёл ради _SyXaRiK
-[16:17:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:17:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Тебе нужен доступ в любой приват?
-[16:17:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупай донат [Создатель] всего за 1979 149 руб
-[16:17:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ У него есть: топорик //set, баны /ban, выдать /fly и другое!
-[16:17:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:17:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
-[16:17:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:17:41] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 15 секунд весь мусор с карты будет удален!
-[16:17:49] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓛ «Redan» [Креатив] ZeeMan248 ⇨ хихи
-[16:17:51] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 5 секунд весь мусор с карты будет удален!
-[16:17:56] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » С карты было очищено 142 мусора!
-[16:17:59] [Render thread/INFO] (Minecraft) [System] [CHAT] › Подождите 0.05 сек. перед отправкой сообщения!
-[16:18:02] [Render thread/INFO] (Minecraft) [System] [CHAT] › Подождите 1.51 сек. перед отправкой сообщения!
-[16:18:05] [Render thread/INFO] (Minecraft) [System] [CHAT] › Подождите 1.49 сек. перед отправкой сообщения!
-[16:18:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:18:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ На нашем сайте есть оплата с мобильного телефона
-[16:18:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Вам не нужно будет создавать свой кошелек!
-[16:18:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Купить донат это легко! Покупка на сайте: www.hypemc.pro
-[16:18:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:18:09] [Render thread/INFO] (Minecraft) [System] [CHAT] › Подождите 1.48 сек. перед отправкой сообщения!
-[16:18:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:18:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Хочешь получить бесплатные подарки?
-[16:18:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Введи команду /free и забери свой приз!
-[16:18:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:18:43] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶ . Martini_tester bish bash bosh давай ебошь
-[16:18:46] [Render thread/INFO] (Minecraft) [System] [CHAT]                                                        \n        ЧАТ-ИГРА\n  \n  Ответь на вопрос: 592 - 936 = ?\n  Награда: 1200$\n                                                       \n
-[16:19:07] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓛ «dryzia» [Игрок] aaaa ⇨ clan home
-[16:19:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:19:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Купить донат на нашем сайте можно через:
-[16:19:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ СБП, T-Pay и любая банковская карта!
-[16:19:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната без комиссии на сайте - www.hypemc.pro
-[16:19:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:19:27] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 30 секунд весь мусор с карты будет удален!
-[16:19:35] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶ /|[Гл.Трапер]|\ ABOBABOSS зашел ради ufheidhighbd
-[16:19:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:19:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Хочешь банить нарушителей навсегда и по IP?
-[16:19:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупай донат [Консоль] всего за 8749 329 руб
-[16:19:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ У него есть: консоль, все команды WorldEdit и многое другое!
-[16:19:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:19:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
-[16:19:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:19:41] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 15 секунд весь мусор с карты будет удален!
-[16:19:46] [Render thread/INFO] (Minecraft) [System] [CHAT]                                                        \n        ЧАТ-ИГРА\n  \n  Никто не смог ответить на вопрос!\n  Правильный ответ: -344\n                                                       \n
-[16:19:51] [Render thread/INFO] (Minecraft) [System] [CHAT] › Подождите 1.43 сек. перед отправкой сообщения!
-[16:19:52] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 5 секунд весь мусор с карты будет удален!
-[16:19:55] [Render thread/INFO] (Minecraft) [System] [CHAT] › Подождите 1.44 сек. перед отправкой сообщения!
-[16:19:57] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » С карты было очищено 113 мусора!
-[16:20:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:20:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Хотите купить донат, но сомневаетесь?
-[16:20:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Не бойтесь, мы не обманываем!
-[16:20:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Наш проект одобрен АО «Т-Банк»
-[16:20:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:20:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
-[16:20:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:20:16] [Render thread/INFO] (Minecraft) [System] [CHAT] › Подождите 1.47 сек. перед отправкой сообщения!
-[16:20:19] [Render thread/INFO] (Minecraft) [System] [CHAT] › Подождите 1.43 сек. перед отправкой сообщения!
-[16:20:22] [Render thread/INFO] (Minecraft) [System] [CHAT] › Подождите 1.41 сек. перед отправкой сообщения!
-[16:20:25] [Render thread/INFO] (Minecraft) [System] [CHAT] › Подождите 1.45 сек. перед отправкой сообщения!
-[16:20:29] [Render thread/INFO] (Minecraft) [System] [CHAT] › Подождите 1.49 сек. перед отправкой сообщения!
-[16:20:32] [Render thread/INFO] (Minecraft) [System] [CHAT] › Подождите 1.43 сек. перед отправкой сообщения!
-[16:20:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:20:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Не знаешь какие возможности есть у доната?
-[16:20:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Напиши команду /donate и стань крутым!
-[16:20:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
-[16:20:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:20:52] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓛ «dryzia»  soundmore vakutov ⇨ отстaнб земa ну пщ
-[16:21:04] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶ Киллер arseniii279  пришол ради Hype.mc.pro
-[16:21:06] [Render thread/INFO] (Minecraft) [System] [CHAT] › Подождите 1.44 сек. перед отправкой сообщения!
-[16:21:08] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓛ «пенгвин» [Владелец] kostiknuhrugbro ⇨ ааа крыса ты ебаноя с плавками сразу
-[16:21:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:21:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Все донат-привилегии покупаются навсегда,
-[16:21:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ выдаются моментально и на все сервера!
-[16:21:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
-[16:21:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:21:09] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓛ «dryzia»  soundmore vakutov ⇨ отстaнб земa ну пщ
-[16:21:10] [Render thread/INFO] (Minecraft) [System] [CHAT] › Подождите 1.47 сек. перед отправкой сообщения!
-[16:21:13] [Render thread/INFO] (Minecraft) [System] [CHAT] › Подождите 1.51 сек. перед отправкой сообщения!
-[16:21:16] [Render thread/INFO] (Minecraft) [System] [CHAT] › Подождите 1.45 сек. перед отправкой сообщения!
-[16:21:19] [Render thread/INFO] (Minecraft) [System] [CHAT] › Подождите 1.43 сек. перед отправкой сообщения!
-[16:21:27] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 30 секунд весь мусор с карты будет удален!
-[16:21:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:21:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Только СЕГОДНЯ, мы увеличилиꜛ шансы +100% в кейсах!
-[16:21:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупая кейсы на нашем сервере, вы всегда окупитесь!
-[16:21:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:21:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка кейсов на сайте - www.hypemc.pro
-[16:21:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:21:42] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 15 секунд весь мусор с карты будет удален!
-[16:21:46] [Render thread/INFO] (Minecraft) [System] [CHAT]                                                        \n        ЧАТ-ИГРА\n  \n  Ответь на вопрос: Самое твердое вещество у человека?\n  Награда: 10000$\n                                                       \n
-[16:21:49] [Render thread/INFO] (Minecraft) [System] [CHAT] › Игрок Ramzec836 покинул игру во время PvP и был наказан!
-[16:21:53] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 5 секунд весь мусор с карты будет удален!
-[16:21:58] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » С карты было очищено 99 мусора!
-[16:22:05] [Render thread/INFO] (Minecraft) [System] [CHAT]                                                        \n        ЧАТ-ИГРА\n  \n  Выиграл игрок: bacek\n  Правильный ответ: Зуб\n                                                       \n
-[16:22:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:22:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Обвал цен! Огромные скидки до -90%!
-[16:22:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ [Создатель] (/ban, //set, доступ к приватам) всего за 1979 149 руб
-[16:22:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ [Консоль] (консоль, /banip, полный WorldEdit) всего за 2499 349 руб
-[16:22:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ [ЦЕЗАРЬ] (100% команд, /pex, /op) всего за 12479 479 руб
-[16:22:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:22:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
-[16:22:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:22:11] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓛ «Redan» [Креатив] ZeeMan248 ⇨ фу
-[16:22:14] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓛ «dryzia»  soundmore vakutov ⇨ отстaнб земa ну пщ
-[16:22:14] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓛ «dryzia»  soundmore vakutov ⇨ отстaнб земa ну пщ
-[16:22:14] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓛ «dryzia»  soundmore vakutov ⇨ отстaнб земa ну пщ
-[16:22:18] [Render thread/INFO] (Minecraft) [System] [CHAT]   
-[16:22:18] [Render thread/INFO] (Minecraft) [System] [CHAT] ▏ Вы заработали $1,000 за 10 минут игры.
-[16:22:18] [Render thread/INFO] (Minecraft) [System] [CHAT] ▏ Донат [Цезарь] получает по $500,000 (каждые 10 минут)
-[16:22:18] [Render thread/INFO] (Minecraft) [System] [CHAT]   
-[16:22:19] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓛ «Redan» [Креатив] ZeeMan248 ⇨ спам
-[16:22:30] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓛ «PVPSERU» [Лорд] Bigpen3000 ⇨ к хуям
-[16:22:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:22:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Нашел читера?
-[16:22:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Подай на него жалобу - /report
-[16:22:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:22:52] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶ ?<3? vikavos зашла на сервер!
-[16:22:59] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓛ «пенгвин» [Владелец] kostiknuhrugbro ⇨ ааа крыса ты ебаноя с плавками сразу
-[16:23:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:23:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Наша группа в VK - vk.com/hypemc
-[16:23:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Наш чат в VK - vk.cc/cSmvKz
-[16:23:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Наш канал в Telegram - telegram.me/hypemc
-[16:23:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Наш чат в Telegram - telegram.me/hypemc_chat
-[16:23:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:23:16] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶ HELPER YuraDek Подключился к серверу!
-[16:23:17] [Render thread/INFO] (Minecraft) [System] [CHAT] › Подождите 1.51 сек. перед отправкой сообщения!
-[16:23:29] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 30 секунд весь мусор с карты будет удален!
-[16:23:33] [Render thread/INFO] (Minecraft) [System] [CHAT] › Подождите 1.46 сек. перед отправкой сообщения!
-[16:23:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:23:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Хочешь безлимитный доступ ко всем регионам?
-[16:23:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Тогда донат [Хелпер] всего за 1979 руб для тебя!
-[16:23:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
-[16:23:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:23:44] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 15 секунд весь мусор с карты будет удален!
-[16:23:54] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 5 секунд весь мусор с карты будет удален!
-[16:23:59] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » С карты было очищено 154 мусора!
-[16:24:05] [Render thread/INFO] (Minecraft) [System] [CHAT]                                                        \n        ЧАТ-ИГРА\n  \n  Ответь на вопрос: 635 - 926 = ?\n  Награда: 7200$\n                                                       \n
-[16:24:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:24:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Донат [ＨＹＰＥ] всего за 9479 4979 руб
-[16:24:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Может строить на спавне и банить навсегда
-[16:24:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка на нашем сайте - www.hypemc.pro
-[16:24:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:24:27] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶ HELPER YuraDek Подключился к серверу!
-[16:24:28] [Render thread/INFO] (Minecraft) [System] [CHAT] [Объявление] Дорогие игроки сервера HypeMC!Ведётся набор в клан "Вампирчики" кто желает попасть в клан пишите в лс(/msg vikavos) или тепайтесь(/tpa vikavos) всех жду!:3 (пишет: vikavos)
-[16:24:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:24:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Донат [ＳＴＡＦＦ] всего за 9479 руб
-[16:24:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Может //set в чужих регионах
-[16:24:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ И имеет доступ к RCON боту (VK/Telegram)
-[16:24:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:24:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка на нашем сайте - www.hypemc.pro
-[16:24:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:24:39] [Render thread/INFO] (Minecraft) [System] [CHAT] › Игрок Tikhon покинул игру во время PvP и был наказан!
-[16:25:05] [Render thread/INFO] (Minecraft) [System] [CHAT]                                                        \n        ЧАТ-ИГРА\n  \n  Никто не смог ответить на вопрос!\n  Правильный ответ: -291\n                                                       \n
-[16:25:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:25:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Только сегодня [ЦЕЗАРЬ] + /OP всего за 479 рублей
-[16:25:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Только сегодня [ЦЕЗАРЬ] + /OP всего за 479 рублей
-[16:25:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Только сегодня [ЦЕЗАРЬ] + /OP всего за 479 рублей
-[16:25:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:25:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
-[16:25:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:25:30] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 30 секунд весь мусор с карты будет удален!
-[16:25:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:25:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Нужен креатив с бессмертием и бесконечными ресурсами?
-[16:25:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Но у тебя очень мало денег?
-[16:25:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Тогда купи донат [Креатив] всего за 249 15 руб!
-[16:25:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Ты не пожалеешь! А заодно убедишься, что мы не обманываем!
-[16:25:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:25:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка на нашем сайте - www.hypemc.pro
-[16:25:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:25:45] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 15 секунд весь мусор с карты будет удален!
-[16:25:52] [Render thread/INFO] (Minecraft) [System] [CHAT] › Игрок conesatin покинул игру во время PvP и был наказан!
-[16:25:55] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 5 секунд весь мусор с карты будет удален!
-[16:26:00] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » С карты было очищено 85 мусора!
-[16:26:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:26:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Тебя загриферили?
-[16:26:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Купи [Консоль] за 8749 329 руб и отомсти!
-[16:26:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Ты сможешь банить игроков навсегда по IP,
-[16:26:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ получишь КОНСОЛЬ и 100% команд!
-[16:26:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:26:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка на нашем сайте - www.hypemc.pro
-[16:26:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:26:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:26:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Друзья хвастаются донатом? Ты тоже хочешь быть ТОП игроком?
-[16:26:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Специально для тебя мы сделали скидки -90%!
-[16:26:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Донат [Консоль] всего за 8749 329 руб!
-[16:26:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:26:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка на нашем сайте - www.hypemc.pro
-[16:26:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:27:05] [Render thread/INFO] (Minecraft) [System] [CHAT]                                                        \n        ЧАТ-ИГРА\n  \n  Ответь на вопрос: 7 * 71 = ?\n  Награда: 2900$\n                                                       \n
-[16:27:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:27:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Донат покупать только на сайте: HypeMC.pro « нажми, чтобы открыть
-[16:27:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Донат покупать только на сайте: HypeMC.pro « нажми, чтобы открыть
-[16:27:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Донат покупать только на сайте: HypeMC.pro « нажми, чтобы открыть
-[16:27:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:27:31] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 30 секунд весь мусор с карты будет удален!
-[16:27:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:27:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ От доната [Создатель] всего за 1979 149 руб
-[16:27:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Ты сможешь сетать топориком: //set, //walls, //replace
-[16:27:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка на нашем сайте - www.hypemc.pro
-[16:27:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:27:42] [Render thread/INFO] (Minecraft) [System] [CHAT] Spleef » Игрок barasik222 победил на арене spawn!
-[16:27:46] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 15 секунд весь мусор с карты будет удален!
-[16:27:47] [Render thread/INFO] (Minecraft) [System] [CHAT]                                                        \n        ЧАТ-ИГРА\n  \n  Выиграл игрок: PDFf1le\n  Правильный ответ: 497\n                                                       \n
-[16:27:56] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 5 секунд весь мусор с карты будет удален!
-[16:28:01] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » С карты было очищено 72 мусора!
-[16:28:06] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓖ ♥ «Redan» Love_SyXaRiK savvaliy ⇨  кто меня тепехнул
-[16:28:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:28:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Только сегодня, у тебя есть возможность купить донат [Консоль]
-[16:28:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ У него есть: 100% команд, доступ к чужим приватам, бан по IP - /banip
-[16:28:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Цена: 8749 329 рублей (навсегда) Покупка на сайте - www.hypemc.pro
-[16:28:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:28:12] [Render thread/WARN] (Minecraft) Ignoring player info update for unknown player a8fe6e49-b3b0-3da0-ad45-38c1555d8eff ([UPDATE_GAME_MODE])
-[16:28:12] [Render thread/WARN] (Minecraft) Ignoring player info update for unknown player a8fe6e49-b3b0-3da0-ad45-38c1555d8eff ([UPDATE_GAME_MODE])
-[16:28:15] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓖ ♥ [Игрок] CyberViper ⇨ tp kto pvp
-[16:28:26] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓖ ♥ [Игрок] CyberViper ⇨ tp kto pvp
-[16:28:33] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓛ «AAAAAAA» [Админ] Markkk_212320 ⇨ xaxa
-[16:28:37] [Render thread/INFO] (Minecraft) [System] [CHAT] Spleef » Игрок barasik222 победил на арене spawn!
-[16:28:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:28:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Хочешь получить все команды и опку?
-[16:28:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Донат [ЦЕЗАРЬ] всего за 12479 479 руб может всё!
-[16:28:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
-[16:28:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:28:48] [Render thread/INFO] (Minecraft) [System] [CHAT] [Объявление] Дорогие игроки сервера HypeMC!В данный момент проводится набор в клан "Вампирчики" кто желает попасть в клан пишите /msg vikavos или тепайтесь /tpa vikavos всех жду!:3 (пишет: vikavos)
-[16:28:50] [Render thread/INFO] (Minecraft) Stopping!
-=======
-[16:40:19] [main/INFO] (FabricLoader/Mixin) SpongePowered MIXIN Subsystem Version=0.8.7 Source=file:/C:/Users/User/.gradle/caches/modules-2/files-2.1/net.fabricmc/sponge-mixin/0.17.3+mixin.0.8.7/41c4a3984a80f4679e759fb9f495587acc5cdac7/sponge-mixin-0.17.3+mixin.0.8.7.jar Service=Knot/Fabric Env=CLIENT
-[16:40:20] [main/INFO] (FabricLoader/Mixin) Loaded Fabric development mappings for mixin remapper!
-[16:40:20] [main/INFO] (FabricLoader/Mixin) Compatibility level set to JAVA_21
-[16:40:25] [main/INFO] (FabricLoader/MixinExtras|Service) Initializing MixinExtras via com.llamalad7.mixinextras.service.MixinExtrasServiceImpl(version=0.5.4).
-[16:40:28] [Datafixer Bootstrap/INFO] (Minecraft) 243 Datafixer optimizations took 1743 milliseconds
-[16:40:47] [Render thread/INFO] (Minecraft) Environment: Environment[sessionHost=https://sessionserver.mojang.com, servicesHost=https://api.minecraftservices.com, name=PROD]
-[16:40:47] [Render thread/INFO] (Minecraft) Setting user: SwerveClientTest
-[16:40:48] [Render thread/INFO] (Swerve) Swerve v0.1 loaded in 369 ms
-[16:40:48] [Render thread/INFO] (Indigo) [Indigo] Registering Indigo renderer!
-[16:40:50] [Render thread/INFO] (Minecraft) Backend library: LWJGL version 3.3.3-snapshot
-[16:40:54] [Render thread/INFO] (Minecraft) Reloading ResourceManager: vanilla, fabric, fabric-api, fabric-api-base, fabric-api-lookup-api-v1, fabric-biome-api-v1, fabric-block-api-v1, fabric-block-view-api-v2, fabric-blockrenderlayer-v1, fabric-client-gametest-api-v1, fabric-client-tags-api-v1, fabric-command-api-v1, fabric-command-api-v2, fabric-commands-v0, fabric-content-registries-v0, fabric-convention-tags-v1, fabric-convention-tags-v2, fabric-crash-report-info-v1, fabric-data-attachment-api-v1, fabric-data-generation-api-v1, fabric-dimensions-v1, fabric-entity-events-v1, fabric-events-interaction-v0, fabric-game-rule-api-v1, fabric-gametest-api-v1, fabric-item-api-v1, fabric-item-group-api-v1, fabric-key-binding-api-v1, fabric-keybindings-v0, fabric-lifecycle-events-v1, fabric-loot-api-v2, fabric-loot-api-v3, fabric-message-api-v1, fabric-model-loading-api-v1, fabric-networking-api-v1, fabric-object-builder-api-v1, fabric-particles-v1, fabric-recipe-api-v1, fabric-registry-sync-v0, fabric-renderer-api-v1, fabric-renderer-indigo, fabric-rendering-data-attachment-v1, fabric-rendering-fluids-v1, fabric-rendering-v1, fabric-resource-conditions-api-v1, fabric-resource-loader-v0, fabric-screen-api-v1, fabric-screen-handler-api-v1, fabric-sound-api-v1, fabric-tag-api-v1, fabric-transfer-api-v1, fabric-transitive-access-wideners-v1, fabricloader, swerve
-[16:40:55] [Worker-Main-1/INFO] (Minecraft) Found unifont_all_no_pua-16.0.01.hex, loading
-[16:40:55] [Worker-Main-1/INFO] (Minecraft) Found unifont_jp_patch-16.0.01.hex, loading
-[16:41:03] [Render thread/INFO] (Minecraft) OpenAL initialized on device OpenAL Soft on Динамики (Realtek High Definition Audio)
-[16:41:03] [Render thread/INFO] (Minecraft) Sound engine started
-[16:41:03] [Render thread/INFO] (Minecraft) Created: 1024x512x0 minecraft:textures/atlas/blocks.png-atlas
-[16:41:03] [Render thread/INFO] (Minecraft) Created: 256x256x0 minecraft:textures/atlas/signs.png-atlas
-[16:41:03] [Render thread/INFO] (Minecraft) Created: 512x512x0 minecraft:textures/atlas/banner_patterns.png-atlas
-[16:41:03] [Render thread/INFO] (Minecraft) Created: 512x512x0 minecraft:textures/atlas/shield_patterns.png-atlas
-[16:41:03] [Render thread/INFO] (Minecraft) Created: 2048x1024x0 minecraft:textures/atlas/armor_trims.png-atlas
-[16:41:03] [Render thread/INFO] (Minecraft) Created: 128x64x0 minecraft:textures/atlas/decorated_pot.png-atlas
-[16:41:03] [Render thread/INFO] (Minecraft) Created: 256x256x0 minecraft:textures/atlas/chest.png-atlas
-[16:41:03] [Render thread/INFO] (Minecraft) Created: 512x256x0 minecraft:textures/atlas/beds.png-atlas
-[16:41:03] [Render thread/INFO] (Minecraft) Created: 512x256x0 minecraft:textures/atlas/shulker_boxes.png-atlas
-[16:41:03] [Render thread/INFO] (Minecraft) Created: 64x64x0 minecraft:textures/atlas/map_decorations.png-atlas
-[16:41:04] [Render thread/INFO] (Minecraft) Created: 512x256x0 minecraft:textures/atlas/particles.png-atlas
-[16:41:04] [Render thread/INFO] (Minecraft) Created: 512x256x0 minecraft:textures/atlas/paintings.png-atlas
-[16:41:04] [Render thread/INFO] (Minecraft) Created: 256x128x0 minecraft:textures/atlas/mob_effects.png-atlas
-[16:41:04] [Render thread/INFO] (Minecraft) Created: 1024x512x0 minecraft:textures/atlas/gui.png-atlas
-[16:42:03] [Render thread/INFO] (Minecraft) Connecting to mc.hypemc.pro, 25565
-[16:42:09] [Render thread/INFO] (Minecraft) Connecting to mc.hypemc.pro, 25565
-[16:42:13] [Render thread/INFO] (Minecraft) Connecting to mc.hypemc.pro, 25565
-[16:42:15] [Render thread/INFO] (Minecraft) [System] [CHAT] ▏ Вы успешно авторизированы!
-[16:42:16] [Render thread/INFO] (Minecraft) Loaded 23 advancements
-[16:42:17] [Render thread/INFO] (Minecraft) [System] [CHAT] Здесь нельзя использовать чат!
-[16:42:18] [Render thread/INFO] (Minecraft) [System] [CHAT] [*] Выбери сервер для игры используя порталы или компас.
-[16:42:23] [Render thread/INFO] (Minecraft) [System] [CHAT] [*] Выбери сервер для игры используя порталы или компас.
-[16:42:28] [Render thread/INFO] (Minecraft) [System] [CHAT] [*] Выбери сервер для игры используя порталы или компас.
-[16:42:33] [Render thread/INFO] (Minecraft) [System] [CHAT] [*] Выбери сервер для игры используя порталы или компас.
-[16:42:38] [Render thread/INFO] (Minecraft) [System] [CHAT] [*] Выбери сервер для игры используя порталы или компас.
-[16:42:43] [Render thread/INFO] (Minecraft) [System] [CHAT] [*] Выбери сервер для игры используя порталы или компас.
-[16:42:48] [Render thread/INFO] (Minecraft) [System] [CHAT] [*] Выбери сервер для игры используя порталы или компас.
-[16:42:53] [Render thread/INFO] (Minecraft) [System] [CHAT] [*] Выбери сервер для игры используя порталы или компас.
-[16:42:58] [Render thread/INFO] (Minecraft) [System] [CHAT] [*] Выбери сервер для игры используя порталы или компас.
-[16:43:03] [Render thread/INFO] (Minecraft) [System] [CHAT] [*] Выбери сервер для игры используя порталы или компас.
-[16:43:08] [Render thread/INFO] (Minecraft) [System] [CHAT] [*] Выбери сервер для игры используя порталы или компас.
-[16:43:13] [Render thread/INFO] (Minecraft) [System] [CHAT] [*] Выбери сервер для игры используя порталы или компас.
-[16:43:18] [Render thread/INFO] (Minecraft) [System] [CHAT] [*] Выбери сервер для игры используя порталы или компас.
-[16:43:23] [Render thread/INFO] (Minecraft) [System] [CHAT] [*] Выбери сервер для игры используя порталы или компас.
-[16:43:28] [Render thread/INFO] (Minecraft) [System] [CHAT] [*] Выбери сервер для игры используя порталы или компас.
-[16:43:33] [Render thread/INFO] (Minecraft) [System] [CHAT] [*] Выбери сервер для игры используя порталы или компас.
-[16:43:38] [Render thread/INFO] (Minecraft) [System] [CHAT] [*] Выбери сервер для игры используя порталы или компас.
-[16:43:43] [Render thread/INFO] (Minecraft) [System] [CHAT] [*] Выбери сервер для игры используя порталы или компас.
-[16:43:48] [Render thread/INFO] (Minecraft) [System] [CHAT] [*] Выбери сервер для игры используя порталы или компас.
-[16:43:51] [Render thread/INFO] (Minecraft) [System] [CHAT] ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
-[16:43:51] [Render thread/INFO] (Minecraft) [System] [CHAT]           Добро пожаловать на сервер HypeMC
-[16:43:51] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:43:51] [Render thread/INFO] (Minecraft) [System] [CHAT]       Возможности и описание доната - /donate
-[16:43:51] [Render thread/INFO] (Minecraft) [System] [CHAT]       Покупка доната на сайте: www.hypemc.pro
-[16:43:51] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:43:51] [Render thread/INFO] (Minecraft) [System] [CHAT]      Донат навсегда и не пропадает после вайпа!
-[16:43:51] [Render thread/INFO] (Minecraft) [System] [CHAT] ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
-[16:43:51] [Render thread/INFO] (Minecraft) Loaded 175 advancements
-[16:43:52] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓛ «Вампирчики» [Лорд] slacoblocks ⇨ t
-[16:43:54] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 15 секунд весь мусор с карты будет удален!
-[16:43:57] [Render thread/INFO] (Minecraft) [System] [CHAT] Hey! Sorry, but you can't PvP here.
-[16:43:58] [Render thread/INFO] (Minecraft) [System] [CHAT] Hey! Sorry, but you can't PvP here.
-[16:43:59] [Render thread/INFO] (Minecraft) [System] [CHAT] Hey! Sorry, but you can't PvP here.
-[16:44:00] [Render thread/INFO] (Minecraft) [System] [CHAT] Hey! Sorry, but you can't PvP here.
-[16:44:00] [Render thread/INFO] (Minecraft) [System] [CHAT] Hey! Sorry, but you can't PvP here.
-[16:44:03] [Render thread/INFO] (Minecraft) [System] [CHAT] Hey! Sorry, but you can't PvP here.
-[16:44:04] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 5 секунд весь мусор с карты будет удален!
-[16:44:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:44:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ На нашем сайте есть оплата с мобильного телефона
-[16:44:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Вам не нужно будет создавать свой кошелек!
-[16:44:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Купить донат это легко! Покупка на сайте: www.hypemc.pro
-[16:44:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:44:09] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » С карты было очищено 160 мусора!
-[16:44:16] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶  DRAKULA ABOBAS42 смерть в нищите
-[16:44:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:44:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Хочешь получить бесплатные подарки?
-[16:44:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Введи команду /free и забери свой приз!
-[16:44:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:44:55] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶ [Цезарь] 222herthh зашел на сервер!
-[16:45:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:45:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Купить донат на нашем сайте можно через:
-[16:45:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ СБП, T-Pay и любая банковская карта!
-[16:45:08] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната без комиссии на сайте - www.hypemc.pro
-[16:45:08] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:45:24] [Render thread/INFO] (Minecraft) [System] [CHAT]                                                        \n        ЧАТ-ИГРА\n  \n  Ответь на вопрос: 172 - 450 = ?\n  Награда: 500$\n                                                       \n
-[16:45:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:45:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Хочешь банить нарушителей навсегда и по IP?
-[16:45:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупай донат [Консоль] всего за 8749 329 руб
-[16:45:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ У него есть: консоль, все команды WorldEdit и многое другое!
-[16:45:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:45:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
-[16:45:38] [Render thread/INFO] (Minecraft) [System] [CHAT] 
-[16:45:40] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 30 секунд весь мусор с карты будет удален!
->>>>>>> Stashed changes
+[19:11:21] [main/INFO] (FabricLoader/Mixin) SpongePowered MIXIN Subsystem Version=0.8.7 Source=file:/C:/Users/User/.gradle/caches/modules-2/files-2.1/net.fabricmc/sponge-mixin/0.17.3+mixin.0.8.7/41c4a3984a80f4679e759fb9f495587acc5cdac7/sponge-mixin-0.17.3+mixin.0.8.7.jar Service=Knot/Fabric Env=CLIENT
+[19:11:22] [main/INFO] (FabricLoader/Mixin) Loaded Fabric development mappings for mixin remapper!
+[19:11:22] [main/INFO] (FabricLoader/Mixin) Compatibility level set to JAVA_21
+[19:11:32] [main/INFO] (FabricLoader/MixinExtras|Service) Initializing MixinExtras via com.llamalad7.mixinextras.service.MixinExtrasServiceImpl(version=0.5.4).
+[19:11:36] [Datafixer Bootstrap/INFO] (Minecraft) 243 Datafixer optimizations took 1935 milliseconds
+[19:12:01] [Render thread/INFO] (Minecraft) Environment: Environment[sessionHost=https://sessionserver.mojang.com, servicesHost=https://api.minecraftservices.com, name=PROD]
+[19:12:01] [Render thread/INFO] (Minecraft) Setting user: SwerveClientTest
+[19:12:03] [Render thread/INFO] (Swerve) Swerve v0.1 loaded in 1062 ms
+[19:12:03] [Render thread/INFO] (Indigo) [Indigo] Registering Indigo renderer!
+[19:12:05] [Render thread/INFO] (Minecraft) Backend library: LWJGL version 3.3.3-snapshot
+[19:12:10] [Render thread/INFO] (Minecraft) Reloading ResourceManager: vanilla, fabric, fabric-api, fabric-api-base, fabric-api-lookup-api-v1, fabric-biome-api-v1, fabric-block-api-v1, fabric-block-view-api-v2, fabric-blockrenderlayer-v1, fabric-client-gametest-api-v1, fabric-client-tags-api-v1, fabric-command-api-v1, fabric-command-api-v2, fabric-commands-v0, fabric-content-registries-v0, fabric-convention-tags-v1, fabric-convention-tags-v2, fabric-crash-report-info-v1, fabric-data-attachment-api-v1, fabric-data-generation-api-v1, fabric-dimensions-v1, fabric-entity-events-v1, fabric-events-interaction-v0, fabric-game-rule-api-v1, fabric-gametest-api-v1, fabric-item-api-v1, fabric-item-group-api-v1, fabric-key-binding-api-v1, fabric-keybindings-v0, fabric-lifecycle-events-v1, fabric-loot-api-v2, fabric-loot-api-v3, fabric-message-api-v1, fabric-model-loading-api-v1, fabric-networking-api-v1, fabric-object-builder-api-v1, fabric-particles-v1, fabric-recipe-api-v1, fabric-registry-sync-v0, fabric-renderer-api-v1, fabric-renderer-indigo, fabric-rendering-data-attachment-v1, fabric-rendering-fluids-v1, fabric-rendering-v1, fabric-resource-conditions-api-v1, fabric-resource-loader-v0, fabric-screen-api-v1, fabric-screen-handler-api-v1, fabric-sound-api-v1, fabric-tag-api-v1, fabric-transfer-api-v1, fabric-transitive-access-wideners-v1, fabricloader, swerve
+[19:12:12] [Worker-Main-1/INFO] (Minecraft) Found unifont_all_no_pua-16.0.01.hex, loading
+[19:12:13] [Worker-Main-1/INFO] (Minecraft) Found unifont_jp_patch-16.0.01.hex, loading
+[19:12:19] [Render thread/INFO] (Minecraft) OpenAL initialized on device OpenAL Soft on Динамики (Realtek High Definition Audio)
+[19:12:19] [Render thread/INFO] (Minecraft) Sound engine started
+[19:12:19] [Render thread/INFO] (Minecraft) Created: 1024x512x0 minecraft:textures/atlas/blocks.png-atlas
+[19:12:19] [Render thread/INFO] (Minecraft) Created: 256x256x0 minecraft:textures/atlas/signs.png-atlas
+[19:12:19] [Render thread/INFO] (Minecraft) Created: 512x512x0 minecraft:textures/atlas/banner_patterns.png-atlas
+[19:12:19] [Render thread/INFO] (Minecraft) Created: 512x512x0 minecraft:textures/atlas/shield_patterns.png-atlas
+[19:12:19] [Render thread/INFO] (Minecraft) Created: 2048x1024x0 minecraft:textures/atlas/armor_trims.png-atlas
+[19:12:19] [Render thread/INFO] (Minecraft) Created: 256x256x0 minecraft:textures/atlas/chest.png-atlas
+[19:12:19] [Render thread/INFO] (Minecraft) Created: 128x64x0 minecraft:textures/atlas/decorated_pot.png-atlas
+[19:12:19] [Render thread/INFO] (Minecraft) Created: 512x256x0 minecraft:textures/atlas/beds.png-atlas
+[19:12:19] [Render thread/INFO] (Minecraft) Created: 512x256x0 minecraft:textures/atlas/shulker_boxes.png-atlas
+[19:12:19] [Render thread/INFO] (Minecraft) Created: 64x64x0 minecraft:textures/atlas/map_decorations.png-atlas
+[19:12:20] [Render thread/INFO] (Minecraft) Created: 512x256x0 minecraft:textures/atlas/particles.png-atlas
+[19:12:20] [Render thread/INFO] (Minecraft) Created: 512x256x0 minecraft:textures/atlas/paintings.png-atlas
+[19:12:20] [Render thread/INFO] (Minecraft) Created: 256x128x0 minecraft:textures/atlas/mob_effects.png-atlas
+[19:12:20] [Render thread/INFO] (Minecraft) Created: 1024x512x0 minecraft:textures/atlas/gui.png-atlas
+[19:13:09] [Render thread/INFO] (Minecraft) Connecting to mc.hypemc.pro, 25565
+[19:13:13] [Render thread/INFO] (Minecraft) Connecting to mc.hypemc.pro, 25565
+[19:13:16] [Render thread/INFO] (Minecraft) Connecting to mc.hypemc.pro, 25565
+[19:13:18] [Render thread/INFO] (Minecraft) [System] [CHAT] ▏ Авторизуйтесь - /login [пароль]
+[19:13:19] [Render thread/INFO] (Minecraft) Loaded 2 advancements
+[19:13:19] [Render thread/WARN] (Minecraft) Server attempted to add player prior to sending player info (Player id b6eb1aff-41f6-3efa-9b0b-da8c78b76108)
+[19:13:19] [Render thread/WARN] (Minecraft) Skipping Entity with id entity.minecraft.player
+[19:13:19] [Render thread/WARN] (Minecraft) Server attempted to add player prior to sending player info (Player id 945788fb-27bb-3a21-bf74-95ddf8210790)
+[19:13:19] [Render thread/WARN] (Minecraft) Skipping Entity with id entity.minecraft.player
+[19:13:22] [Render thread/INFO] (Minecraft) [System] [CHAT] ▏ Авторизуйтесь - /login [пароль]
+[19:13:23] [Render thread/INFO] (Minecraft) [System] [CHAT] ▏ Вы успешно авторизованы!
+[19:13:24] [Render thread/INFO] (Minecraft) Loaded 23 advancements
+[19:13:24] [Render thread/INFO] (Minecraft) [System] [CHAT] [*] Выбери сервер для игры используя порталы или компас.
+[19:13:25] [Render thread/INFO] (Minecraft) [System] [CHAT] ⚠ ВАЖНО! Ваш аккаунт уязвим ко взлому!\n⚠ ВАЖНО! Привяжите аккаунт к VK для защиты - /vk
+[19:13:28] [Render thread/WARN] (Minecraft) Ignoring player info update for unknown player 7bc44cbe-dfa7-3f02-8df4-b585bd4de05c ([UPDATE_GAME_MODE])
+[19:13:28] [Render thread/WARN] (Minecraft) Ignoring player info update for unknown player 7bc44cbe-dfa7-3f02-8df4-b585bd4de05c ([UPDATE_GAME_MODE])
+[19:13:28] [Render thread/INFO] (Minecraft) [System] [CHAT] ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+[19:13:28] [Render thread/INFO] (Minecraft) [System] [CHAT]           Добро пожаловать на сервер HypeMC
+[19:13:28] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:13:28] [Render thread/INFO] (Minecraft) [System] [CHAT]       Возможности и описание доната - /donate
+[19:13:28] [Render thread/INFO] (Minecraft) [System] [CHAT]       Покупка доната на сайте: www.hypemc.pro
+[19:13:28] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:13:28] [Render thread/INFO] (Minecraft) [System] [CHAT]      Донат навсегда и не пропадает после вайпа!
+[19:13:28] [Render thread/INFO] (Minecraft) [System] [CHAT] ▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬▬
+[19:13:28] [Render thread/INFO] (Minecraft) Loaded 198 advancements
+[19:13:33] [Render thread/INFO] (Minecraft) [System] [CHAT] Телепортация...
+[19:13:38] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶ dry zia yarik_top3 зашел на сервер!
+[19:13:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:13:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Донат [ＳＴＡＦＦ] всего за 9479 руб
+[19:13:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Может //set в чужих регионах
+[19:13:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ И имеет доступ к RCON боту (VK/Telegram)
+[19:13:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:13:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка на нашем сайте - www.hypemc.pro
+[19:13:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:13:50] [Render thread/INFO] (Minecraft) [System] [CHAT] › Игрок Kyssok покинул игру во время PvP и был наказан!
+[19:14:08] [Render thread/INFO] (Minecraft) [System] [CHAT]                                                        \n        ЧАТ-ИГРА\n  \n  Ответь на вопрос: Сколько ребер у куба?\n  Награда: 10000$\n                                                       \n
+[19:14:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:14:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Только сегодня [ЦЕЗАРЬ] + /OP всего за 479 рублей
+[19:14:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Только сегодня [ЦЕЗАРЬ] + /OP всего за 479 рублей
+[19:14:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Только сегодня [ЦЕЗАРЬ] + /OP всего за 479 рублей
+[19:14:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:14:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
+[19:14:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:14:10] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶ ﴾Ｒ Ａ Ｉ Ｄ Ｅ Ｒ﴿ kirill7856 я умираю в капсуле в гараже
+[19:14:10] [Render thread/INFO] (Minecraft) [System] [CHAT] › В данном регионе запрещено использовать этот предмет!
+[19:14:10] [Render thread/INFO] (Minecraft) [System] [CHAT] › В данном регионе запрещено использовать этот предмет!
+[19:14:11] [Render thread/INFO] (Minecraft) [System] [CHAT] › В данном регионе запрещено использовать этот предмет!
+[19:14:11] [Render thread/INFO] (Minecraft) [System] [CHAT]                                                        \n        ЧАТ-ИГРА\n  \n  Выиграл игрок: Darua2016\n  Правильный ответ: 12\n                                                       \n
+[19:14:11] [Render thread/INFO] (Minecraft) [System] [CHAT] › В данном регионе запрещено использовать этот предмет!
+[19:14:11] [Render thread/INFO] (Minecraft) [System] [CHAT] › В данном регионе запрещено использовать этот предмет!
+[19:14:12] [Render thread/INFO] (Minecraft) [System] [CHAT] › В данном регионе запрещено использовать этот предмет!
+[19:14:12] [Render thread/INFO] (Minecraft) [System] [CHAT] › В данном регионе запрещено использовать этот предмет!
+[19:14:12] [Render thread/INFO] (Minecraft) [System] [CHAT] › В данном регионе запрещено использовать этот предмет!
+[19:14:12] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓛ ♥ [Основатель] DILEROSHA ⇨ 123
+[19:14:13] [Render thread/INFO] (Minecraft) [System] [CHAT] › В данном регионе запрещено использовать этот предмет!
+[19:14:13] [Render thread/INFO] (Minecraft) [System] [CHAT] › В данном регионе запрещено использовать этот предмет!
+[19:14:13] [Render thread/INFO] (Minecraft) [System] [CHAT] › В данном регионе запрещено использовать этот предмет!
+[19:14:13] [Render thread/INFO] (Minecraft) [System] [CHAT] › В данном регионе запрещено использовать этот предмет!
+[19:14:13] [Render thread/INFO] (Minecraft) [System] [CHAT] › В данном регионе запрещено использовать этот предмет!
+[19:14:14] [Render thread/INFO] (Minecraft) [System] [CHAT] › В данном регионе запрещено использовать этот предмет!
+[19:14:14] [Render thread/INFO] (Minecraft) [System] [CHAT] › В данном регионе запрещено использовать этот предмет!
+[19:14:19] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓛ «sss» [Премиум] nurik222117 ⇨ у мя нету иче
+[19:14:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:14:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Нужен креатив с бессмертием и бесконечными ресурсами?
+[19:14:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Но у тебя очень мало денег?
+[19:14:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Тогда купи донат [Креатив] всего за 249 15 руб!
+[19:14:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Ты не пожалеешь! А заодно убедишься, что мы не обманываем!
+[19:14:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:14:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка на нашем сайте - www.hypemc.pro
+[19:14:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:14:57] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 30 секунд весь мусор с карты будет удален!
+[19:15:07] [Render thread/INFO] (Minecraft) [System] [CHAT] [Объявление] werity_darwel срочно разбань его тебя инчае забанят 3.1 это только оф команды даёт бан (пишет: yarik_top3)
+[19:15:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:15:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Тебя загриферили?
+[19:15:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Купи [Консоль] за 8749 329 руб и отомсти!
+[19:15:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Ты сможешь банить игроков навсегда по IP,
+[19:15:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ получишь КОНСОЛЬ и 100% команд!
+[19:15:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:15:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка на нашем сайте - www.hypemc.pro
+[19:15:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:15:12] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 15 секунд весь мусор с карты будет удален!
+[19:15:21] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 5 секунд весь мусор с карты будет удален!
+[19:15:26] [Render thread/INFO] (Minecraft) [System] [CHAT] › Подождите 1.43 сек. перед отправкой сообщения!
+[19:15:27] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » С карты было очищено 82 мусора!
+[19:15:27] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶ Fan_ wacok67 наш любимчик снова с нами!
+[19:15:30] [Render thread/INFO] (Minecraft) [System] [CHAT] › Подождите 1.03 сек. перед отправкой сообщения!
+[19:15:31] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶ [Игрок] _SIGMA1_ Мир так желток
+[19:15:35] [Render thread/INFO] (Minecraft) [System] [CHAT] › Подождите 1.49 сек. перед отправкой сообщения!
+[19:15:38] [Render thread/INFO] (Minecraft) [System] [CHAT] › Подождите 1.49 сек. перед отправкой сообщения!
+[19:15:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:15:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Друзья хвастаются донатом? Ты тоже хочешь быть ТОП игроком?
+[19:15:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Специально для тебя мы сделали скидки -90%!
+[19:15:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Донат [Консоль] всего за 8749 329 руб!
+[19:15:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:15:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка на нашем сайте - www.hypemc.pro
+[19:15:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:16:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:16:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Донат покупать только на сайте: HypeMC.pro « нажми, чтобы открыть
+[19:16:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Донат покупать только на сайте: HypeMC.pro « нажми, чтобы открыть
+[19:16:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Донат покупать только на сайте: HypeMC.pro « нажми, чтобы открыть
+[19:16:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:16:11] [Render thread/INFO] (Minecraft) [System] [CHAT]                                                        \n        ЧАТ-ИГРА\n  \n  Ответь на вопрос: 199 - 456 = ?\n  Награда: 800$\n                                                       \n
+[19:16:11] [Render thread/INFO] (Minecraft) [System] [CHAT] › Подождите 1.47 сек. перед отправкой сообщения!
+[19:16:14] [Render thread/INFO] (Minecraft) [System] [CHAT] › Подождите 1.43 сек. перед отправкой сообщения!
+[19:16:23] [Render thread/INFO] (Minecraft) [System] [CHAT] › С вашего баланса снято $100
+[19:16:27] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶ [Хелпер] mavid67 зашел на сервер!
+[19:16:34] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓛ «админы» [Админ] Olegik ⇨ пойдёш v клан
+[19:16:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:16:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ От доната [Создатель] всего за 1979 149 руб
+[19:16:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Ты сможешь сетать топориком: //set, //walls, //replace
+[19:16:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка на нашем сайте - www.hypemc.pro
+[19:16:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:16:54] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓛ «админы» [Админ] Olegik ⇨ пойдёш в клан
+[19:16:58] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 30 секунд весь мусор с карты будет удален!
+[19:17:03] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓛ «админы» [Админ] Olegik ⇨ пойдёш в клан
+[19:17:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:17:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Только сегодня, у тебя есть возможность купить донат [Консоль]
+[19:17:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ У него есть: 100% команд, доступ к чужим приватам, бан по IP - /banip
+[19:17:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Цена: 8749 329 рублей (навсегда) Покупка на сайте - www.hypemc.pro
+[19:17:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:17:11] [Render thread/INFO] (Minecraft) [System] [CHAT]                                                        \n        ЧАТ-ИГРА\n  \n  Никто не смог ответить на вопрос!\n  Правильный ответ: -257\n                                                       \n
+[19:17:13] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 15 секунд весь мусор с карты будет удален!
+[19:17:22] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 5 секунд весь мусор с карты будет удален!
+[19:17:27] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » С карты было очищено 123 мусора!
+[19:17:28] [Render thread/INFO] (Minecraft) [System] [CHAT] › В данном регионе запрещено использовать этот предмет!
+[19:17:28] [Render thread/INFO] (Minecraft) [System] [CHAT] › В данном регионе запрещено использовать этот предмет!
+[19:17:28] [Render thread/INFO] (Minecraft) [System] [CHAT] › В данном регионе запрещено использовать этот предмет!
+[19:17:28] [Render thread/INFO] (Minecraft) [System] [CHAT] › В данном регионе запрещено использовать этот предмет!
+[19:17:30] [Render thread/INFO] (Minecraft) [System] [CHAT] Вы находитесь на спавне!
+[19:17:30] [Render thread/INFO] (Minecraft) [System] [CHAT] Напишите /rtp чтобы начать выживать.
+[19:17:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:17:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Хочешь получить все команды и опку?
+[19:17:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Донат [ЦЕЗАРЬ] всего за 12479 479 руб может всё!
+[19:17:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
+[19:17:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:17:40] [Render thread/INFO] (Minecraft) [System] [CHAT] › В данном регионе запрещено использовать этот предмет!
+[19:17:40] [Render thread/INFO] (Minecraft) [System] [CHAT] › В данном регионе запрещено использовать этот предмет!
+[19:17:40] [Render thread/INFO] (Minecraft) [System] [CHAT] › В данном регионе запрещено использовать этот предмет!
+[19:17:41] [Render thread/INFO] (Minecraft) [System] [CHAT] › В данном регионе запрещено использовать этот предмет!
+[19:17:41] [Render thread/INFO] (Minecraft) [System] [CHAT] › В данном регионе запрещено использовать этот предмет!
+[19:17:50] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶ (SPEED) novichok пришел на сервер с пингом 999999
+[19:18:05] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓛ [Креатив] EBANATIK ⇨ соси жопу
+[19:18:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:18:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Хочешь быть в курсе всех новостей сервера?
+[19:18:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Подпишись на нашу группу ВКонтакте: vk.com/hypemc
+[19:18:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Подпишись на наш паблик в Telegram: telegram.me/hypemc
+[19:18:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:18:26] [Render thread/INFO] (Minecraft) [System] [CHAT] › Подождите 1.48 сек. перед отправкой сообщения!
+[19:18:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:18:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Тебя все обижают?
+[19:18:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Купи любой донат и докажи свою крутость!
+[19:18:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
+[19:18:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:18:52] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓖ ♀ ♥ «memoriescult» panica :<  hellishDead ⇨ крута тебя твой же лед предал
+[19:18:56] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓖ «Moonborn» ezka  terlendibae ⇨  _SIGMA1_ qq
+[19:18:59] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 30 секунд весь мусор с карты будет удален!
+[19:19:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:19:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Хочешь выдавать донат игрокам?
+[19:19:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупай донат [Сервер] всего за 12499 979 руб
+[19:19:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ У него есть: 100% команд, голограммы /dholo и другое!
+[19:19:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:19:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
+[19:19:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:19:11] [Render thread/INFO] (Minecraft) [System] [CHAT]                                                        \n        ЧАТ-ИГРА\n  \n  Ответь на вопрос: Какой ник у создателя Minecraft?\n  Награда: 1500$\n                                                       \n
+[19:19:14] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 15 секунд весь мусор с карты будет удален!
+[19:19:16] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶ [Цезарь] Fall66 joined the server
+[19:19:19] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓛ «Godlikes»  【ᴋʟ ᴍᴀɢᴀ❤】 MR_SIGMA228 ⇨ Notch
+[19:19:19] [Render thread/INFO] (Minecraft) [System] [CHAT]                                                        \n        ЧАТ-ИГРА\n  \n  Выиграл игрок: MR_SIGMA228\n  Правильный ответ: Notch\n                                                       \n
+[19:19:23] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 5 секунд весь мусор с карты будет удален!
+[19:19:27] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓛ ♀ ♥ «memoriescult» panica :<  hellishDead ⇨ чет тебя твой же лед предал
+[19:19:28] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » С карты было очищено 36 мусора!
+[19:19:30] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓛ ♀ ♥ «memoriescult» panica :<  hellishDead ⇨ будто
+[19:19:31] [Render thread/INFO] (Minecraft) [System] [CHAT] › В данном регионе запрещено использовать этот предмет!
+[19:19:32] [Render thread/INFO] (Minecraft) [System] [CHAT] › В данном регионе запрещено использовать этот предмет!
+[19:19:32] [Render thread/INFO] (Minecraft) [System] [CHAT] › В данном регионе запрещено использовать этот предмет!
+[19:19:33] [Render thread/INFO] (Minecraft) [System] [CHAT] › В данном регионе запрещено использовать этот предмет!
+[19:19:33] [Render thread/INFO] (Minecraft) [System] [CHAT] › В данном регионе запрещено использовать этот предмет!
+[19:19:34] [Render thread/INFO] (Minecraft) [System] [CHAT] › В данном регионе запрещено использовать этот предмет!
+[19:19:35] [Render thread/INFO] (Minecraft) [System] [CHAT] › В данном регионе запрещено использовать этот предмет!
+[19:19:36] [Render thread/INFO] (Minecraft) [System] [CHAT] › В данном регионе запрещено использовать этот предмет!
+[19:19:38] [Render thread/INFO] (Minecraft) [System] [CHAT] › В данном регионе запрещено использовать этот предмет!
+[19:19:38] [Render thread/INFO] (Minecraft) [System] [CHAT] › В данном регионе запрещено использовать этот предмет!
+[19:19:38] [Render thread/INFO] (Minecraft) [System] [CHAT] › В данном регионе запрещено использовать этот предмет!
+[19:19:38] [Render thread/INFO] (Minecraft) [System] [CHAT] › В данном регионе запрещено использовать этот предмет!
+[19:19:39] [Render thread/INFO] (Minecraft) [System] [CHAT] › В данном регионе запрещено использовать этот предмет!
+[19:19:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:19:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Тебе нужен доступ в любой приват?
+[19:19:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупай донат [Создатель] всего за 1979 149 руб
+[19:19:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ У него есть: топорик //set, баны /ban, выдать /fly и другое!
+[19:19:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:19:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
+[19:19:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:19:45] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓛ ♂ ♥ «Redan»     BS PUSHER ERLLINE ⇨ какой лёд
+[19:19:53] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓛ ♀ ♥ «memoriescult» panica :<  hellishDead ⇨ ну ты когда по воде ходил
+[19:19:53] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓛ [Цезарь] Mr_Horor ⇨ дайте элитры пж
+[19:19:55] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓛ ♀ ♥ «memoriescult» panica :<  hellishDead ⇨ лед появлялся
+[19:19:57] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓛ [Цезарь] Mr_Horor ⇨ дайте элитры пж
+[19:20:00] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓛ ♀ ♥ «memoriescult» panica :<  hellishDead ⇨ из за него ты и умер
+[19:20:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:20:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ На нашем сайте есть оплата с мобильного телефона
+[19:20:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Вам не нужно будет создавать свой кошелек!
+[19:20:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Купить донат это легко! Покупка на сайте: www.hypemc.pro
+[19:20:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:20:10] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓛ [Цезарь] Mr_Horor ⇨ дайте элитры пж
+[19:20:20] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓛ ♂ ♥ «Redan»     BS PUSHER ERLLINE ⇨ я его не когда не любил
+[19:20:25] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓛ ♀ ♥ «memoriescult» panica :<  hellishDead ⇨ xD
+[19:20:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:20:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Хочешь получить бесплатные подарки?
+[19:20:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Введи команду /free и забери свой приз!
+[19:20:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:20:54] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶ YT sanek2012_08 приперся на сервер!
+[19:20:58] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓖ ♥ [Цезарь] Fall66 ⇨ arseniii279 ку
+[19:20:59] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶ [Владелец] klutoy зашел на сервер!
+[19:20:59] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 30 секунд весь мусор с карты будет удален!
+[19:21:02] [Render thread/INFO] (Minecraft) [System] [CHAT] Вы находитесь на спавне!
+[19:21:02] [Render thread/INFO] (Minecraft) [System] [CHAT] Напишите /rtp чтобы начать выживать.
+[19:21:04] [Render thread/INFO] (Minecraft) [System] [CHAT] Вы находитесь на спавне!
+[19:21:04] [Render thread/INFO] (Minecraft) [System] [CHAT] Напишите /rtp чтобы начать выживать.
+[19:21:05] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓛ ♀ ♥ «memoriescult» panica :<  hellishDead ⇨ вы че нахуй
+[19:21:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:21:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Купить донат на нашем сайте можно через:
+[19:21:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ СБП, T-Pay и любая банковская карта!
+[19:21:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната без комиссии на сайте - www.hypemc.pro
+[19:21:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:21:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶ (SPEED) novichok пришел на сервер с пингом 999999
+[19:21:14] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 15 секунд весь мусор с карты будет удален!
+[19:21:17] [Render thread/INFO] (Minecraft) [System] [CHAT]   
+[19:21:17] [Render thread/INFO] (Minecraft) [System] [CHAT] ▏ Вы заработали $1,000 за 10 минут игры.
+[19:21:17] [Render thread/INFO] (Minecraft) [System] [CHAT] ▏ Донат [Цезарь] получает по $500,000 (каждые 10 минут)
+[19:21:17] [Render thread/INFO] (Minecraft) [System] [CHAT]   
+[19:21:19] [Render thread/INFO] (Minecraft) [System] [CHAT]                                                        \n        ЧАТ-ИГРА\n  \n  Ответь на вопрос: 64 + 860 = ?\n  Награда: 9300$\n                                                       \n
+[19:21:20] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶ [Консоль] xxxxx1xxxxx зашел на сервер!
+[19:21:24] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 5 секунд весь мусор с карты будет удален!
+[19:21:27] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓖ ♥ [Цезарь] Fall66 ⇨ arseniii279 ку
+[19:21:30] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » С карты было очищено 152 мусора!
+[19:21:35] [Render thread/INFO] (Minecraft) [System] [CHAT] › Игрок POghjs1267 покинул игру во время PvP и был наказан!
+[19:21:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:21:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Хочешь банить нарушителей навсегда и по IP?
+[19:21:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупай донат [Консоль] всего за 8749 329 руб
+[19:21:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ У него есть: консоль, все команды WorldEdit и многое другое!
+[19:21:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:21:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
+[19:21:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:21:44] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓖ [Игрок] SwerveClientTest ⇨ кому 70кк?
+[19:21:45] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓖ «УголокЕбанутых» [Основатель] Kuromi ⇨ ЕЩЁ БЛ ФИЗИКА
+[19:21:47] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓖ ♥ [Цезарь] Fall66 ⇨ vyt
+[19:21:50] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓖ ♥ [Цезарь] Fall66 ⇨ мне
+[19:22:01] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶ [FanAnnReal] Angel_Chrom Ищу свою Смерть
+[19:22:07] [Render thread/INFO] (Minecraft) [System] [CHAT] $17,000,000 отправлено игроку Fall66.
+[19:22:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:22:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Хотите купить донат, но сомневаетесь?
+[19:22:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Не бойтесь, мы не обманываем!
+[19:22:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Наш проект одобрен АО «Т-Банк»
+[19:22:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:22:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
+[19:22:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:22:18] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓖ [Игрок] SwerveClientTest ⇨ ой...
+[19:22:19] [Render thread/INFO] (Minecraft) [System] [CHAT]                                                        \n        ЧАТ-ИГРА\n  \n  Никто не смог ответить на вопрос!\n  Правильный ответ: 924\n                                                       \n
+[19:22:26] [Render thread/INFO] (Minecraft) [System] [CHAT] $53,000,000 отправлено игроку Fall66.
+[19:22:27] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶ (SPEED) novichok пришел на сервер с пингом 999999
+[19:22:28] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓖ ♀ ♥ «memoriescult» panica :<  hellishDead ⇨ imba
+[19:22:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:22:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Не знаешь какие возможности есть у доната?
+[19:22:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Напиши команду /donate и стань крутым!
+[19:22:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
+[19:22:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:23:00] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 30 секунд весь мусор с карты будет удален!
+[19:23:02] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓛ «prokrual» Fan_ wacok67 ⇨ не бей ее
+[19:23:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:23:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Все донат-привилегии покупаются навсегда,
+[19:23:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ выдаются моментально и на все сервера!
+[19:23:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
+[19:23:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:23:15] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 15 секунд весь мусор с карты будет удален!
+[19:23:25] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 5 секунд весь мусор с карты будет удален!
+[19:23:31] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » С карты было очищено 121 мусора!
+[19:23:36] [Render thread/INFO] (Minecraft) [System] [CHAT] › Игрок hgdk покинул игру во время PvP и был наказан!
+[19:23:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:23:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Только СЕГОДНЯ, мы увеличилиꜛ шансы +100% в кейсах!
+[19:23:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупая кейсы на нашем сервере, вы всегда окупитесь!
+[19:23:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:23:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка кейсов на сайте - www.hypemc.pro
+[19:23:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:24:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:24:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Обвал цен! Огромные скидки до -90%!
+[19:24:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ [Создатель] (/ban, //set, доступ к приватам) всего за 1979 149 руб
+[19:24:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ [Консоль] (консоль, /banip, полный WorldEdit) всего за 2499 349 руб
+[19:24:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ [ЦЕЗАРЬ] (100% команд, /pex, /op) всего за 12479 479 руб
+[19:24:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:24:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
+[19:24:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:24:16] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶  Премиум m0uzexs losercore alone
+[19:24:19] [Render thread/INFO] (Minecraft) [System] [CHAT]                                                        \n        ЧАТ-ИГРА\n  \n  Ответь на вопрос: 950 - 898 = ?\n  Награда: 8500$\n                                                       \n
+[19:24:26] [Render thread/INFO] (Minecraft) [System] [CHAT]                                                        \n        ЧАТ-ИГРА\n  \n  Выиграл игрок: SwerveClientTest\n  Правильный ответ: 52\n                                                       \n
+[19:24:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:24:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Нашел читера?
+[19:24:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Подай на него жалобу - /report
+[19:24:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:25:01] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 30 секунд весь мусор с карты будет удален!
+[19:25:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:25:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Наша группа в VK - vk.com/hypemc
+[19:25:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Наш чат в VK - vk.cc/cSmvKz
+[19:25:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Наш канал в Telegram - telegram.me/hypemc
+[19:25:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Наш чат в Telegram - telegram.me/hypemc_chat
+[19:25:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:25:16] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 15 секунд весь мусор с карты будет удален!
+[19:25:26] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 5 секунд весь мусор с карты будет удален!
+[19:25:32] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » С карты было очищено 303 мусора!
+[19:25:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:25:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Хочешь безлимитный доступ ко всем регионам?
+[19:25:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Тогда донат [Хелпер] всего за 1979 руб для тебя!
+[19:25:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
+[19:25:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:26:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:26:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Донат [ＨＹＰＥ] всего за 9479 4979 руб
+[19:26:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Может строить на спавне и банить навсегда
+[19:26:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка на нашем сайте - www.hypemc.pro
+[19:26:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:26:26] [Render thread/INFO] (Minecraft) [System] [CHAT]                                                        \n        ЧАТ-ИГРА\n  \n  Ответь на вопрос: 199 - 956 = ?\n  Награда: 9800$\n                                                       \n
+[19:26:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:26:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Донат [ＳＴＡＦＦ] всего за 9479 руб
+[19:26:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Может //set в чужих регионах
+[19:26:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ И имеет доступ к RCON боту (VK/Telegram)
+[19:26:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:26:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка на нашем сайте - www.hypemc.pro
+[19:26:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:26:57] [Render thread/INFO] (Minecraft) [System] [CHAT] Вы находитесь на спавне!
+[19:26:57] [Render thread/INFO] (Minecraft) [System] [CHAT] Напишите /rtp чтобы начать выживать.
+[19:27:01] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓛ [Игрок] pihc_pi ⇨ 843
+[19:27:03] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 30 секунд весь мусор с карты будет удален!
+[19:27:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:27:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Только сегодня [ЦЕЗАРЬ] + /OP всего за 479 рублей
+[19:27:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Только сегодня [ЦЕЗАРЬ] + /OP всего за 479 рублей
+[19:27:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Только сегодня [ЦЕЗАРЬ] + /OP всего за 479 рублей
+[19:27:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:27:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
+[19:27:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:27:18] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 15 секунд весь мусор с карты будет удален!
+[19:27:26] [Render thread/INFO] (Minecraft) [System] [CHAT]                                                        \n        ЧАТ-ИГРА\n  \n  Никто не смог ответить на вопрос!\n  Правильный ответ: -757\n                                                       \n
+[19:27:28] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 5 секунд весь мусор с карты будет удален!
+[19:27:33] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » С карты было очищено 101 мусора!
+[19:27:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:27:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Нужен креатив с бессмертием и бесконечными ресурсами?
+[19:27:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Но у тебя очень мало денег?
+[19:27:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Тогда купи донат [Креатив] всего за 249 15 руб!
+[19:27:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Ты не пожалеешь! А заодно убедишься, что мы не обманываем!
+[19:27:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:27:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка на нашем сайте - www.hypemc.pro
+[19:27:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:27:59] [Render thread/INFO] (Minecraft) [System] [CHAT] Вы находитесь на спавне!
+[19:27:59] [Render thread/INFO] (Minecraft) [System] [CHAT] Напишите /rtp чтобы начать выживать.
+[19:28:03] [Render thread/INFO] (Minecraft) [System] [CHAT] › В данном регионе запрещено использовать этот предмет!
+[19:28:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:28:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Тебя загриферили?
+[19:28:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Купи [Консоль] за 8749 329 руб и отомсти!
+[19:28:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Ты сможешь банить игроков навсегда по IP,
+[19:28:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ получишь КОНСОЛЬ и 100% команд!
+[19:28:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:28:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка на нашем сайте - www.hypemc.pro
+[19:28:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:28:11] [Render thread/INFO] (Minecraft) [System] [CHAT] › В данном регионе запрещено использовать этот предмет!
+[19:28:19] [Render thread/INFO] (Minecraft) [System] [CHAT] Вы находитесь на спавне!
+[19:28:19] [Render thread/INFO] (Minecraft) [System] [CHAT] Напишите /rtp чтобы начать выживать.
+[19:28:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:28:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Друзья хвастаются донатом? Ты тоже хочешь быть ТОП игроком?
+[19:28:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Специально для тебя мы сделали скидки -90%!
+[19:28:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Донат [Консоль] всего за 8749 329 руб!
+[19:28:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:28:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка на нашем сайте - www.hypemc.pro
+[19:28:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:28:53] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶ [Хелпер] TABURET225017 доброго времени суток!!!
+[19:29:04] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 30 секунд весь мусор с карты будет удален!
+[19:29:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:29:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Донат покупать только на сайте: HypeMC.pro « нажми, чтобы открыть
+[19:29:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Донат покупать только на сайте: HypeMC.pro « нажми, чтобы открыть
+[19:29:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Донат покупать только на сайте: HypeMC.pro « нажми, чтобы открыть
+[19:29:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:29:19] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 15 секунд весь мусор с карты будет удален!
+[19:29:26] [Render thread/INFO] (Minecraft) [System] [CHAT]                                                        \n        ЧАТ-ИГРА\n  \n  Ответь на вопрос: 283 - 356 = ?\n  Награда: 9400$\n                                                       \n
+[19:29:29] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 5 секунд весь мусор с карты будет удален!
+[19:29:34] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » С карты было очищено 231 мусора!
+[19:29:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:29:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ От доната [Создатель] всего за 1979 149 руб
+[19:29:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Ты сможешь сетать топориком: //set, //walls, //replace
+[19:29:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка на нашем сайте - www.hypemc.pro
+[19:29:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:30:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:30:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Только сегодня, у тебя есть возможность купить донат [Консоль]
+[19:30:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ У него есть: 100% команд, доступ к чужим приватам, бан по IP - /banip
+[19:30:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Цена: 8749 329 рублей (навсегда) Покупка на сайте - www.hypemc.pro
+[19:30:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:30:19] [Render thread/WARN] (Minecraft) Ignoring player info update for unknown player a71fc11b-b5b6-3e5d-b5b0-7b0c98ed07be ([UPDATE_GAME_MODE])
+[19:30:19] [Render thread/WARN] (Minecraft) Ignoring player info update for unknown player a71fc11b-b5b6-3e5d-b5b0-7b0c98ed07be ([UPDATE_GAME_MODE])
+[19:30:26] [Render thread/INFO] (Minecraft) [System] [CHAT]                                                        \n        ЧАТ-ИГРА\n  \n  Никто не смог ответить на вопрос!\n  Правильный ответ: -73\n                                                       \n
+[19:30:28] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶   Gan4k Я в розыске не выдавайте меня!
+[19:30:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:30:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Хочешь получить все команды и опку?
+[19:30:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Донат [ЦЕЗАРЬ] всего за 12479 479 руб может всё!
+[19:30:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
+[19:30:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:30:39] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓛ ♥ «Вампирчики» [Игрок] vikavos ⇨ q
+[19:30:50] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓖ [Игрок] Wembu245 ⇨ Gan4k в розыске
+[19:31:02] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶ (SPEED) novichok пришел на сервер с пингом 999999
+[19:31:05] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 30 секунд весь мусор с карты будет удален!
+[19:31:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:31:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Хочешь быть в курсе всех новостей сервера?
+[19:31:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Подпишись на нашу группу ВКонтакте: vk.com/hypemc
+[19:31:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Подпишись на наш паблик в Telegram: telegram.me/hypemc
+[19:31:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:31:17] [Render thread/INFO] (Minecraft) [System] [CHAT]   
+[19:31:17] [Render thread/INFO] (Minecraft) [System] [CHAT] ▏ Вы заработали $1,000 за 10 минут игры.
+[19:31:17] [Render thread/INFO] (Minecraft) [System] [CHAT] ▏ Донат [Цезарь] получает по $500,000 (каждые 10 минут)
+[19:31:17] [Render thread/INFO] (Minecraft) [System] [CHAT]   
+[19:31:20] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 15 секунд весь мусор с карты будет удален!
+[19:31:21] [Render thread/INFO] (Minecraft) [System] [CHAT] Вы находитесь на спавне!
+[19:31:21] [Render thread/INFO] (Minecraft) [System] [CHAT] Напишите /rtp чтобы начать выживать.
+[19:31:30] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 5 секунд весь мусор с карты будет удален!
+[19:31:35] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » С карты было очищено 139 мусора!
+[19:31:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:31:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Тебя все обижают?
+[19:31:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Купи любой донат и докажи свою крутость!
+[19:31:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
+[19:31:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:32:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:32:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Хочешь выдавать донат игрокам?
+[19:32:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупай донат [Сервер] всего за 12499 979 руб
+[19:32:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ У него есть: 100% команд, голограммы /dholo и другое!
+[19:32:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:32:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
+[19:32:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:32:22] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓛ ♥ «Вампирчики» [Игрок] vikavos ⇨ Я ща
+[19:32:26] [Render thread/INFO] (Minecraft) [System] [CHAT]                                                        \n        ЧАТ-ИГРА\n  \n  Ответь на вопрос: В какому году выпустили Minecraft?\n  Награда: 1500$\n                                                       \n
+[19:32:34] [Render thread/INFO] (Minecraft) [System] [CHAT]                                                        \n        ЧАТ-ИГРА\n  \n  Выиграл игрок: mayta67\n  Правильный ответ: 2011\n                                                       \n
+[19:32:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:32:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Тебе нужен доступ в любой приват?
+[19:32:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупай донат [Создатель] всего за 1979 149 руб
+[19:32:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ У него есть: топорик //set, баны /ban, выдать /fly и другое!
+[19:32:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:32:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
+[19:32:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:32:44] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓛ [Цезарь] Mr_Horor ⇨ дай пузырьки с опытом пжпжпжжп
+[19:32:54] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓛ ♥ «Вампирчики» [Игрок] vikavos ⇨ Я тут
+[19:33:06] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 30 секунд весь мусор с карты будет удален!
+[19:33:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:33:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ На нашем сайте есть оплата с мобильного телефона
+[19:33:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Вам не нужно будет создавать свой кошелек!
+[19:33:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Купить донат это легко! Покупка на сайте: www.hypemc.pro
+[19:33:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:33:20] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 15 секунд весь мусор с карты будет удален!
+[19:33:29] [Render thread/INFO] (Minecraft) Loaded 214 advancements
+[19:33:31] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 5 секунд весь мусор с карты будет удален!
+[19:33:35] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓛ ♥ «Вампирчики» [Игрок] vikavos ⇨ Я отойду пока что
+[19:33:36] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » С карты было очищено 26 мусора!
+[19:33:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:33:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Хочешь получить бесплатные подарки?
+[19:33:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Введи команду /free и забери свой приз!
+[19:33:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:33:42] [Render thread/INFO] (Minecraft) [System] [CHAT] $80,000,000 отправлено игроку ERLLINE.
+[19:33:58] [Render thread/INFO] (Minecraft) [System] [CHAT] › Подождите 1.49 сек. перед отправкой сообщения!
+[19:33:59] [Render thread/INFO] (Minecraft) [System] [CHAT] [ERLLINE -> я] спасибо
+[19:34:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:34:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Купить донат на нашем сайте можно через:
+[19:34:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ СБП, T-Pay и любая банковская карта!
+[19:34:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната без комиссии на сайте - www.hypemc.pro
+[19:34:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:34:34] [Render thread/INFO] (Minecraft) [System] [CHAT]                                                        \n        ЧАТ-ИГРА\n  \n  Ответь на вопрос: 929 + 574 = ?\n  Награда: 10000$\n                                                       \n
+[19:34:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶ [Хелпер] TABURET225017 доброго времени суток!!!
+[19:34:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:34:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Хочешь банить нарушителей навсегда и по IP?
+[19:34:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупай донат [Консоль] всего за 8749 329 руб
+[19:34:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ У него есть: консоль, все команды WorldEdit и многое другое!
+[19:34:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:34:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
+[19:34:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:35:03] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓖ [Игрок] Wembu245 ⇨ Gan4k в розыске
+[19:35:06] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 30 секунд весь мусор с карты будет удален!
+[19:35:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:35:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Хотите купить донат, но сомневаетесь?
+[19:35:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Не бойтесь, мы не обманываем!
+[19:35:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Наш проект одобрен АО «Т-Банк»
+[19:35:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:35:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
+[19:35:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:35:16] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓖ ♥ [Цезарь] Fall66 ⇨  о к а к
+[19:35:21] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 15 секунд весь мусор с карты будет удален!
+[19:35:32] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 5 секунд весь мусор с карты будет удален!
+[19:35:34] [Render thread/INFO] (Minecraft) [System] [CHAT]                                                        \n        ЧАТ-ИГРА\n  \n  Никто не смог ответить на вопрос!\n  Правильный ответ: 1503\n                                                       \n
+[19:35:37] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » С карты было очищено 61 мусора!
+[19:35:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:35:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Не знаешь какие возможности есть у доната?
+[19:35:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Напиши команду /donate и стань крутым!
+[19:35:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
+[19:35:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:36:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:36:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Все донат-привилегии покупаются навсегда,
+[19:36:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ выдаются моментально и на все сервера!
+[19:36:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
+[19:36:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:36:18] [Render thread/INFO] (Minecraft) [System] [CHAT] › Подождите 0.61 сек. перед отправкой сообщения!
+[19:36:22] [Render thread/INFO] (Minecraft) [System] [CHAT] › Подождите 0.46 сек. перед отправкой сообщения!
+[19:36:25] [Render thread/INFO] (Minecraft) [System] [CHAT] › Подождите 1.48 сек. перед отправкой сообщения!
+[19:36:28] [Render thread/INFO] (Minecraft) [System] [CHAT] › Подождите 1.5 сек. перед отправкой сообщения!
+[19:36:35] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶ Death  SantTa опасно влетел на сервер!
+[19:36:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:36:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Только СЕГОДНЯ, мы увеличилиꜛ шансы +100% в кейсах!
+[19:36:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупая кейсы на нашем сервере, вы всегда окупитесь!
+[19:36:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:36:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка кейсов на сайте - www.hypemc.pro
+[19:36:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:37:08] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 30 секунд весь мусор с карты будет удален!
+[19:37:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:37:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Обвал цен! Огромные скидки до -90%!
+[19:37:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ [Создатель] (/ban, //set, доступ к приватам) всего за 1979 149 руб
+[19:37:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ [Консоль] (консоль, /banip, полный WorldEdit) всего за 2499 349 руб
+[19:37:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ [ЦЕЗАРЬ] (100% команд, /pex, /op) всего за 12479 479 руб
+[19:37:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:37:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
+[19:37:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:37:23] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 15 секунд весь мусор с карты будет удален!
+[19:37:33] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 5 секунд весь мусор с карты будет удален!
+[19:37:34] [Render thread/INFO] (Minecraft) [System] [CHAT]                                                        \n        ЧАТ-ИГРА\n  \n  Ответь на вопрос: Какого животного боится крипер?\n  Награда: 1500$\n                                                       \n
+[19:37:38] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » С карты было очищено 52 мусора!
+[19:37:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:37:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Нашел читера?
+[19:37:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Подай на него жалобу - /report
+[19:37:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:38:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:38:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Наша группа в VK - vk.com/hypemc
+[19:38:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Наш чат в VK - vk.cc/cSmvKz
+[19:38:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Наш канал в Telegram - telegram.me/hypemc
+[19:38:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Наш чат в Telegram - telegram.me/hypemc_chat
+[19:38:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:38:30] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶ [Владелец] kostiknuhrugbro зашел на сервер!
+[19:38:36] [Render thread/INFO] (Minecraft) [System] [CHAT]                                                        \n        ЧАТ-ИГРА\n  \n  Никто не смог ответить на вопрос!\n  Правильный ответ: Оцелот\n                                                       \n
+[19:38:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:38:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Хочешь безлимитный доступ ко всем регионам?
+[19:38:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Тогда донат [Хелпер] всего за 1979 руб для тебя!
+[19:38:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
+[19:38:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:38:49] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶ [Сервер] bacek  sdsssssssssssss
+[19:38:57] [Render thread/INFO] (Minecraft) [System] [CHAT] › Подождите 1.5 сек. перед отправкой сообщения!
+[19:39:09] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 30 секунд весь мусор с карты будет удален!
+[19:39:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:39:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Донат [ＨＹＰＥ] всего за 9479 4979 руб
+[19:39:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Может строить на спавне и банить навсегда
+[19:39:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка на нашем сайте - www.hypemc.pro
+[19:39:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:39:22] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶ panica :<  hellishDead  Well Well Well
+[19:39:24] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 15 секунд весь мусор с карты будет удален!
+[19:39:34] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 5 секунд весь мусор с карты будет удален!
+[19:39:39] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » С карты было очищено 203 мусора!
+[19:39:41] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:39:41] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Донат [ＳＴＡＦＦ] всего за 9479 руб
+[19:39:41] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Может //set в чужих регионах
+[19:39:41] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ И имеет доступ к RCON боту (VK/Telegram)
+[19:39:41] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:39:41] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка на нашем сайте - www.hypemc.pro
+[19:39:41] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:40:20] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:40:20] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Только сегодня [ЦЕЗАРЬ] + /OP всего за 479 рублей
+[19:40:20] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Только сегодня [ЦЕЗАРЬ] + /OP всего за 479 рублей
+[19:40:20] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Только сегодня [ЦЕЗАРЬ] + /OP всего за 479 рублей
+[19:40:20] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:40:20] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
+[19:40:20] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:40:20] [Render thread/INFO] (Minecraft) [System] [CHAT] › Игрок Giga2020 покинул игру во время PvP и был наказан!
+[19:40:34] [Render thread/INFO] (Minecraft) [System] [CHAT]                                                        \n        ЧАТ-ИГРА\n  \n  Ответь на вопрос: 157 - 95 = ?\n  Награда: 9000$\n                                                       \n
+[19:40:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:40:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Нужен креатив с бессмертием и бесконечными ресурсами?
+[19:40:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Но у тебя очень мало денег?
+[19:40:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Тогда купи донат [Креатив] всего за 249 15 руб!
+[19:40:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Ты не пожалеешь! А заодно убедишься, что мы не обманываем!
+[19:40:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:40:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка на нашем сайте - www.hypemc.pro
+[19:40:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:40:39] [Render thread/INFO] (Minecraft) [System] [CHAT] › Игрок Xx_DEVDIH_xX покинул игру во время PvP и был наказан!
+[19:41:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:41:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Тебя загриферили?
+[19:41:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Купи [Консоль] за 8749 329 руб и отомсти!
+[19:41:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Ты сможешь банить игроков навсегда по IP,
+[19:41:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ получишь КОНСОЛЬ и 100% команд!
+[19:41:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:41:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка на нашем сайте - www.hypemc.pro
+[19:41:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:41:10] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 30 секунд весь мусор с карты будет удален!
+[19:41:17] [Render thread/INFO] (Minecraft) [System] [CHAT]   
+[19:41:17] [Render thread/INFO] (Minecraft) [System] [CHAT] ▏ Вы заработали $1,000 за 10 минут игры.
+[19:41:17] [Render thread/INFO] (Minecraft) [System] [CHAT] ▏ Донат [Цезарь] получает по $500,000 (каждые 10 минут)
+[19:41:17] [Render thread/INFO] (Minecraft) [System] [CHAT]   
+[19:41:25] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 15 секунд весь мусор с карты будет удален!
+[19:41:34] [Render thread/INFO] (Minecraft) [System] [CHAT]                                                        \n        ЧАТ-ИГРА\n  \n  Никто не смог ответить на вопрос!\n  Правильный ответ: 62\n                                                       \n
+[19:41:35] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 5 секунд весь мусор с карты будет удален!
+[19:41:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:41:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Друзья хвастаются донатом? Ты тоже хочешь быть ТОП игроком?
+[19:41:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Специально для тебя мы сделали скидки -90%!
+[19:41:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Донат [Консоль] всего за 8749 329 руб!
+[19:41:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:41:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка на нашем сайте - www.hypemc.pro
+[19:41:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:41:40] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » С карты было очищено 67 мусора!
+[19:41:50] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶ [Сервер] Miron_SV зашел на сервер!
+[19:42:05] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶ [Консоль] qwizeI зашел на сервер!
+[19:42:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:42:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Донат покупать только на сайте: HypeMC.pro « нажми, чтобы открыть
+[19:42:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Донат покупать только на сайте: HypeMC.pro « нажми, чтобы открыть
+[19:42:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Донат покупать только на сайте: HypeMC.pro « нажми, чтобы открыть
+[19:42:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:42:16] [Render thread/INFO] (Minecraft) [System] [CHAT] Вы находитесь на спавне!
+[19:42:16] [Render thread/INFO] (Minecraft) [System] [CHAT] Напишите /rtp чтобы начать выживать.
+[19:42:27] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶   MAYNER     Butcher_Morven   Привет HYPE !  
+[19:42:34] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶  Премиум m0uzexs losercore alone
+[19:42:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:42:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ От доната [Создатель] всего за 1979 149 руб
+[19:42:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Ты сможешь сетать топориком: //set, //walls, //replace
+[19:42:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка на нашем сайте - www.hypemc.pro
+[19:42:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:43:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:43:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Только сегодня, у тебя есть возможность купить донат [Консоль]
+[19:43:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ У него есть: 100% команд, доступ к чужим приватам, бан по IP - /banip
+[19:43:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Цена: 8749 329 рублей (навсегда) Покупка на сайте - www.hypemc.pro
+[19:43:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:43:11] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 30 секунд весь мусор с карты будет удален!
+[19:43:26] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 15 секунд весь мусор с карты будет удален!
+[19:43:34] [Render thread/INFO] (Minecraft) [System] [CHAT]                                                        \n        ЧАТ-ИГРА\n  \n  Ответь на вопрос: Какой ник у создателя сервера?\n  Награда: 1500$\n                                                       \n
+[19:43:36] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 5 секунд весь мусор с карты будет удален!
+[19:43:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:43:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Хочешь получить все команды и опку?
+[19:43:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Донат [ЦЕЗАРЬ] всего за 12479 479 руб может всё!
+[19:43:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
+[19:43:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:43:41] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » С карты было очищено 127 мусора!
+[19:44:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:44:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Хочешь быть в курсе всех новостей сервера?
+[19:44:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Подпишись на нашу группу ВКонтакте: vk.com/hypemc
+[19:44:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Подпишись на наш паблик в Telegram: telegram.me/hypemc
+[19:44:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:44:34] [Render thread/INFO] (Minecraft) [System] [CHAT]                                                        \n        ЧАТ-ИГРА\n  \n  Никто не смог ответить на вопрос!\n  Правильный ответ: chromocat\n                                                       \n
+[19:44:35] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶ ＳＰＯＴＳＯＲ kirill7856 я че тут шутка нахуй
+[19:44:35] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓛ [Цезарь] Mr_Horor ⇨ дай перки пжпжпжп
+[19:44:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:44:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Тебя все обижают?
+[19:44:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Купи любой донат и докажи свою крутость!
+[19:44:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
+[19:44:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:44:40] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓖ ♂ ＳＰＯＴＳＯＲ kirill7856 ⇨ м
+[19:45:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:45:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Хочешь выдавать донат игрокам?
+[19:45:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупай донат [Сервер] всего за 12499 979 руб
+[19:45:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ У него есть: 100% команд, голограммы /dholo и другое!
+[19:45:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:45:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
+[19:45:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:45:12] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 30 секунд весь мусор с карты будет удален!
+[19:45:25] [Render thread/INFO] (Minecraft) [System] [CHAT]  ▶ ЛЮБЛЮ ОРАНЖЕВЫЙ Qweasy_Spyke инвизочка на месте
+[19:45:27] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 15 секунд весь мусор с карты будет удален!
+[19:45:37] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » Через 5 секунд весь мусор с карты будет удален!
+[19:45:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:45:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Тебе нужен доступ в любой приват?
+[19:45:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупай донат [Создатель] всего за 1979 149 руб
+[19:45:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ У него есть: топорик //set, баны /ban, выдать /fly и другое!
+[19:45:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:45:39] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Покупка доната на сайте - www.hypemc.pro
+[19:45:39] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:45:42] [Render thread/INFO] (Minecraft) [System] [CHAT] ОЧИСТКА » С карты было очищено 34 мусора!
+[19:46:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:46:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ На нашем сайте есть оплата с мобильного телефона
+[19:46:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Вам не нужно будет создавать свой кошелек!
+[19:46:09] [Render thread/INFO] (Minecraft) [System] [CHAT]  ❏ Купить донат это легко! Покупка на сайте: www.hypemc.pro
+[19:46:09] [Render thread/INFO] (Minecraft) [System] [CHAT] 
+[19:46:14] [Render thread/INFO] (Minecraft) [System] [CHAT] Ⓖ  Премиум m0uzexs ⇨  all к кому можно в клан?
+[19:46:27] [Render thread/INFO] (Minecraft) Stopping!
