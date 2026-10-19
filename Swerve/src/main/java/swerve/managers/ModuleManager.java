@@ -15,6 +15,7 @@ import swerve.modules.impl.hud.Watermark;
 import swerve.modules.impl.player.DrinkUse;
 import swerve.modules.impl.movement.Speed;
 import swerve.modules.impl.movement.ElytraFlight;
+import swerve.modules.impl.movement.NoWeb;
 import swerve.modules.impl.hud.TargetHud;
 import swerve.modules.impl.render.Arrows;
 import swerve.modules.impl.render.ChinaHat;
@@ -63,6 +64,7 @@ public final class ModuleManager {
         register(new ItemSwap());
         register(new Speed());
         register(new ElytraFlight());
+        register(new NoWeb());
         register(new DrinkUse());
         register(new Trails());
         register(new ChinaHat());

@@ -34,7 +34,8 @@
 		"render.MixinLevelRenderer",
 		"render.MixinPlayerModel",
 		"render.MixinPlayerRenderer",
-		"render.MixinRenderTarget"
+		"render.MixinRenderTarget",
+		"world.MixinWebBlock"
 	],
 	"injectors": {
 		"defaultRequire": 1
