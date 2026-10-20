@@ -26,6 +26,8 @@ public final class MenuPrefs {
     public static boolean blur = true;
     /** Затемнение мира, 0 - 90. */
     public static float dim = 40f;
+    /** Градиенты в элементах GUI: тумблеры, ползунки, плашки, окна — во всех темах. */
+    public static boolean gradient = true;
 
     // ---- поведение
     /** Плавные переходы. */

@@ -216,6 +216,46 @@ public final class MenuScreen extends Screen {
         return MenuTheme.accent() | 0xFF000000;
     }
 
+    /** Второй цвет градиента темы (сплошной). */
+    static int acc2() {
+        return MenuTheme.accent2() | 0xFF000000;
+    }
+
+    /**
+     * Акцентная заливка: при включённом «Градиенте» перетекает из акцента во второй цвет.
+     *
+     * <p>Единая точка градиента для тумблеров, бегунков, кругов дока и плашек — градиент
+     * появляется во всех окнах меню сразу (модули, настройки, косметика).
+     */
+    void accentFill(GuiGraphics g, int x, int y, int w, int h, int r) {
+        if (MenuPrefs.gradient) {
+            Px.roundGrad(g, x, y, w, h, r, acc(), acc2());
+        } else {
+            Px.round(g, x, y, w, h, r, acc());
+        }
+    }
+
+    /** Полупрозрачная акцентная подложка с градиентом (плашки групп, карточки, поля значений). */
+    void accentWash(GuiGraphics g, int x, int y, int w, int h, int r, int alpha) {
+        if (MenuPrefs.gradient) {
+            Px.roundGrad(g, x, y, w, h, r, Px.a(acc(), alpha), Px.a(acc2(), alpha));
+        } else {
+            Px.round(g, x, y, w, h, r, Px.a(acc(), alpha));
+        }
+    }
+
+    /** Градиентная кромка вдоль верхней грани окна: ярко к центру, тускло к краям. */
+    void gradHairline(GuiGraphics g, int x, int y, int w, int r) {
+        if (!MenuPrefs.gradient || w <= r * 2) {
+            return;
+        }
+        boolean lt = light();
+        int hl = Math.max(1, S(1));
+        int half = (w - r * 2) / 2;
+        Px.hgrad(g, x + r, y, half, hl, Px.a(acc2(), 0), Px.a(acc2(), lt ? 60 : 120));
+        Px.hgrad(g, x + r + half, y, w - r * 2 - half, hl, Px.a(acc2(), lt ? 60 : 120), Px.a(acc2(), 0));
+    }
+
     static int accText() {
         return light() ? MenuTheme.accent() : MenuTheme.accent2();
     }
@@ -306,7 +346,12 @@ public final class MenuScreen extends Screen {
         int ty = y + (h - th) / 2;
         int r = th / 2;
         int off = lt ? Px.mix(0xFFE4E2EB, 0xFFD9D6E2, hv) : Px.a(0xFFFFFF, 24 + Math.round(14 * hv));
-        Px.round(g, tx, ty, tw, th, r, Px.mix(off, acc(), on));
+        if (MenuPrefs.gradient) {
+            // включённый тумблер — градиент из акцента во второй цвет темы
+            Px.pill(g, tx, ty, tw, th, Px.mix(off, acc(), on), Px.mix(off, acc2(), on));
+        } else {
+            Px.round(g, tx, ty, tw, th, r, Px.mix(off, acc(), on));
+        }
         int m = Math.max(2, Math.round(th * .15f));
         int ks = (th - m * 2) / 2 * 2;
         int kx = tx + m + Math.round((tw - m * 2 - ks) * on);
@@ -380,6 +425,8 @@ public final class MenuScreen extends Screen {
         Px.begin(g);
         float keep = Px.fade;
         Px.rect(g, 0, 0, sw, sh, Px.a(0x05040A, (int) (255 * MenuPrefs.dim / 100f * open)));
+        // шейдерный фон GUI: шёлковое полотно в цветах палитры под всеми окнами меню
+        MenuBg.draw(g, sw, sh, open);
         Px.fade = keep * Math.min(1, open * 1.3f);
         brand(g, sw / 2, py - S(58));
         g.pose().pushPose();
@@ -430,11 +477,11 @@ public final class MenuScreen extends Screen {
         int half = (pw0 - ph0) / 2;
         Px.hgrad(g, px0 + ph0 / 2, py0, half, hl, Px.a(MenuTheme.accent2(), 0), Px.a(MenuTheme.accent2(), lt ? 70 : 130));
         Px.hgrad(g, px0 + ph0 / 2 + half, py0, half, hl, Px.a(MenuTheme.accent2(), lt ? 70 : 130), Px.a(MenuTheme.accent2(), 0));
-        // знак клиента: ромб в цвет акцента
+        // знак клиента: ромб в цвет акцента (с градиентом — переток во второй цвет)
         int mx0 = x + ls / 2;
         int my0 = y + dy + ls / 2;
         int mr = S(9);
-        Px.round(g, mx0 - mr, my0 - mr, mr * 2, mr * 2, mr / 2, acc());
+        accentFill(g, mx0 - mr, my0 - mr, mr * 2, mr * 2, mr / 2);
         Px.outline(g, mx0 - mr, my0 - mr, mr * 2, mr * 2, mr / 2, Px.a(0xFFFFFFFF, 90));
         int ty = y + dy + (ls - fs) / 2;
         Px.text(g, w1, x + ls + gap, ty, Weight.BOLD, fs, lt ? 0xFF15151A : 0xFFF4F6FA);
@@ -448,6 +495,7 @@ public final class MenuScreen extends Screen {
         Px.shadow(g, px, py + S(16), pw, ph, S(46), Px.a(0, lt ? 40 : 160));
         Px.round(g, px, py, pw, ph, r, lt ? 0xF8F8F7FA : (T().bg() & 0xFFFFFF) | 0xF2000000);
         Px.outline(g, px, py, pw, ph, r, Px.a(T().text(), lt ? 28 : 20));
+        gradHairline(g, px, py, pw, r);
         int pad = S(36);
         int hy = py + S(26);
         int hh = S(40);
@@ -509,7 +557,12 @@ public final class MenuScreen extends Screen {
         if (active >= 0) {
             float plx = tw(MenuAnim.PLATE_X, xs[active], 260);
             float plw = tw(MenuAnim.PLATE_W, ws[active], 260);
-            Px.round(g, Math.round(plx), py2, Math.round(plw), ph2, S(11), light() ? Px.a(0x1B1530, 14) : 0xA01A1C24);
+            if (MenuPrefs.gradient) {
+                // подложка активной вкладки — градиентная заливка в цветах темы
+                accentWash(g, Math.round(plx), py2, Math.round(plw), ph2, S(11), light() ? 16 : 42);
+            } else {
+                Px.round(g, Math.round(plx), py2, Math.round(plw), ph2, S(11), light() ? Px.a(0x1B1530, 14) : 0xA01A1C24);
+            }
             Px.outline(g, Math.round(plx), py2, Math.round(plw), ph2, S(11), light() ? Px.a(0x1B1530, 20) : 0x14FFFFFF);
         }
         for (int i = 0; i < labels.length; i++) {
@@ -968,14 +1021,16 @@ public final class MenuScreen extends Screen {
     private static final int PREF_ANIMATIONS = 5;
     private static final int PREF_ANIM_SPEED = 6;
     private static final int PREF_SCALE = 7;
+    /** Градиенты элементов GUI во всех темах (переключатель в группе «Палитра»). */
+    private static final int PREF_GRADIENT = 8;
     private static final int PREFS_PALETTE = 0;
     private static final int PREFS_SOUND = 1;
     private static final int PREFS_VIEW = 2;
     private static final int PREFS_BEHAVIOR = 3;
     private static final int PREF_SCROLL = 9;
-    private static final float[] PREF_MIN = {0f, 0f, 0f, 0f, 0f, 0f, .5f, 70f};
-    private static final float[] PREF_MAX = {0f, 100f, 0f, 0f, 90f, 0f, 2f, 130f};
-    private static final float[] PREF_STEP = {0f, 5f, 0f, 0f, 5f, 0f, .1f, 5f};
+    private static final float[] PREF_MIN = {0f, 0f, 0f, 0f, 0f, 0f, .5f, 70f, 0f};
+    private static final float[] PREF_MAX = {0f, 100f, 0f, 0f, 90f, 0f, 2f, 130f, 0f};
+    private static final float[] PREF_STEP = {0f, 5f, 0f, 0f, 5f, 0f, .1f, 5f, 0f};
 
     private record PrefGroup(String icon, String title, String subtitle, int[] rows) {
     }
@@ -1022,7 +1077,7 @@ public final class MenuScreen extends Screen {
         int ty = y + pad;
         float tx = tw(MenuAnim.DOCK_X, x + pad + activeIdx * (bs + gap), 280);
         int txi = Math.round(tx);
-        Px.circle(g, txi + bs / 2, ty + bs / 2, bs / 2, acc());
+        accentFill(g, txi, ty, bs, bs, bs / 2);
         // иконка под кругом акцента лежит на его заливке — берём контрастный цвет
         int cur = Math.round((tx - (x + pad)) / (float) (bs + gap));
         int onCircle = Px.onAccent(acc());
@@ -1123,7 +1178,7 @@ public final class MenuScreen extends Screen {
     private int groupH(int group, int cw) {
         int h = S(64);
         if (group == PREFS_PALETTE) {
-            return h + paletteH(cw - S(36)) + S(10);
+            return h + paletteH(cw - S(36)) + S(10) + prefRowH(PREF_GRADIENT);
         }
         int[] rows = PREFS[group].rows;
         for (int i = 0; i < rows.length; i++) {
@@ -1144,7 +1199,7 @@ public final class MenuScreen extends Screen {
         Px.round(g, x, y, w, h, R, plate());
         Px.outline(g, x, y, w, h, R, lt ? Px.a(T().text(), 22) : 0x18FFFFFF);
         int ib = S(34);
-        Px.round(g, x + pad, y + S(15), ib, ib, S(10), Px.a(MenuTheme.accent(), lt ? 22 : 34));
+        accentWash(g, x + pad, y + S(15), ib, ib, S(10), lt ? 22 : 34);
         glyph(g, PREFS[group].icon, x + pad + (ib - S(17)) / 2, y + S(15) + (ib - S(17)) / 2, S(17), accText());
         Px.text(g, PREFS[group].title, x + pad + ib + S(12), y + S(16), Weight.SEMIBOLD, S(15), T().text());
         Px.text(g, PREFS[group].subtitle, x + pad + ib + S(12), y + S(36), Weight.MEDIUM, S(12), lt(T().dim(), 0xFF757D8A));
@@ -1152,6 +1207,9 @@ public final class MenuScreen extends Screen {
         int ry = y + S(64);
         if (group == PREFS_PALETTE) {
             paletteStrip(g, x + pad, ry, w - pad * 2, sc, live);
+            // под палитрами — переключатель градиента: он действует на все темы сразу
+            ry += paletteH(w - pad * 2) + S(10);
+            prefRow(g, PREF_GRADIENT, x + pad, ry, w - pad * 2, prefRowH(PREF_GRADIENT), sc, top, bottom, live);
             return;
         }
         int[] rows = PREFS[group].rows;
@@ -1174,6 +1232,7 @@ public final class MenuScreen extends Screen {
             case PREF_HOVER_SOUNDS -> prefToggle(g, pref, x, y, w, h, "Звук при наведении", MenuPrefs.hoverSounds, hk, sc, t, b, live);
             case PREF_BLUR -> prefToggle(g, pref, x, y, w, h, "Размытие мира", MenuPrefs.blur, hk, sc, t, b, live);
             case PREF_ANIMATIONS -> prefToggle(g, pref, x, y, w, h, "Анимации", MenuPrefs.animations, hk, sc, t, b, live);
+            case PREF_GRADIENT -> prefToggle(g, pref, x, y, w, h, "Градиент", MenuPrefs.gradient, hk, sc, t, b, live);
             case PREF_VOLUME -> prefNumber(g, pref, x, y, w, h, "Громкость", MenuPrefs.volume, hk, sc, t, b, live);
             case PREF_DIM -> prefNumber(g, pref, x, y, w, h, "Затемнение", MenuPrefs.dim, hk, sc, t, b, live);
             case PREF_ANIM_SPEED -> prefNumber(g, pref, x, y, w, h, "Скорость", MenuPrefs.animSpeed, hk, sc, t, b, live);
@@ -1215,11 +1274,15 @@ public final class MenuScreen extends Screen {
         prefSliderX[pref] = x + kr;
         prefSliderW[pref] = w - kr * 2;
         Px.round(g, x, ty, w, th, th / 2, light() ? 0xFFDEDDE6 : Px.a(0xFFFFFF, 24));
-        Px.round(g, x, ty, Math.max(th, kx - x), th, th / 2, acc());
+        if (MenuPrefs.gradient) {
+            Px.roundGrad(g, x, ty, Math.max(th, kx - x), th, th / 2, acc(), acc2());
+        } else {
+            Px.round(g, x, ty, Math.max(th, kx - x), th, th / 2, acc());
+        }
         float kh = an(animBase + 3, hk > .5f ? .6f : 0, 20);
         int outer = kr + Math.round(S(1.5f) * kh);
         int inner = Math.max(1, Math.round(outer * .34f));
-        Px.circle(g, kx, ty + th / 2, outer, acc());
+        accentFill(g, kx - outer, ty + th / 2 - outer, outer * 2, outer * 2, outer);
         Px.circle(g, kx, ty + th / 2, inner, light() ? 0xFFFFFFFF : 0xFF12141C);
         if (live) {
             clipped(x - S(10), ty - S(14), w + S(20), S(34), sc, t, b, ACT_PREF_SLIDER, pref);
@@ -1265,7 +1328,13 @@ public final class MenuScreen extends Screen {
                 hot(HOT_PALETTE + i);
             }
             Px.round(g, cx, cy, cell, cell, S(10), p.bg() | 0xFF000000);
-            Px.round(g, cx + S(6), cy + cell - S(14), cell - S(12), S(8), S(4), p.a() | 0xFF000000);
+            if (MenuPrefs.gradient) {
+                // градиент в образце каждой темы: акцент перетекает во второй цвет палитры
+                Px.roundGrad(g, cx + S(6), cy + cell - S(14), cell - S(12), S(8), S(4),
+                        p.a() | 0xFF000000, p.b() | 0xFF000000);
+            } else {
+                Px.round(g, cx + S(6), cy + cell - S(14), cell - S(12), S(8), S(4), p.a() | 0xFF000000);
+            }
             Px.outline(g, cx, cy, cell, cell, S(10), sel ? Px.a(MenuTheme.accent(), 220) : p.border());
             if (sel) {
                 Px.outline(g, cx - S(2), cy - S(2), cell + S(4), cell + S(4), S(12), Px.a(MenuTheme.accent(), 120));
@@ -1282,7 +1351,11 @@ public final class MenuScreen extends Screen {
         int bw = Math.max(S(compact ? 44 : 52), Px.textWidth(v, Weight.MEDIUM, S(13)) + S(compact ? 18 : 22));
         int bh = S(compact ? 26 : 30);
         int bx = right - bw;
-        Px.round(g, bx, y, bw, bh, S(5), accent ? Px.a(MenuTheme.accent(), light() ? 26 : 40) : inset(hv));
+        if (accent) {
+            accentWash(g, bx, y, bw, bh, S(5), light() ? 26 : 40);
+        } else {
+            Px.round(g, bx, y, bw, bh, S(5), inset(hv));
+        }
         Px.outline(g, bx, y, bw, bh, S(5), accent ? acc() : Px.a(T().text(), light() ? 30 : 16));
         Px.textCenter(g, v, bx + bw / 2, y + (bh - S(13)) / 2, Weight.MEDIUM, S(13), accent ? accText() : T().text());
         return bw;
@@ -1405,11 +1478,15 @@ public final class MenuScreen extends Screen {
             sliderX[siGlobal] = tx + kr;
             sliderW[siGlobal] = tw2 - kr * 2;
             Px.round(g, tx, ty, tw2, th, th / 2, light() ? 0xFFDEDDE6 : Px.a(0xFFFFFF, 24));
-            Px.round(g, tx, ty, Math.max(th, kx - tx), th, th / 2, acc());
+            if (MenuPrefs.gradient) {
+                Px.roundGrad(g, tx, ty, Math.max(th, kx - tx), th, th / 2, acc(), acc2());
+            } else {
+                Px.round(g, tx, ty, Math.max(th, kx - tx), th, th / 2, acc());
+            }
             float kh = an(animBase + MenuAnim.SET_NUM_KNOB, hv ? .6f : 0, 20);
             int outer = kr + Math.round(S(1.5f) * kh);
             int inner = Math.max(1, Math.round(outer * .34f));
-            Px.circle(g, kx, kcy, outer, acc());
+            accentFill(g, kx - outer, kcy - outer, outer * 2, outer * 2, outer);
             Px.circle(g, kx, kcy, inner, light() ? 0xFFFFFFFF : 0xFF12141C);
             if (live) {
                 int y0 = (int) Math.max(t, ty - S(14) - sc);
@@ -1431,7 +1508,7 @@ public final class MenuScreen extends Screen {
                 float thumb = tw(animBase + MenuAnim.SET_SEGMENT, md.getIndex(), 240);
                 int t0 = x + in + Math.round(segW * thumb);
                 int t1 = x + in + Math.round(segW * (thumb + 1));
-                Px.round(g, t0, sy + in, t1 - t0, sh - in * 2, S(4), acc());
+                accentFill(g, t0, sy + in, t1 - t0, sh - in * 2, S(4));
                 // текст выбранного сегмента ложится на заливку акцентом: берём контрастный цвет
                 int onThumb = Px.onAccent(acc());
                 for (int i = 0; i < n; i++) {
@@ -1492,7 +1569,11 @@ public final class MenuScreen extends Screen {
                     oy += S(32);
                 }
                 boolean ohv = live && hover(ox, Math.round(oy - sc), bw, S(26));
-                Px.round(g, ox, oy, bw, S(26), S(6), option.get() ? Px.a(MenuTheme.accent(), light() ? 26 : 40) : inset(ohv));
+                if (option.get()) {
+                    accentWash(g, ox, oy, bw, S(26), S(6), light() ? 26 : 40);
+                } else {
+                    Px.round(g, ox, oy, bw, S(26), S(6), inset(ohv));
+                }
                 Px.outline(g, ox, oy, bw, S(26), S(6), option.get() ? acc() : Px.a(T().text(), light() ? 30 : 16));
                 Px.textCenter(g, on, ox + bw / 2, oy + (S(26) - S(12)) / 2, Weight.MEDIUM, S(12),
                         option.get() ? accText() : T().text());
@@ -1833,6 +1914,7 @@ public final class MenuScreen extends Screen {
                     case PREF_HOVER_SOUNDS -> MenuPrefs.hoverSounds = !MenuPrefs.hoverSounds;
                     case PREF_BLUR -> MenuPrefs.blur = !MenuPrefs.blur;
                     case PREF_ANIMATIONS -> MenuPrefs.animations = !MenuPrefs.animations;
+                    case PREF_GRADIENT -> MenuPrefs.gradient = !MenuPrefs.gradient;
                     default -> {
                     }
                 }

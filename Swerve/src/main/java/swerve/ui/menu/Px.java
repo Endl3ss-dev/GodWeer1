@@ -2,15 +2,25 @@ package swerve.ui.menu;
 
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
+import com.mojang.blaze3d.systems.RenderSystem;
+import com.mojang.blaze3d.vertex.BufferBuilder;
+import com.mojang.blaze3d.vertex.BufferUploader;
+import com.mojang.blaze3d.vertex.DefaultVertexFormat;
+import com.mojang.blaze3d.vertex.MeshData;
+import com.mojang.blaze3d.vertex.Tesselator;
+import com.mojang.blaze3d.vertex.VertexFormat;
 
 import swerve.Swerve;
 import swerve.ui.menu.MenuText.Weight;
+import swerve.utils.render.ShaderUtils;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
+import net.minecraft.client.renderer.CompiledShaderProgram;
 import net.minecraft.client.renderer.RenderType;
 import net.minecraft.resources.ResourceLocation;
 
+import org.joml.Matrix4f;
 import org.joml.Quaternionf;
 
 import java.io.InputStreamReader;
@@ -423,6 +433,64 @@ public final class Px {
         sprite(g, x + w - r, y + h - r, d[0] + r, d[1] + r, r, r, c2);
         rect(g, x + w - r, y + r, r, h - 2 * r, c2);
         hgrad(g, x + r, y, w - 2 * r, h, c1, c2);
+    }
+
+    /**
+     * Скруглённый прямоугольник с горизонтальным градиентом c1 → c2 (шейдер gradient6).
+     *
+     * <p>В отличие от {@link #pill}, радиус скругления произвольный: углы срезает SDF шейдера,
+     * поэтому примитив подходит и для кругов (r = min(w, h) / 2), и для плашек. Если шейдер
+     * не скомпилирован, откатывается на плоскую заливку c1.
+     */
+    public static void roundGrad(GuiGraphics g, int x, int y, int w, int h, int r, int c1, int c2) {
+        if (w <= 0 || h <= 0) {
+            return;
+        }
+        c1 = f(c1);
+        c2 = f(c2);
+        if ((c1 >>> 24) == 0 && (c2 >>> 24) == 0) {
+            return;
+        }
+        r = Math.max(0, Math.min(Math.min(r, MAX_R), Math.min(w, h) / 2));
+        CompiledShaderProgram shader = ShaderUtils.get(ShaderUtils.GRADIENT6_RECT);
+        if (shader == null) {
+            round(g, x, y, w, h, r, c1);
+            return;
+        }
+        ShaderUtils.set(shader, "Size", (float) w, (float) h);
+        ShaderUtils.set(shader, "Radius", (float) r, (float) r, (float) r, (float) r);
+        ShaderUtils.set(shader, "Smoothness", 1.0f);
+        ShaderUtils.setColor(shader, "LeftTopColor", c1);
+        ShaderUtils.setColor(shader, "LeftBottomColor", c1);
+        ShaderUtils.setColor(shader, "RightTopColor", c2);
+        ShaderUtils.setColor(shader, "RightBottomColor", c2);
+        int mid = mix(c1, c2, .5f);
+        ShaderUtils.setColor(shader, "CenterTopColor", mid);
+        ShaderUtils.setColor(shader, "CenterBottomColor", mid);
+
+        RenderSystem.enableBlend();
+        RenderSystem.defaultBlendFunc();
+        RenderSystem.disableCull();
+        RenderSystem.disableDepthTest();
+
+        Matrix4f matrix = g.pose().last().pose();
+        BufferBuilder buffer = Tesselator.getInstance()
+                .begin(VertexFormat.Mode.QUADS, DefaultVertexFormat.POSITION_COLOR);
+
+        buffer.addVertex(matrix, x, y, 0.0f).setColor(1.0f, 1.0f, 1.0f, 1.0f);
+        buffer.addVertex(matrix, x, y + h, 0.0f).setColor(1.0f, 1.0f, 1.0f, 1.0f);
+        buffer.addVertex(matrix, x + w, y + h, 0.0f).setColor(1.0f, 1.0f, 1.0f, 1.0f);
+        buffer.addVertex(matrix, x + w, y, 0.0f).setColor(1.0f, 1.0f, 1.0f, 1.0f);
+
+        MeshData mesh = buffer.build();
+        if (mesh != null) {
+            RenderSystem.setShader(ShaderUtils.GRADIENT6_RECT);
+            BufferUploader.drawWithShader(mesh);
+        }
+
+        RenderSystem.enableDepthTest();
+        RenderSystem.enableCull();
+        RenderSystem.disableBlend();
     }
 
     /** Сглаженная дуга: start — радианы (0 = вправо), sweep — размах, цвет перетекает из c1 в c2. */

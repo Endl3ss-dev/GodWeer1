@@ -59,7 +59,7 @@ public final class MenuAnim {
 
     // ---- настройки меню: по 4 значения на пункт (подсветка, значение, позиция бегунка, бегунок)
     public static final int PREFS_BASE = SETTING_BASE + MAX_SETTINGS * SET_STRIDE;
-    public static final int PREFS_SIZE = 32;
+    public static final int PREFS_SIZE = 36;
 
     // ---- прокрутка: по одному значению на контекст
     public static final int SCROLL_BASE = PREFS_BASE + PREFS_SIZE;

@@ -81,13 +81,27 @@ final class ModulePopup {
         Px.shadow(g, x, y + menu.S(6), w, h, menu.S(18), Px.a(0, lt ? 30 : 70));
         Px.round(g, x, y, w, h, menu.S(13), bg);
         Px.outline(g, x, y, w, h, menu.S(13), lt ? Px.a(menu.T().text(), 26) : 0x18FFFFFF);
+        menu.gradHairline(g, x, y, w, menu.S(13));
         // тонкая связь с карточкой, к которой окно относится
         int tieY = Math.max(y + menu.S(16), Math.min(y + h - menu.S(16), menu.ancY + menu.ancH / 2));
         if (right) {
-            Px.rect(g, menu.px + menu.pw, tieY, x - menu.px - menu.pw, Math.max(1, menu.S(1)),
-                    Px.a(MenuTheme.accent(), (int) (120 * a)));
+            int tieW = x - menu.px - menu.pw;
+            if (MenuPrefs.gradient) {
+                // связь перетекает из акцента во второй цвет — к самому окну
+                Px.hgrad(g, menu.px + menu.pw, tieY, tieW, Math.max(1, menu.S(1)),
+                        Px.a(MenuTheme.accent(), (int) (120 * a)), Px.a(MenuTheme.accent2(), (int) (120 * a)));
+            } else {
+                Px.rect(g, menu.px + menu.pw, tieY, tieW, Math.max(1, menu.S(1)),
+                        Px.a(MenuTheme.accent(), (int) (120 * a)));
+            }
         } else {
-            Px.rect(g, x + w, tieY, menu.px - x - w, Math.max(1, menu.S(1)), Px.a(MenuTheme.accent(), (int) (120 * a)));
+            int tieW = menu.px - x - w;
+            if (MenuPrefs.gradient) {
+                Px.hgrad(g, x + w, tieY, tieW, Math.max(1, menu.S(1)),
+                        Px.a(MenuTheme.accent2(), (int) (120 * a)), Px.a(MenuTheme.accent(), (int) (120 * a)));
+            } else {
+                Px.rect(g, x + w, tieY, tieW, Math.max(1, menu.S(1)), Px.a(MenuTheme.accent(), (int) (120 * a)));
+            }
         }
         int t = y + menu.S(3);
         int b = y + h - menu.S(3);
