@@ -3,12 +3,14 @@ package swerve.mixins.client;
 import swerve.cosmetics.Wearables;
 import swerve.cosmetics.cape.CapeState;
 import swerve.cosmetics.melee.MeleeState;
+import swerve.utils.network.ServerTPS;
 
 import java.util.UUID;
 
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.network.protocol.game.ClientboundPlayerChatPacket;
 import net.minecraft.network.protocol.game.ClientboundPlayerInfoRemovePacket;
+import net.minecraft.network.protocol.game.ClientboundSetTimePacket;
 
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
@@ -22,6 +24,13 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  */
 @Mixin(ClientPacketListener.class)
 public class MixinClientPacketListener {
+
+    // KillAura/TPS: пакеты времени — опорные точки трекера TPS сервера.
+    // Adapted from Private/src/java/org/privates/client/utils/server/ServerTPS.java.
+    @Inject(method = "handleSetTime", at = @At("HEAD"))
+    private void swerve$serverTps(ClientboundSetTimePacket packet, CallbackInfo ci) {
+        ServerTPS.onTimePacket();
+    }
 
     @Inject(method = "handlePlayerChat(Lnet/minecraft/network/protocol/game/ClientboundPlayerChatPacket;)V",
             at = @At("HEAD"))

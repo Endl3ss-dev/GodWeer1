@@ -17,6 +17,9 @@ public final class HudManager {
 
     private static final List<HudElement> ELEMENTS = new ArrayList<>();
 
+    // Неперетаскиваемые слои (индикаторы поверх экрана): KillAura FOV и т.п.
+    private static final List<HudOverlay> OVERLAYS = new ArrayList<>();
+
     private static HudElement dragTarget;
     private static boolean initialized;
 
@@ -36,6 +39,13 @@ public final class HudManager {
     public static void register(HudElement element) {
         if (element != null) {
             ELEMENTS.add(element);
+        }
+    }
+
+    /** Регистрация неперетаскиваемого слоя; дубликаты игнорируются (реинициализация модулей). */
+    public static void registerOverlay(HudOverlay overlay) {
+        if (overlay != null && !OVERLAYS.contains(overlay)) {
+            OVERLAYS.add(overlay);
         }
     }
 
@@ -61,6 +71,19 @@ public final class HudManager {
             } catch (Exception exception) {
                 Swerve.LOGGER.error("HUD element '{}' failed to render", element.getName(), exception);
                 element.setEnabled(false);
+            }
+        }
+
+        // Слои-индикаторы: рисуются после элементов, падения изолированы так же.
+        for (int i = 0, size = OVERLAYS.size(); i < size; i++) {
+            HudOverlay overlay = OVERLAYS.get(i);
+            try {
+                overlay.renderOverlay(context);
+            } catch (Exception exception) {
+                Swerve.LOGGER.error("HUD overlay failed to render", exception);
+                OVERLAYS.remove(i);
+                size--;
+                i--;
             }
         }
     }

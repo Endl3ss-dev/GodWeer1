@@ -59,7 +59,7 @@ public final class ModuleManager {
         register(new AutoGApple());
         register(new AutoPotion());
         register(new SexAura());
-        // KillAura идёт после SexAura: поворот ауры применяется позже и затирает поворот SexAura в том же тике.
+        // KillAura: порт из Private (без ротаций); цель ауры читает ElytraFlight.
         register(new KillAura());
         register(new ItemSwap());
         register(new Speed());
