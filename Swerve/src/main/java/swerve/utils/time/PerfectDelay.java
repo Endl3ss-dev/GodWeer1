@@ -15,7 +15,16 @@ public final class PerfectDelay {
 
     /** true, если с последнего сброса прошло заданное время. */
     public boolean cooldownComplete() {
-        return System.currentTimeMillis() - lastReset >= delay;
+        return cooldownComplete(this.delay);
+    }
+
+    /**
+     * true, если с последнего сброса прошло не меньше {@code delayMs}.
+     * Перегрузка как в Private: {@code AuraNew.shouldAttack} передаёт динамический
+     * кулдаун инструмента, а не значение последнего {@link #reset(long)}.
+     */
+    public boolean cooldownComplete(long delayMs) {
+        return System.currentTimeMillis() - lastReset >= delayMs;
     }
 
     /** Запустить задержку на delayMs миллисекунд. */

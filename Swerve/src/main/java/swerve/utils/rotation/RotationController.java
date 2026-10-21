@@ -43,8 +43,29 @@ public final class RotationController {
     private static int timeout;
     private static int idleTicks;
     private static LocalPlayer owner;
+    private static boolean visible;
 
     private RotationController() {
+    }
+
+    /**
+     * Видимая ротация: тело и камера поворачиваются вместе (как обычный взгляд),
+     * молчаливый режим оставляет камеру игроку и уводит её в {@link FreeLook}.
+     */
+    public static void setVisible(boolean value) {
+        visible = value;
+        if (value) {
+            FreeLook.end();
+        }
+    }
+
+    /**
+     * Сброс захвата приоритета. Нужен при смене элемента ротации: Intave просит
+     * приоритет 4, Matrix/HW — 3, и без сброса новый элемент не смог бы повернуть
+     * тело (в Private это же значение оставалось «залипшим» до stopRotation).
+     */
+    public static void resetPriority() {
+        priority = 0;
     }
 
     public static boolean isRotating() {
@@ -80,7 +101,7 @@ public final class RotationController {
         if (priority > prio) {
             return;
         }
-        if (task == Task.IDLE) {
+        if (!visible && task == Task.IDLE) {
             FreeLook.begin(player);
         }
         yawSpeed = yaw;
@@ -115,7 +136,13 @@ public final class RotationController {
             priority = 0;
         }
         if (task == Task.AIM && idleTicks > timeout) {
-            task = Task.RESET;
+            // Видимая ротация не имеет отдельного «свободного» угла: возвращать
+            // камеру некуда, поэтому задача просто завершается.
+            if (visible) {
+                stopRotation();
+            } else {
+                task = Task.RESET;
+            }
         }
         if (task == Task.RESET) {
             resetRotation();
@@ -127,11 +154,17 @@ public final class RotationController {
 
     /** Возврат тела к свободному обзору обычной скоростью (resetRotation из Private). */
     public static void resetRotation() {
+        if (visible) {
+            return;
+        }
         stepTo(FreeLook.yaw(), FreeLook.pitch(), yawReturnSpeed * 0.6F, pitchReturnSpeed * 0.6F);
     }
 
     /** Ускоренный возврат — используется Matrix-ротацией при выключении. */
     public static void smoothResetRotation() {
+        if (visible) {
+            return;
+        }
         stepTo(FreeLook.yaw(), FreeLook.pitch(), yawReturnSpeed * 1.5F, pitchReturnSpeed * 1.5F);
     }
 

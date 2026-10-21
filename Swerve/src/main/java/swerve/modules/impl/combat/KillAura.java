@@ -43,6 +43,7 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.item.AxeItem;
+import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.SwordItem;
 import net.minecraft.world.phys.Vec3;
 
@@ -71,7 +72,11 @@ import java.util.concurrent.ThreadLocalRandom;
  *   <li>мёртвые в оригинале настройки подключены к логике: «Не бить через блоки»,
  *       «Синхронизация по TPS», «Выключить после смерти», «Ломать щит» (тело
  *       shieldBreaker в оригинале реализовано, но не вызывалось);</li>
- *   <li> streams из findTarget заменены одним проходом без аллокаций.</li>
+ *   <li> streams из findTarget заменены одним проходом без аллокаций;</li>
+ *   <li> Sprint Reset портирован из MoveInput-хука {@code AuraNew.onInput}: без него
+ *       удар в спринте отменялся, а спринт не сбрасывался — криты не проходили;</li>
+ *   <li> «Видимая» ротация поворачивает тело и камеру вместе, остальные режимы
+ *       молчаливые (камера остаётся свободной).</li>
  * </ul>
  *
  * <p>Не портировано (сознательно, вне рамок трёх ротаций): режимы Custom/Smooth/
@@ -84,18 +89,21 @@ public final class KillAura extends Module {
     private static final String ATTACK_19 = "1.9";
     private static final String ATTACK_18 = "1.8";
 
-    /** Лимит частоты ударов режима 1.9, мс (из Private). */
-    private static final long RATE_LIMIT_19_MS = 500L;
-    /** Порог восстановления кулдауна атаки для удара (cooldownComplete из Private). */
-    private static final float COOLED_ATTACK_STRENGTH = 1.5F;
-
     // [+] Ротации: имена ровно те, что в ModeSetting componentMode из Private.
+    private static final String ROTATION_VISIBLE = "Видимая";
     private static final String ROTATION_INTAVE = "Intave";
     private static final String ROTATION_MATRIX = "Matrix";
     private static final String ROTATION_HW = "HW";
     private static final String CORRECTION_SILENT = "Незаметная";
     private static final String CORRECTION_FOCUSED = "Сфокусированная";
     private static final String CORRECTION_ROUGH = "Грубая";
+
+    // [+] Sprint Reset: живые значения из ModeSetting sprintReset в Private
+    // («Пакетный (RAGE)» и «Обычный (RAGE)» в списке отсутствуют — эти ветки мертвы).
+    private static final String SPRINT_NORMAL = "Обычный";
+    private static final String SPRINT_LEGIT = "Легитный";
+    private static final String COOLDOWN_DYNAMIC = "Динамический";
+    private static final String COOLDOWN_CUSTOM_SWORD = "Кастомный меч";
 
     // ---- настройки (живые из Private) ----
 
@@ -104,7 +112,6 @@ public final class KillAura extends Module {
     private final FloatSetting preRange = new FloatSetting("Доп дистанция", 1.0F, 0.0F, 3.0F, 0.1F);
     private final FloatSetting elRange = new FloatSetting("Дистанция на элитре", 3.0F, 1.0F, 5.0F, 0.1F);
     private final BooleanSetting noHitThroughBlocks = new BooleanSetting("Не бить через блоки", true);
-    private final BooleanSetting smartDistance = new BooleanSetting("Умная дистанция", false);
     private final BooleanSetting smartHitbox = new BooleanSetting("Улучшить хитбоксы", false);
     private final BooleanSetting syncTPS = new BooleanSetting("Синхронизация по TPS", false);
     private final FloatSetting tpsMultiplier = new FloatSetting("Множитель TPS", 0.5F, 0.1F, 2.0F, 0.1F)
@@ -114,7 +121,10 @@ public final class KillAura extends Module {
             BooleanSetting.of("Мобы", true),
             BooleanSetting.of("Невидимые", true),
             BooleanSetting.of("Только в броне", false));
-    private final BooleanSetting onlyCrits = new BooleanSetting("Только криты", true);
+    // [!] В Private значение по умолчанию true, но тогда модуль молчит, пока игрок
+    // не в падении (гейт крита требует fallDistance > 0 и canCrit). Для рабочего
+    // «из коробки» дефолт снят; включённая настройка ведёт себя как в оригинале.
+    private final BooleanSetting onlyCrits = new BooleanSetting("Только криты", false);
     private final BooleanSetting smartCrits = new BooleanSetting("Умные криты", false)
             .visible(onlyCrits::get);
     private final BooleanSetting randomCrits = new BooleanSetting("Рандом криты", false)
@@ -137,13 +147,20 @@ public final class KillAura extends Module {
     private final ModeSetting attackMode = new ModeSetting("Режим ударов", ATTACK_19, ATTACK_19, ATTACK_18);
     private final FloatSetting dynamicCps = new FloatSetting("CPS (1.8)", 12.0F, 8.0F, 20.0F, 1.0F)
             .visible(() -> attackMode.is(ATTACK_18));
-    private final FloatSetting cooldown = new FloatSetting("Кулдаун", 0.93F, 0.5F, 1.0F, 0.01F)
-            .visible(() -> attackMode.is(ATTACK_19));
+    // [+] Кулдаун как в Private (getDynamicCooldown): 550 мс меч, 850 топор, 250 пустая рука, 450 прочее.
+    private final ModeSetting cooldownMode = new ModeSetting("Режим кулдауна", COOLDOWN_DYNAMIC,
+            COOLDOWN_DYNAMIC, COOLDOWN_CUSTOM_SWORD);
+    private final FloatSetting customSwordCooldown = new FloatSetting("Кулдаун меча (мс)", 450.0F, 50.0F, 1000.0F, 10.0F)
+            .visible(() -> cooldownMode.is(COOLDOWN_CUSTOM_SWORD));
+    // [+] Sprint Reset: без него удар в спринте отменяется, но спринт не сбрасывается —
+    // криты не наносятся никогда (в оригинале это делал MoveInput-хук).
+    private final ModeSetting sprintReset = new ModeSetting("Sprint Reset", SPRINT_NORMAL,
+            SPRINT_NORMAL, SPRINT_LEGIT);
 
     // [+] Ротации: только три портированные (componentMode из Private содержит ещё 13 режимов,
     // которых в Swerve нет — мёртвые значения в списке не оставляем).
-    private final ModeSetting rotationMode = new ModeSetting("Ротации", ROTATION_INTAVE,
-            ROTATION_INTAVE, ROTATION_MATRIX, ROTATION_HW);
+    private final ModeSetting rotationMode = new ModeSetting("Ротации", ROTATION_VISIBLE,
+            ROTATION_VISIBLE, ROTATION_INTAVE, ROTATION_MATRIX, ROTATION_HW);
     private final ModeSetting movementCorrection = new ModeSetting("Коррекция движения", CORRECTION_SILENT,
             CORRECTION_SILENT, CORRECTION_FOCUSED, CORRECTION_ROUGH);
 
@@ -168,13 +185,20 @@ public final class KillAura extends Module {
     private long lastAttackTime;
     private long lastClickTime;
     private long lastTargetSwitchTime;
+    /** Порог fallDistance рандомных критов, обновляется в shouldAttack (Private). */
+    private float lastRequiredFallDistance;
+    /** Сброс спринта: сколько тиков держать forward = 0 (поле {@code p} из Private). */
+    private int sprintStopTicks;
+    private int sprintTicks;
+    private long pressTime;
 
     public KillAura() {
         super("KillAura", "Автоматически атакует ближайших врагов", ModuleCategory.COMBAT);
-        addSettings(fov, attackRange, preRange, elRange, noHitThroughBlocks, smartDistance,
+        addSettings(fov, attackRange, preRange, elRange, noHitThroughBlocks,
                 smartHitbox, syncTPS, tpsMultiplier, targetSettings, onlyCrits, smartCrits,
                 randomCrits, shieldBreaker, priorityTargeting, priorityMode, targetSwitchDelay,
-                minSwitchDelay, maxSwitchDelay, checks, attackMode, dynamicCps, cooldown,
+                minSwitchDelay, maxSwitchDelay, checks, attackMode, dynamicCps,
+                cooldownMode, customSwordCooldown, sprintReset,
                 rotationMode, movementCorrection);
         // Статическая ссылка: один канонический объект на call-site —
         // повторная инициализация модулей не плодит дубликаты слоя.
@@ -214,6 +238,10 @@ public final class KillAura extends Module {
             reset();
             return;
         }
+        // Меню/пауза: тело не крутим, иначе игрок «плывёт» в инвентаре.
+        if (minecraft.screen != null || minecraft.isPaused()) {
+            return;
+        }
         if (player.isSpectator()) {
             return;
         }
@@ -232,6 +260,8 @@ public final class KillAura extends Module {
 
     /** Смена режима ротации на лету (initRotationElements из Private). */
     private void syncRotationElement() {
+        // Видимая ротация: тело и камера вместе, иначе свободный обзор FreeLook.
+        RotationController.setVisible(rotationMode.is(ROTATION_VISIBLE));
         RotationElement wanted;
         if (rotationMode.is(ROTATION_MATRIX)) {
             wanted = matrixRotation;
@@ -247,6 +277,9 @@ public final class KillAura extends Module {
             rotationElement.onDisable();
         }
         rotationElement = wanted;
+        // Приоритеты элементов разные (Intave 4, Matrix/HW 3) — захват снимается,
+        // иначе после Intave более низкий приоритет никогда не получит тик.
+        RotationController.resetPriority();
         rotationElement.onEnable();
     }
 
@@ -256,7 +289,32 @@ public final class KillAura extends Module {
      */
     public void fixMovement(MoveInputEvent event) {
         LocalPlayer player = Minecraft.getInstance().player;
-        if (player == null || target == null) {
+        if (player == null) {
+            return;
+        }
+
+        // [+] Sprint Reset (AuraNew.onInput): пока счётчик держится, forward обнуляется —
+        // ванильный спринт гаснет, сервер перестаёт видеть спринт, удар проходит критом.
+        if (sprintStopTicks > 0) {
+            event.forward = 0.0F;
+            sprintStopTicks--;
+            return;
+        }
+        if (sprintReset.is(SPRINT_LEGIT) && sprintTicks > 0) {
+            event.forward = 0.0F;
+            sprintTicks--;
+            return;
+        }
+        if (sprintReset.is(SPRINT_LEGIT) && pressTime > 0 && System.currentTimeMillis() >= pressTime) {
+            event.forward = 1.0F;
+            pressTime = 0L;
+        }
+
+        if (target == null) {
+            return;
+        }
+        // В видимой ротации камера и тело совпадают: пересчёт WASD не нужен.
+        if (rotationMode.is(ROTATION_VISIBLE)) {
             return;
         }
         if (movementCorrection.is(CORRECTION_ROUGH)) {
@@ -290,6 +348,9 @@ public final class KillAura extends Module {
             reset();
             return;
         }
+        if (minecraft.screen != null || minecraft.isPaused()) {
+            return;
+        }
         // [+] Цель и ротация обновляются в начале тика (rotationTick), здесь — добивание:
         // криты, отложенный удар и сама атака уже по свежим углам тела.
         // Страховки повторяются: между START- и END-тиком состояние могло измениться.
@@ -297,11 +358,12 @@ public final class KillAura extends Module {
             return;
         }
 
-        // MoveEvent из Private: canCrit предсказывался в момент движения.
-        // В конце тика движение уже применено, fallDistance — тот же, что
-        // увидит ванильная проверка крита в момент удара.
+        // MoveEvent из Private: canCrit = !isToGround && from.y > to.y && nextFallDistance != 0.
+        // В конце тика движение уже применено, поэтому «падаем» проверяется по
+        // фактической вертикальной скорости и накопленной дистанции падения.
         canCrit = !player.onGround()
-                && player.fallDistance > ThreadLocalRandom.current().nextFloat() * 0.15F;
+                && player.getDeltaMovement().y < 0.0D
+                && player.fallDistance > 0.0F;
 
         // Отложенный удар рандомного крита (scheduler из Private, 1-2 тика).
         if (pendingCritTicks > 0) {
@@ -465,28 +527,35 @@ public final class KillAura extends Module {
     // ---- атака ----
 
     private void updateAttack(Minecraft minecraft, LocalPlayer player) {
-        if (target == null) {
+        if (target == null || !target.isAlive() || target.isRemoved()) {
             return;
         }
-        if (!shouldAttack(player)) {
+        // Порядок оригинала: checkReturn → shieldBreaker → гейт удара.
+        if (checkReturn(player)) {
             return;
         }
-        if (!rayTraceOk(player)) {
+        if (shieldBreaker.get() && breakShield(minecraft, player)) {
             return;
         }
-        if (AuraUtils.strictDistance(player, target) >= attackDistance(player)) {
-            return;
-        }
-
-        // Классика критов: удар в спринте критом не считается — ждём,
-        // пока сервер узнает об остановке спринта (isServerSprintState из Private).
-        if (!isInLiquid(player) && player.isSprinting()
-                && ((LocalPlayerAccessor) player).swerve$wasSprinting()) {
+        if (!shouldAttack(player) || !rayTraceOk(player)
+                || AuraUtils.strictDistance(player, target) >= attackDistance(player)) {
             return;
         }
 
-        if (shieldBreaker.get() && attackReady(player) && breakShield(minecraft, player)) {
-            return;
+        // Классика критов: удар в спринте критом не считается. Private гасит спринт
+        // (Обычный — forward 0 на тик; Легитный — отпускание на 1..2 тика с паузой),
+        // и только после этого, когда сервер увидел остановку, бьёт.
+        boolean liquid = isInLiquid(player);
+        if (!liquid && player.isSprinting()) {
+            if (sprintReset.is(SPRINT_NORMAL)) {
+                sprintStopTicks = 1;
+            } else if (sprintReset.is(SPRINT_LEGIT)) {
+                sprintTicks = ThreadLocalRandom.current().nextInt(1, 2);
+                pressTime = System.currentTimeMillis() + ThreadLocalRandom.current().nextInt(15, 51);
+            }
+            if (((LocalPlayerAccessor) player).swerve$wasSprinting()) {
+                return;
+            }
         }
 
         if (attackMode.is(ATTACK_18)) {
@@ -497,7 +566,7 @@ public final class KillAura extends Module {
                 attackEntity(minecraft, player, target);
                 lastClickTime = now;
             }
-        } else if (randomCrits.get() && shouldCritical(player)
+        } else if (randomCrits.get() && critConditionsClear(player)
                 && ThreadLocalRandom.current().nextFloat() < 0.3F) {
             pendingCritTicks = ThreadLocalRandom.current().nextInt(1, 3);
         } else {
@@ -505,81 +574,105 @@ public final class KillAura extends Module {
         }
     }
 
+    /** checkReturn из Private: не бить во время еды и без оружия. */
+    private boolean checkReturn(LocalPlayer player) {
+        boolean eating = player.isUsingItem() && checks.is("Не бить когда ешь");
+        boolean noWeapon = !isHoldingWeapon(player) && checks.is("Бить только с оружием");
+        return eating || noWeapon;
+    }
+
     /**
      * Готовность к удару (shouldAttack из Private): пауза PerfectDelay,
      * жидкость и условия критов.
      */
+    /**
+     * Гейт удара (shouldAttack из AuraNew), значения и порядок проверок 1:1:
+     * кулдаун инструмента → элитра → жидкость → ветки критов.
+     */
     private boolean shouldAttack(LocalPlayer player) {
-        if (!perfectDelay.cooldownComplete()) {
+        if (!perfectDelay.cooldownComplete(dynamicCooldown())) {
             return false;
         }
+        if (player.isFallFlying()) {
+            return true;
+        }
+        this.lastRequiredFallDistance = ThreadLocalRandom.current().nextFloat() * 0.01F;
         if (isInLiquid(player)) {
-            return false;
-        }
-        // checkReturn из Private: не бить во время еды и без оружия.
-        boolean eating = player.isUsingItem() && checks.is("Не бить когда ешь");
-        boolean noWeapon = !isHoldingWeapon(player) && checks.is("Бить только с оружием");
-        if (eating || noWeapon) {
-            return false;
+            return true;
         }
 
         boolean headroom = AuraUtils.hasHeadroom(player);
-        boolean canDefaultCrit = player.fallDistance > 0.0F && canCrit && headroom;
-        boolean canSmartCrit = headroom && !player.input.keyPresses.jump()
-                && !canCrit && player.onGround() && player.verticalCollision;
+        boolean defaultCrit = critConditionsClear(player)
+                && player.fallDistance > 0.0F && canCrit && headroom;
 
-        if (onlyCrits.get() && !smartCrits.get() && !randomCrits.get()) {
-            return shouldCritical(player) && canDefaultCrit;
+        if (onlyCrits.get() && !smartCrits.get()) {
+            return defaultCrit;
         }
         if (smartCrits.get()) {
-            return shouldCritical(player) || canDefaultCrit || canSmartCrit;
+            boolean smartCrit = headroom && !player.input.keyPresses.jump()
+                    && !canCrit && player.onGround() && player.verticalCollision;
+            return defaultCrit || smartCrit;
         }
         if (randomCrits.get()) {
-            return shouldCritical(player) || canDefaultCrit
+            return critConditionsClear(player)
+                    || (player.fallDistance > this.lastRequiredFallDistance && canCrit && headroom)
                     || ThreadLocalRandom.current().nextFloat() < 0.3F;
         }
         return true;
     }
 
-    /** Ванильные условия критического удара (shouldCritical из Private). */
-    private boolean shouldCritical(LocalPlayer player) {
-        return player.fallDistance > ThreadLocalRandom.current().nextFloat() * 0.15F
-                && !player.onGround()
+    /**
+     * Блокеры крита (shouldCritical из AuraNew): левитация, жидкость, элитра,
+     * лестница, пассажир, паутина. FallDistance и земля проверяются отдельно.
+     */
+    private boolean critConditionsClear(LocalPlayer player) {
+        return !player.hasEffect(MobEffects.LEVITATION)
+                && !isInLiquid(player)
+                && !player.isFallFlying()
                 && !player.onClimbable()
                 && !player.isPassenger()
-                && !player.hasEffect(MobEffects.BLINDNESS)
-                && !player.hasEffect(MobEffects.LEVITATION)
-                && !player.hasEffect(MobEffects.SLOW_FALLING)
-                && !isInLiquid(player)
-                && !player.getAbilities().flying
-                && !player.isFallFlying()
                 && !AuraUtils.isPlayerInWeb(player);
+    }
+
+    /**
+     * Кулдаун инструмента (getDynamicCooldown из Private): меч 550, топор 850,
+     * пустая рука 250, остальное 450; в режиме «Кастомный меч» меч берёт значение из настройки.
+     */
+    private long dynamicCooldown() {
+        return applyTpsScale(baseCooldown());
+    }
+
+    private long baseCooldown() {
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player == null) {
+            return 450L;
+        }
+        ItemStack held = player.getMainHandItem();
+        boolean sword = held.getItem() instanceof SwordItem;
+        if (cooldownMode.is(COOLDOWN_CUSTOM_SWORD) && sword) {
+            return (long) customSwordCooldown.get();
+        }
+        if (held.isEmpty()) {
+            return 250L;
+        }
+        if (sword) {
+            return 550L;
+        }
+        if (held.getItem() instanceof AxeItem) {
+            return 850L;
+        }
+        return 450L;
     }
 
     /** Удар (attackEntity из Private) с лимитами частоты и кулдауном. */
     private void attackEntity(Minecraft minecraft, LocalPlayer player, Entity entity) {
-        if (!attackReady(player)) {
+        // Private.attackEntity: в режиме 1.9 удар отменяется, если кулдаун инструмента не прошёл.
+        if (attackMode.is(ATTACK_19) && System.currentTimeMillis() - lastAttackTime < dynamicCooldown()) {
             return;
         }
         minecraft.gameMode.attack(player, entity);
         player.swing(InteractionHand.MAIN_HAND);
-        player.resetAttackStrengthTicker();
         lastAttackTime = System.currentTimeMillis();
-    }
-
-    /**
-     * Готовность к удару режима 1.9: лимит частоты из Private (500 мс, с
-     * поправкой на TPS) и восстановление кулдауна атаки (cooldownComplete
-     * из Private, 0.93).
-     */
-    private boolean attackReady(LocalPlayer player) {
-        if (!attackMode.is(ATTACK_19)) {
-            return true;
-        }
-        if (System.currentTimeMillis() - lastAttackTime < applyTpsScale(RATE_LIMIT_19_MS)) {
-            return false;
-        }
-        return player.getAttackStrengthScale(COOLED_ATTACK_STRENGTH) >= cooldown.get();
     }
 
     /**
@@ -649,9 +742,6 @@ public final class KillAura extends Module {
     private double attackDistance(LocalPlayer player) {
         if (player.isFallFlying() || (target != null && target.isFallFlying())) {
             return elRange.get();
-        }
-        if (smartDistance.get() && target != null) {
-            return 3.0D;
         }
         return Math.max(player.isCreative() ? 6.0D : 3.0D, attackRange.get());
     }
@@ -771,6 +861,10 @@ public final class KillAura extends Module {
         lastAttackTime = 0L;
         lastClickTime = 0L;
         lastTargetSwitchTime = 0L;
+        lastRequiredFallDistance = 0.0F;
+        sprintStopTicks = 0;
+        sprintTicks = 0;
+        pressTime = 0L;
         perfectDelay.reset(0L);
     }
 }
