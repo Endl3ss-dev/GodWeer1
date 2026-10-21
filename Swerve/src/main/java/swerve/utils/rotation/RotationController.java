@@ -95,9 +95,15 @@ public final class RotationController {
         stepTo(rotation.getYaw(), rotation.getPitch(), yawSpeed, pitchSpeed);
     }
 
-    /** Тик компонента (UpdateEvent из Private): таймаут цели и возврат камеры. */
-    public static void tick() {
-        LocalPlayer player = Minecraft.getInstance().player;
+    /**
+     * Тик компонента (UpdateEvent из Private): таймаут цели и возврат камеры.
+     *
+     * <p>Сигнатура совпадает с {@code ClientTickEvents.StartTick}
+     * ({@code void onStartTick(Minecraft client)}), поэтому регистрируется
+     * напрямую как {@code RotationController::tick}.
+     */
+    public static void tick(Minecraft minecraft) {
+        LocalPlayer player = minecraft.player;
         if (player == null) {
             reset();
             return;
