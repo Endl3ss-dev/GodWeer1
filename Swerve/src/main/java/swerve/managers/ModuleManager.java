@@ -3,11 +3,11 @@ package swerve.managers;
 import swerve.Swerve;
 import swerve.modules.Module;
 import swerve.modules.ModuleCategory;
+import swerve.modules.impl.combat.Aura;
 import swerve.modules.impl.combat.AutoGApple;
 import swerve.modules.impl.combat.AutoHeal;
 import swerve.modules.impl.combat.AutoPotion;
 import swerve.modules.impl.combat.ItemSwap;
-import swerve.modules.impl.combat.KillAura;
 import swerve.modules.impl.combat.SexAura;
 import swerve.modules.impl.hud.ArrayListHud;
 import swerve.modules.impl.hud.Notifications;
@@ -59,8 +59,8 @@ public final class ModuleManager {
         register(new AutoGApple());
         register(new AutoPotion());
         register(new SexAura());
-        // KillAura: порт из Private (без ротаций); цель ауры читает ElytraFlight.
-        register(new KillAura());
+        // Aura: полная переработка киллауры из Private с поддержкой ротаций (Снап, Плавная, Джиттер).
+        register(new Aura());
         register(new ItemSwap());
         register(new Speed());
         register(new ElytraFlight());

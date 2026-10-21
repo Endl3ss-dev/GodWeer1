@@ -1,21 +1,5 @@
 package swerve.modules.impl.combat;
 
-import swerve.managers.FriendManager;
-import swerve.managers.ModuleManager;
-import swerve.mixins.accessor.LocalPlayerAccessor;
-import swerve.modules.Module;
-import swerve.modules.ModuleCategory;
-import swerve.modules.api.setting.BooleanSetting;
-import swerve.modules.api.setting.FloatSetting;
-import swerve.modules.api.setting.ListSetting;
-import swerve.modules.api.setting.ModeSetting;
-import swerve.ui.hud.HudManager;
-import swerve.utils.color.ColorUtils;
-import swerve.utils.combat.AuraUtils;
-import swerve.utils.network.ServerTPS;
-import swerve.utils.time.PerfectDelay;
-import swerve.ui.newgui.GuiRender;
-
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.player.LocalPlayer;
@@ -41,112 +25,199 @@ import net.minecraft.world.phys.Vec3;
 import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
+import swerve.managers.FriendManager;
+import swerve.managers.ModuleManager;
+import swerve.modules.Module;
+import swerve.modules.ModuleCategory;
+import swerve.modules.api.setting.BooleanSetting;
+import swerve.modules.api.setting.FloatSetting;
+import swerve.modules.api.setting.ListSetting;
+import swerve.modules.api.setting.ModeSetting;
+import swerve.modules.impl.combat.rotation.AuraRotation;
+import swerve.modules.impl.combat.rotation.JitterRotation;
+import swerve.modules.impl.combat.rotation.SmoothRotation;
+import swerve.modules.impl.combat.rotation.SnapRotation;
+import swerve.ui.hud.HudManager;
+import swerve.ui.newgui.GuiRender;
+import swerve.utils.combat.AuraUtils;
+import swerve.utils.network.ServerTPS;
+import swerve.utils.time.PerfectDelay;
+
 /**
- * KillAura: автоматическая атака ближайших врагов.
+ * Aura — автоматическая атака ближайших врагов с поддержкой ротаций.
  *
- * <p>Порт из Private/src/java/org/privates/client/managers/module/impl/combat/KillAura.java
- * (модуль AuraNew) без подсистемы ротаций: выбор цели, приоритеты, криты,
- * проверка стен, режимы ударов 1.8/1.9, синхронизация по TPS, FOV-индикатор.
+ * <p>Полная переработка модуля KillAura из клиента Private, адаптированная под
+ * архитектуру Swerve (Fabric 1.21.4, Mojang маппинги, Java 21).
  *
- * <p>Адаптация под Swerve:
+ * <p>Функционал:
  * <ul>
- *   <li>ротации не портированы — прицел проверяется по текущему взгляду игрока;</li>
- *   <li>MoveEvent из Private заменён расчётом canCrit в конце тика: движение
- *       уже применено, fallDistance совпадает с тем, что увидит ванильный крит;</li>
- *   <li>фоновый scheduler рандомных критов заменён счётчиком тиков
- *       (атака из чужого потока небезопасна);</li>
- *   <li>мёртвые в оригинале настройки подключены к логике: «Не бить через блоки»,
- *       «Синхронизация по TPS», «Выключить после смерти», «Ломать щит» (тело
- *       shieldBreaker в оригинале реализовано, но не вызывалось);</li>
- *   <li> streams из findTarget заменены одним проходом без аллокаций.</li>
+ *   <li>Выбор цели: ближний, слабейший, низкое HP, опасный (игрок).</li>
+ *   <li>Фильтры: игроки / мобы / невидимые / только в броне, друзья, хитбокс через блоки.</li>
+ *   <li>Дистанция: обычная, доп. дистанция, элитра, умная дистанция.</li>
+ *   <li>Угол обзора (FOV) с индикатором на экране.</li>
+ *   <li>Криты: только криты, умные криты, рандом криты.</li>
+ *   <li>Режимы ударов: 1.8 (CPS) и 1.9 (кулдаун + лимит частоты).</li>
+ *   <li>Ломание щита топором.</li>
+ *   <li>Синхронизация по TPS сервера.</li>
+ *   <li>Задержка смены цели.</li>
+ *   <li>3 ротации на выбор: Снап, Плавная, Джиттер.</li>
  * </ul>
  */
-public final class KillAura extends Module {
+public final class Aura extends Module {
 
-    private static final String ATTACK_19 = "1.9";
-    private static final String ATTACK_18 = "1.8";
+    // ==================== Ротации ====================
 
-    /** Лимит частоты ударов режима 1.9, мс (из Private). */
-    private static final long RATE_LIMIT_19_MS = 500L;
-    /** Порог восстановления кулдауна атаки для удара (cooldownComplete из Private). */
-    private static final float COOLED_ATTACK_STRENGTH = 1.5F;
+    private final ModeSetting rotationMode = new ModeSetting(
+            "Ротация",
+            "Снап",
+            "Снап",
+            "Плавная",
+            "Джиттер"
+    );
 
-    // ---- настройки (живые из Private, без ротаций) ----
+    private final FloatSetting smoothSpeed = new FloatSetting(
+            "Скорость плавной ротации",
+            0.15F,
+            0.01F,
+            1.0F,
+            0.01F
+    ).visible(() -> rotationMode.is("Плавная"));
+
+    private final AuraRotation snapRotation = new SnapRotation();
+    private final AuraRotation smoothRotation = new SmoothRotation();
+    private final AuraRotation jitterRotation = new JitterRotation();
+
+    /** Возвращает активную реализацию ротации в зависимости от текущей настройки. */
+    public AuraRotation getActiveRotation() {
+        return switch (rotationMode.getCurrent()) {
+            case "Плавная" -> smoothRotation;
+            case "Джиттер" -> jitterRotation;
+            default -> snapRotation;
+        };
+    }
+
+    // ==================== Настройки цели ====================
 
     private final FloatSetting fov = new FloatSetting("Угол обзора", 180.0F, 30.0F, 180.0F, 1.0F);
     private final FloatSetting attackRange = new FloatSetting("Дистанция", 3.0F, 3.0F, 6.0F, 0.1F);
     private final FloatSetting preRange = new FloatSetting("Доп дистанция", 1.0F, 0.0F, 3.0F, 0.1F);
     private final FloatSetting elRange = new FloatSetting("Дистанция на элитре", 3.0F, 1.0F, 5.0F, 0.1F);
-    private final BooleanSetting noHitThroughBlocks = new BooleanSetting("Не бить через блоки", true);
-    private final BooleanSetting smartDistance = new BooleanSetting("Умная дистанция", false);
-    private final BooleanSetting smartHitbox = new BooleanSetting("Улучшить хитбоксы", false);
-    private final BooleanSetting syncTPS = new BooleanSetting("Синхронизация по TPS", false);
-    private final FloatSetting tpsMultiplier = new FloatSetting("Множитель TPS", 0.5F, 0.1F, 2.0F, 0.1F)
-            .visible(syncTPS::get);
-    private final ListSetting targetSettings = ListSetting.of("Кого атаковать",
+
+    private final ListSetting targetSettings = ListSetting.of(
+            "Кого атаковать",
             BooleanSetting.of("Игроки", true),
             BooleanSetting.of("Мобы", true),
             BooleanSetting.of("Невидимые", true),
-            BooleanSetting.of("Только в броне", false));
+            BooleanSetting.of("Только в броне", false)
+    );
+
+    private final BooleanSetting noHitThroughBlocks = new BooleanSetting("Не бить через блоки", true);
+    private final BooleanSetting smartDistance = new BooleanSetting("Умная дистанция", false);
+    private final BooleanSetting smartHitbox = new BooleanSetting("Улучшить хитбоксы", false);
+
+    // ==================== Криты ====================
+
     private final BooleanSetting onlyCrits = new BooleanSetting("Только криты", true);
     private final BooleanSetting smartCrits = new BooleanSetting("Умные криты", false)
             .visible(onlyCrits::get);
     private final BooleanSetting randomCrits = new BooleanSetting("Рандом криты", false)
             .visible(onlyCrits::get);
+
+    // ==================== Прочее ====================
+
     private final BooleanSetting shieldBreaker = new BooleanSetting("Ломать щит", true);
     private final BooleanSetting priorityTargeting = new BooleanSetting("Приоритетное наведение", false);
-    private final ModeSetting priorityMode = new ModeSetting("Режим приоритета", "Ближайший",
-            "Ближайший", "Слабейший", "Низкое HP", "Опасный")
-            .visible(priorityTargeting::get);
+    private final ModeSetting priorityMode = new ModeSetting(
+            "Режим приоритета",
+            "Ближайший",
+            "Ближайший",
+            "Слабейший",
+            "Низкое HP",
+            "Опасный"
+    ).visible(priorityTargeting::get);
+
     private final BooleanSetting targetSwitchDelay = new BooleanSetting("Задержка смены цели", false);
     private final FloatSetting minSwitchDelay = new FloatSetting("Мин. задержка смены (мс)", 50.0F, 0.0F, 500.0F, 10.0F)
             .visible(targetSwitchDelay::get);
     private final FloatSetting maxSwitchDelay = new FloatSetting("Макс. задержка смены (мс)", 150.0F, 50.0F, 1000.0F, 10.0F)
             .visible(targetSwitchDelay::get);
-    private final ListSetting checks = ListSetting.of("Прочее",
+
+    private final ListSetting checks = ListSetting.of(
+            "Прочее",
             BooleanSetting.of("Отображать FOV", false),
             BooleanSetting.of("Не бить когда ешь", false),
             BooleanSetting.of("Бить только с оружием", false),
-            BooleanSetting.of("Выключить после смерти", true));
+            BooleanSetting.of("Выключить после смерти", true)
+    );
+
+    // ==================== Режимы ударов ====================
+
+    private static final String ATTACK_19 = "1.9";
+    private static final String ATTACK_18 = "1.8";
+
     private final ModeSetting attackMode = new ModeSetting("Режим ударов", ATTACK_19, ATTACK_19, ATTACK_18);
     private final FloatSetting dynamicCps = new FloatSetting("CPS (1.8)", 12.0F, 8.0F, 20.0F, 1.0F)
             .visible(() -> attackMode.is(ATTACK_18));
     private final FloatSetting cooldown = new FloatSetting("Кулдаун", 0.93F, 0.5F, 1.0F, 0.01F)
             .visible(() -> attackMode.is(ATTACK_19));
 
-    // ---- состояние ----
+    // ==================== TPS ====================
+
+    private final BooleanSetting syncTPS = new BooleanSetting("Синхронизация по TPS", false);
+    private final FloatSetting tpsMultiplier = new FloatSetting("Множитель TPS", 0.5F, 0.1F, 2.0F, 0.1F)
+            .visible(syncTPS::get);
+
+    // ==================== Состояние ====================
+
+    private static final long RATE_LIMIT_19_MS = 500L;
+    private static final float COOLED_ATTACK_STRENGTH = 1.5F;
 
     private final PerfectDelay perfectDelay = new PerfectDelay();
-    /** Аккумуляторы поиска цели (переиспользуются, аллокаций в тике нет). */
     private final TargetScan scan = new TargetScan();
 
     private LivingEntity target;
     private boolean canCrit;
-    /** Отложенный удар рандомного крита, в тиках (scheduler из Private). */
     private int pendingCritTicks;
     private long lastAttackTime;
     private long lastClickTime;
     private long lastTargetSwitchTime;
 
-    public KillAura() {
-        super("KillAura", "Автоматически атакует ближайших врагов", ModuleCategory.COMBAT);
-        addSettings(fov, attackRange, preRange, elRange, noHitThroughBlocks, smartDistance,
-                smartHitbox, syncTPS, tpsMultiplier, targetSettings, onlyCrits, smartCrits,
-                randomCrits, shieldBreaker, priorityTargeting, priorityMode, targetSwitchDelay,
-                minSwitchDelay, maxSwitchDelay, checks, attackMode, dynamicCps, cooldown);
-        // Статическая ссылка: один канонический объект на call-site —
-        // повторная инициализация модулей не плодит дубликаты слоя.
-        HudManager.registerOverlay(KillAura::renderFovOverlay);
+    public Aura() {
+        super("Aura", "Автоматически атакует ближайших врагов", ModuleCategory.COMBAT);
+        addSettings(
+                rotationMode, smoothSpeed,
+                fov, attackRange, preRange, elRange,
+                targetSettings, noHitThroughBlocks, smartDistance, smartHitbox,
+                onlyCrits, smartCrits, randomCrits,
+                shieldBreaker, priorityTargeting, priorityMode,
+                targetSwitchDelay, minSwitchDelay, maxSwitchDelay,
+                checks, attackMode, dynamicCps, cooldown,
+                syncTPS, tpsMultiplier
+        );
+
+        HudManager.registerOverlay(Aura::renderFovOverlay);
     }
 
     @Override
     public void onEnable() {
+        getActiveRotation().onEnable();
         reset();
     }
 
     @Override
     public void onDisable() {
+        getActiveRotation().onDisable();
         reset();
+    }
+
+    /** Выбранная в данный момент реализация ротации. */
+    public AuraRotation getRotation() {
+        return getActiveRotation();
+    }
+
+    /** Текущая цель ауры (доступна для соседних модулей, например ElytraFlight). */
+    public LivingEntity getTarget() {
+        return target;
     }
 
     @Override
@@ -154,7 +225,6 @@ public final class KillAura extends Module {
         Minecraft minecraft = Minecraft.getInstance();
         LocalPlayer player = minecraft.player;
         if (player == null || minecraft.level == null || minecraft.gameMode == null) {
-            // Смена мира/выход: цель и таймеры сбрасываются (WorldChangeEvent из Private).
             reset();
             return;
         }
@@ -166,13 +236,16 @@ public final class KillAura extends Module {
             return;
         }
 
-        // MoveEvent из Private: canCrit предсказывался в момент движения.
-        // В конце тика движение уже применено, fallDistance — тот же, что
-        // увидит ванильная проверка крита в момент удара.
+        // Применяем настройку скорости плавной ротации.
+        if (rotationMode.is("Плавная")) {
+            smoothRotation.setSpeed(smoothSpeed.get());
+        }
+
+        // canCrit предсказывается в конце тика — движение уже применено,
+        // fallDistance совпадает с тем, что увидит ванильная проверка крита.
         canCrit = !player.onGround()
                 && player.fallDistance > ThreadLocalRandom.current().nextFloat() * 0.15F;
 
-        // Отложенный удар рандомного крита (scheduler из Private, 1-2 тика).
         if (pendingCritTicks > 0) {
             pendingCritTicks--;
             if (pendingCritTicks == 0 && target != null && target.isAlive() && !target.isRemoved()) {
@@ -184,15 +257,7 @@ public final class KillAura extends Module {
         updateAttack(minecraft, player);
     }
 
-    /** Цель для соседних модулей (ElytraFlight). */
-    public LivingEntity getTarget() {
-        return target;
-    }
-
-    /**
-     * Исходящие пакеты (PacketEvent из Private): смена предмета и свинг
-     * руки сбрасывают PerfectDelay.
-     */
+    /** Доставка исходящих пакетов (аналог PacketEvent из Private). */
     public void onPacketSend(Packet<?> packet) {
         if (!isEnable()) {
             return;
@@ -204,10 +269,11 @@ public final class KillAura extends Module {
         }
     }
 
-    // ---- выбор цели ----
+    // ==================== Выбор цели ====================
 
     private void updateTarget(Minecraft minecraft, LocalPlayer player) {
         LivingEntity potential = findTarget(minecraft, player);
+
         if (target != potential) {
             if (targetSwitchDelay.get() && target != null) {
                 float delayTime = randomLerp(minSwitchDelay.get(), maxSwitchDelay.get());
@@ -232,18 +298,12 @@ public final class KillAura extends Module {
         }
     }
 
-    /**
-     * Поиск цели за один проход без аллокаций (findTarget/findPriorityTarget
-     * из Private: ближний/слабейший/низкое HP/опасный считаются одновременно,
-     * streams и промежуточные списки убраны).
-     */
     private LivingEntity findTarget(Minecraft minecraft, LocalPlayer player) {
         double searchRange = attackRange.get() + preRange.get();
         double searchRangeSquared = searchRange * searchRange;
         scan.reset();
 
         Iterable<Entity> entities = minecraft.level.entitiesForRendering();
-        // Список отдаётся без обёртки: идём по индексу, без аллокаций в тике.
         if (entities instanceof List<?> list) {
             for (int index = 0, size = list.size(); index < size; index++) {
                 if (list.get(index) instanceof LivingEntity living && isValidTarget(player, living)) {
@@ -260,12 +320,7 @@ public final class KillAura extends Module {
         return scan.pick(priorityTargeting.get(), priorityMode.getCurrent());
     }
 
-    /**
-     * Аккумуляторы поиска цели: один экземпляр на модуль, переиспользуется
-     * между тиками (замена списков из findPriorityTarget оригинала).
-     */
     private static final class TargetScan {
-
         private LivingEntity nearest;
         private double nearestDistanceSquared = Double.MAX_VALUE;
         private LivingEntity weakest;
@@ -320,7 +375,6 @@ public final class KillAura extends Module {
                 case "Слабейший":
                     return weakest;
                 case "Низкое HP":
-                    // Цель ниже половины HP, иначе первая попавшаяся (оригинал).
                     return lowHp != null ? lowHp : first;
                 case "Опасный":
                     return firstPlayer != null ? firstPlayer : first;
@@ -330,7 +384,7 @@ public final class KillAura extends Module {
         }
     }
 
-    // ---- атака ----
+    // ==================== Атака ====================
 
     private void updateAttack(Minecraft minecraft, LocalPlayer player) {
         if (target == null) {
@@ -346,10 +400,8 @@ public final class KillAura extends Module {
             return;
         }
 
-        // Классика критов: удар в спринте критом не считается — ждём,
-        // пока сервер узнает об остановке спринта (isServerSprintState из Private).
-        if (!isInLiquid(player) && player.isSprinting()
-                && ((LocalPlayerAccessor) player).swerve$wasSprinting()) {
+        // В спринте удар не считается критом — ждём остановки спринта.
+        if (!isInLiquid(player) && player.isSprinting() && wasSprinting(player)) {
             return;
         }
 
@@ -373,10 +425,6 @@ public final class KillAura extends Module {
         }
     }
 
-    /**
-     * Готовность к удару (shouldAttack из Private): пауза PerfectDelay,
-     * жидкость и условия критов.
-     */
     private boolean shouldAttack(LocalPlayer player) {
         if (!perfectDelay.cooldownComplete()) {
             return false;
@@ -384,7 +432,6 @@ public final class KillAura extends Module {
         if (isInLiquid(player)) {
             return false;
         }
-        // checkReturn из Private: не бить во время еды и без оружия.
         boolean eating = player.isUsingItem() && checks.is("Не бить когда ешь");
         boolean noWeapon = !isHoldingWeapon(player) && checks.is("Бить только с оружием");
         if (eating || noWeapon) {
@@ -409,7 +456,6 @@ public final class KillAura extends Module {
         return true;
     }
 
-    /** Ванильные условия критического удара (shouldCritical из Private). */
     private boolean shouldCritical(LocalPlayer player) {
         return player.fallDistance > ThreadLocalRandom.current().nextFloat() * 0.15F
                 && !player.onGround()
@@ -424,7 +470,6 @@ public final class KillAura extends Module {
                 && !AuraUtils.isPlayerInWeb(player);
     }
 
-    /** Удар (attackEntity из Private) с лимитами частоты и кулдауном. */
     private void attackEntity(Minecraft minecraft, LocalPlayer player, Entity entity) {
         if (!attackReady(player)) {
             return;
@@ -435,11 +480,6 @@ public final class KillAura extends Module {
         lastAttackTime = System.currentTimeMillis();
     }
 
-    /**
-     * Готовность к удару режима 1.9: лимит частоты из Private (500 мс, с
-     * поправкой на TPS) и восстановление кулдауна атаки (cooldownComplete
-     * из Private, 0.93).
-     */
     private boolean attackReady(LocalPlayer player) {
         if (!attackMode.is(ATTACK_19)) {
             return true;
@@ -450,12 +490,6 @@ public final class KillAura extends Module {
         return player.getAttackStrengthScale(COOLED_ATTACK_STRENGTH) >= cooldown.get();
     }
 
-    /**
-     * Ломание щита топором (shieldBreaker из Private — в оригинале тело
-     * существовало, но не вызывалось): свап топора в руку, удар, свап обратно.
-     *
-     * @return true, если вместо обычного удара выполнен удар топором
-     */
     private boolean breakShield(Minecraft minecraft, LocalPlayer player) {
         if (!target.isBlocking()) {
             return false;
@@ -464,8 +498,6 @@ public final class KillAura extends Module {
         if (axeHotbarSlot < 0) {
             return false;
         }
-        // inventoryMenu: контейнерные слоты 36..44 — хотбар; ClickType.SWAP
-        // с кнопкой = выбранный слот меняет местами выбранный слот с топором.
         int containerId = player.inventoryMenu.containerId;
         int containerSlot = 36 + axeHotbarSlot;
         int selected = player.getInventory().selected;
@@ -477,7 +509,6 @@ public final class KillAura extends Module {
         return true;
     }
 
-    /** Слот хотбара с топором, -1 если нет или топор уже в руке. */
     private int findAxeHotbarSlot(LocalPlayer player) {
         for (int slot = 0; slot < 9; slot++) {
             if (slot == player.getInventory().selected) {
@@ -490,13 +521,8 @@ public final class KillAura extends Module {
         return -1;
     }
 
-    // ---- проверки прицела и дистанции ----
+    // ==================== Проверка прицела и дистанции ====================
 
-    /**
-     * Проверка прицела (rayTrace из Private): без ротаций луч берётся из
-     * текущего взгляда игрока. Умные хитбоксы заменяют проверку дистанцией
-     * до ближайшей видимой точки цели (fallback на грудь — как в оригинале).
-     */
     private boolean rayTraceOk(LocalPlayer player) {
         if (player.isFallFlying() || (target != null && target.isFallFlying())) {
             return true;
@@ -508,12 +534,9 @@ public final class KillAura extends Module {
         if (!AuraUtils.lookRayHitsBox(player, target, attackDistance(player))) {
             return false;
         }
-        // «Не бить через блоки» (в оригинале настройка была мёртвой): цель
-        // атакуется, только если видима хотя бы в одну точку хитбокса.
         return !noHitThroughBlocks.get() || AuraUtils.hasVisiblePoint(player, target);
     }
 
-    /** Дистанция удара (attackDistance из Private): элитра, умная дистанция, креатив. */
     private double attackDistance(LocalPlayer player) {
         if (player.isFallFlying() || (target != null && target.isFallFlying())) {
             return elRange.get();
@@ -529,16 +552,14 @@ public final class KillAura extends Module {
                 || player.getMainHandItem().getItem() instanceof AxeItem;
     }
 
-    /** Жидкость (isInLiquid из Private): плавание или глаза в воде/лаве. */
     private boolean isInLiquid(LocalPlayer player) {
         return player.isVisuallySwimming()
                 || player.isSwimming() && player.isEyeInFluid(FluidTags.WATER)
                 || player.isEyeInFluid(FluidTags.LAVA);
     }
 
-    // ---- фильтры цели ----
+    // ==================== Фильтры цели ====================
 
-    /** Пригодность цели (isValidTarget из Private). */
     private boolean isValidTarget(LocalPlayer player, LivingEntity entity) {
         if (entity == player || !entity.isAlive() || entity.isRemoved()) {
             return false;
@@ -568,20 +589,14 @@ public final class KillAura extends Module {
         return true;
     }
 
-    /** Мобы-цели (isMob из Private). */
     private boolean isMob(Entity entity) {
         return entity instanceof Monster || entity instanceof Slime || entity instanceof Ghast;
     }
 
-    /** Случайное значение в [min, max] (randomLerp из Private). */
     private static float randomLerp(float min, float max) {
         return min + ThreadLocalRandom.current().nextFloat() * (max - min);
     }
 
-    /**
-     * Масштаб интервала ударов по TPS сервера: чем ниже TPS, тем реже удары.
-     * Множитель управляет силой коррекции (1.0 — линейно от просадки).
-     */
     private long applyTpsScale(long intervalMs) {
         if (!syncTPS.get()) {
             return intervalMs;
@@ -590,17 +605,25 @@ public final class KillAura extends Module {
         return (long) (intervalMs * (1.0F + lag * tpsMultiplier.get()));
     }
 
-    // ---- FOV-индикатор (Render2DEvent из Private) ----
+    private void reset() {
+        target = null;
+        canCrit = false;
+        pendingCritTicks = 0;
+        lastAttackTime = 0L;
+        lastClickTime = 0L;
+        lastTargetSwitchTime = 0L;
+        perfectDelay.reset(0L);
+    }
 
-    /** Точка входа HUD-слоя: находит активный экземпляр модуля и рисует индикатор. */
+    // ==================== FOV-индикатор ====================
+
     private static void renderFovOverlay(GuiGraphics context) {
-        KillAura killAura = ModuleManager.get(KillAura.class);
-        if (killAura != null) {
-            killAura.renderFovIndicator(context);
+        Aura aura = ModuleManager.get(Aura.class);
+        if (aura != null) {
+            aura.renderFovIndicator(context);
         }
     }
 
-    /** Квадрат-индикатор вокруг прицела: зелёный — цель в угле обзора, красный — вне. */
     private void renderFovIndicator(GuiGraphics context) {
         if (!isEnable() || target == null || !checks.is("Отображать FOV")) {
             return;
@@ -619,25 +642,28 @@ public final class KillAura extends Module {
         if (!allow) {
             float percent = delta / Math.max(1.0F, fov.getMax() - baseFov);
             int calcAlpha = Math.round(255.0F * Mth.clamp(1.0F - percent, 0.0F, 1.0F));
-            int calcColor = (calcAlpha << 24) | (ColorUtils.RED.getRGB() & 0xFFFFFF);
+            int calcColor = (calcAlpha << 24) | (0xFF0000);
             float calcRadius = Math.max(1.0F, calcFov - delta);
             GuiRender.roundedOutline(context.pose(), centerX - calcFov, centerY - calcFov,
                     calcFov * 2.0F, calcFov * 2.0F, delta, calcColor, calcRadius);
         }
-        int baseColor = allow ? ColorUtils.GREEN.getRGB() : ColorUtils.RED.getRGB();
+        int baseColor = allow ? 0x00FF00 : 0xFF0000;
         float outline = allow ? 5.0F : delta;
         float baseRadius = Math.max(1.0F, baseFov - outline);
         GuiRender.roundedOutline(context.pose(), centerX - baseFov, centerY - baseFov,
                 baseFov * 2.0F, baseFov * 2.0F, outline, baseColor, baseRadius);
     }
 
-    private void reset() {
-        target = null;
-        canCrit = false;
-        pendingCritTicks = 0;
-        lastAttackTime = 0L;
-        lastClickTime = 0L;
-        lastTargetSwitchTime = 0L;
-        perfectDelay.reset(0L);
+    // ==================== Доступ к флагу спринта игрока ====================
+
+    /**
+     * Читает флаг "был ли игрок в спринте в прошлом тике".
+     * Обеспечивается миксином LocalPlayerAccessor (поле wasSprinting).
+     */
+    private static boolean wasSprinting(LocalPlayer player) {
+        if (player instanceof swerve.mixins.accessor.LocalPlayerAccessor accessor) {
+            return accessor.swerve$wasSprinting();
+        }
+        return false;
     }
 }

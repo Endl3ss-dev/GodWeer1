@@ -11,7 +11,7 @@ import swerve.managers.ModuleManager;
 import swerve.modules.Module;
 import swerve.modules.ModuleCategory;
 import swerve.modules.api.setting.FloatSetting;
-import swerve.modules.impl.combat.KillAura;
+import swerve.modules.impl.combat.Aura;
 import swerve.utils.item.HvHItemUse;
 import swerve.utils.movement.ElytraFlightRotation;
 
@@ -61,8 +61,8 @@ public final class ElytraFlight extends Module {
         }
         if (!player.isFallFlying()) return;
 
-        KillAura killAura = ModuleManager.get(KillAura.class);
-        boolean killauraActive = killAura != null && killAura.isEnable() && killAura.getTarget() != null;
+        Aura aura = ModuleManager.get(Aura.class);
+        boolean killauraActive = aura != null && aura.isEnable() && aura.getTarget() != null;
 
         if (System.currentTimeMillis() - lastFireworkTime > (long) fireworkDelay.get()) {
             HvHItemUse.swapAndUseFirework();

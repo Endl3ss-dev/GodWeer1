@@ -3,7 +3,7 @@ package swerve.events.network;
 import net.minecraft.network.protocol.Packet;
 
 import swerve.managers.ModuleManager;
-import swerve.modules.impl.combat.KillAura;
+import swerve.modules.impl.combat.Aura;
 
 /**
  * Доставка исходящих пакетов подписчикам без событийной шины: миксин
@@ -20,9 +20,9 @@ public final class PacketSendEvent {
      * фильтрацию по типу миксин делает до вызова, чтобы общий путь был бесплатным.
      */
     public static void dispatch(Packet<?> packet) {
-        KillAura killAura = ModuleManager.get(KillAura.class);
-        if (killAura != null) {
-            killAura.onPacketSend(packet);
+        Aura aura = ModuleManager.get(Aura.class);
+        if (aura != null) {
+            aura.onPacketSend(packet);
         }
     }
 }
