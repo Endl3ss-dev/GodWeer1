@@ -26,6 +26,7 @@ import swerve.modules.impl.render.ViewModel;
 import swerve.ui.hud.HudManager;
 import swerve.utils.item.ConsumableUseController;
 import swerve.utils.movement.ElytraFlightRotation;
+import swerve.utils.rotation.RotationController;
 
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientTickEvents;
 import net.minecraft.client.Minecraft;
@@ -59,7 +60,7 @@ public final class ModuleManager {
         register(new AutoGApple());
         register(new AutoPotion());
         register(new SexAura());
-        // KillAura: порт из Private (без ротаций); цель ауры читает ElytraFlight.
+        // KillAura: порт из Private; ротации Intave/Matrix/HW, цель ауры читает ElytraFlight.
         register(new KillAura());
         register(new ItemSwap());
         register(new Speed());
@@ -83,6 +84,10 @@ public final class ModuleManager {
         if (!tickListenerRegistered) {
             // AlphaDLC EventTick: Fabric START_CLIENT_TICK also runs at Minecraft.tick HEAD.
             ClientTickEvents.START_CLIENT_TICK.register(ElytraFlightRotation::tick);
+            // [+] Ротация ауры: компонент тикает всегда (возврат камеры после выключения модуля),
+            // запрос ротации — до тика игрока, чтобы пакет позиции ушёл с новыми углами.
+            ClientTickEvents.START_CLIENT_TICK.register(RotationController::tick);
+            ClientTickEvents.START_CLIENT_TICK.register(KillAura::rotationTick);
             ClientTickEvents.END_CLIENT_TICK.register(client -> tick());
             tickListenerRegistered = true;
         }

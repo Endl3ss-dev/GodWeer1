@@ -514,3 +514,27 @@ AABB/Mth` в 1.21.4. `org.joml` уже используется в Private (`Rot
 5. `CustomRot` по стадиям из раздела 6.3, начиная с aim-point и скорости.
 6. Остальные элементы ротации — по мере необходимости, начиная с `SmoothNewRot`/`SmoothUpdateRot`.
 7. `ElytraAuraLogic` — последним (самая изолированная ветка).
+
+---
+
+## 15. Статус порта в Swerve (шаг «ротации Intave/Matrix/HW»)
+
+Портировано и подключено к модулю `KillAura`:
+
+| Private (1.16.5) | Swerve (1.21.4) |
+|---|---|
+| `RotationComponent` | `utils/rotation/RotationController.java` (AIM/RESET/IDLE, приоритет, GCD-шаг) |
+| `FreeLookComponent` | `utils/rotation/FreeLook.java` + redirect `LocalPlayer.turn` в `MixinMouseHandler`, камера — `MixinCamera` |
+| `SensUtil` / `GCDUtils` | `utils/rotation/GcdUtil.java` |
+| `Rotation` | `utils/rotation/Rotation.java` |
+| `MoveUtil.fixMovement/fixMovement2`, `fixMovementToTarget` | `utils/player/MoveUtil.java`, режимы «Коррекция движения» |
+| `IRotationElement` / `AbstractRotationElement` | `modules/impl/combat/rotation/RotationElement.java`, `AbstractRotationElement.java` |
+| `IntaveRot` / `MatrixRot` / `HWRot` | `IntaveRotation` / `MatrixRotation` / `HWRotation` (скорости, тайминги и шум 1:1) |
+
+Порядок тика: цель и ротация — `START_CLIENT_TICK` (до тика игрока, пакет позиции
+уходит с новыми углами), удар — `END_CLIENT_TICK`. Смена режима ротации — как
+`initRotationElements()`: старый элемент `onDisable`, новый `onEnable`.
+
+Сознательно не портировано: остальные 13 значений `componentMode` (Custom/Smooth/
+Фантайм/СпукиТайм/…), `ElytraAuraLogic`, `sprintReset`, `lockOnTarget`/
+`targetFollow` — они относятся к Custom-ротации и её настройкам.

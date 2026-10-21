@@ -7,6 +7,7 @@ import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 import swerve.mixins.accessor.MouseHandlerAccessor;
 import swerve.utils.movement.ElytraFlightRotation;
 import swerve.utils.input.KeyBoardUtils;
+import swerve.utils.rotation.FreeLook;
 import swerve.utils.render.spatial.SpatialMouse;
 import swerve.utils.render.spatial.SpatialState;
 
@@ -97,10 +98,14 @@ public class MixinMouseHandler {
 
     // Adapted from AlphaDLC/src/main/java/zov/alphadlc/mixin/MouseMixin.java
     // Vanilla has already applied sensitivity, smoothing, spyglass scaling and invert-Y here.
+    // [+] Молчаливая ротация ауры перехватывает ту же точку: тело крутит аура,
+    //     дельты мыши уходят в свободный обзор (FreeLookComponent из Private).
     @Redirect(method = "turnPlayer", at = @At(value = "INVOKE",
             target = "Lnet/minecraft/client/player/LocalPlayer;turn(DD)V"))
     private void swerve$elytraFreeLook(LocalPlayer player, double yaw, double pitch) {
-        if (ElytraFlightRotation.isActive()) {
+        if (FreeLook.active()) {
+            FreeLook.turn(yaw, pitch);
+        } else if (ElytraFlightRotation.isActive()) {
             ElytraFlightRotation.turn(yaw, pitch);
         } else {
             player.turn(yaw, pitch);

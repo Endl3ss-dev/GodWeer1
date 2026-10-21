@@ -1,5 +1,6 @@
 package swerve.modules.impl.combat;
 
+import swerve.events.movement.MoveInputEvent;
 import swerve.managers.FriendManager;
 import swerve.managers.ModuleManager;
 import swerve.mixins.accessor.LocalPlayerAccessor;
@@ -9,10 +10,17 @@ import swerve.modules.api.setting.BooleanSetting;
 import swerve.modules.api.setting.FloatSetting;
 import swerve.modules.api.setting.ListSetting;
 import swerve.modules.api.setting.ModeSetting;
+import swerve.modules.impl.combat.rotation.HWRotation;
+import swerve.modules.impl.combat.rotation.IntaveRotation;
+import swerve.modules.impl.combat.rotation.MatrixRotation;
+import swerve.modules.impl.combat.rotation.RotationElement;
 import swerve.ui.hud.HudManager;
 import swerve.utils.color.ColorUtils;
 import swerve.utils.combat.AuraUtils;
 import swerve.utils.network.ServerTPS;
+import swerve.utils.player.MoveUtil;
+import swerve.utils.rotation.Rotation;
+import swerve.utils.rotation.RotationController;
 import swerve.utils.time.PerfectDelay;
 import swerve.ui.newgui.GuiRender;
 
@@ -45,12 +53,17 @@ import java.util.concurrent.ThreadLocalRandom;
  * KillAura: автоматическая атака ближайших врагов.
  *
  * <p>Порт из Private/src/java/org/privates/client/managers/module/impl/combat/KillAura.java
- * (модуль AuraNew) без подсистемы ротаций: выбор цели, приоритеты, криты,
- * проверка стен, режимы ударов 1.8/1.9, синхронизация по TPS, FOV-индикатор.
+ * (модуль AuraNew): выбор цели, приоритеты, криты, проверка стен, режимы ударов
+ * 1.8/1.9, синхронизация по TPS, FOV-индикатор и молчаливые ротации
+ * Intave/Matrix/HW ({@code auraelement/impl}).
  *
  * <p>Адаптация под Swerve:
  * <ul>
- *   <li>ротации не портированы — прицел проверяется по текущему взгляду игрока;</li>
+ *   <li>ротации портированы как {@link RotationElement} поверх
+ *       {@link RotationController}: тело доворачивается на цель, камера остаётся
+ *       свободной ({@code FreeLook}, перехват {@code LocalPlayer.turn});</li>
+ *   <li>порядок тика как в Private: цель и ротация — до тика игрока
+ *       ({@code START_CLIENT_TICK}), удар — в конце тика;</li>
  *   <li>MoveEvent из Private заменён расчётом canCrit в конце тика: движение
  *       уже применено, fallDistance совпадает с тем, что увидит ванильный крит;</li>
  *   <li>фоновый scheduler рандомных критов заменён счётчиком тиков
@@ -60,6 +73,11 @@ import java.util.concurrent.ThreadLocalRandom;
  *       shieldBreaker в оригинале реализовано, но не вызывалось);</li>
  *   <li> streams из findTarget заменены одним проходом без аллокаций.</li>
  * </ul>
+ *
+ * <p>Не портировано (сознательно, вне рамок трёх ротаций): режимы Custom/Smooth/
+ * Фантайм/СпукиТайм и остальные элементы {@code auraelement/impl}, элитра-аура
+ * ({@code ElytraAuraLogic}), «Sprint Reset», захват цели {@code lockOnTarget} и
+ * «Таргетированный» — все они принадлежат Custom-ротации и её настройкам.
  */
 public final class KillAura extends Module {
 
@@ -71,7 +89,15 @@ public final class KillAura extends Module {
     /** Порог восстановления кулдауна атаки для удара (cooldownComplete из Private). */
     private static final float COOLED_ATTACK_STRENGTH = 1.5F;
 
-    // ---- настройки (живые из Private, без ротаций) ----
+    // [+] Ротации: имена ровно те, что в ModeSetting componentMode из Private.
+    private static final String ROTATION_INTAVE = "Intave";
+    private static final String ROTATION_MATRIX = "Matrix";
+    private static final String ROTATION_HW = "HW";
+    private static final String CORRECTION_SILENT = "Незаметная";
+    private static final String CORRECTION_FOCUSED = "Сфокусированная";
+    private static final String CORRECTION_ROUGH = "Грубая";
+
+    // ---- настройки (живые из Private) ----
 
     private final FloatSetting fov = new FloatSetting("Угол обзора", 180.0F, 30.0F, 180.0F, 1.0F);
     private final FloatSetting attackRange = new FloatSetting("Дистанция", 3.0F, 3.0F, 6.0F, 0.1F);
@@ -114,11 +140,26 @@ public final class KillAura extends Module {
     private final FloatSetting cooldown = new FloatSetting("Кулдаун", 0.93F, 0.5F, 1.0F, 0.01F)
             .visible(() -> attackMode.is(ATTACK_19));
 
+    // [+] Ротации: только три портированные (componentMode из Private содержит ещё 13 режимов,
+    // которых в Swerve нет — мёртвые значения в списке не оставляем).
+    private final ModeSetting rotationMode = new ModeSetting("Ротации", ROTATION_INTAVE,
+            ROTATION_INTAVE, ROTATION_MATRIX, ROTATION_HW);
+    private final ModeSetting movementCorrection = new ModeSetting("Коррекция движения", CORRECTION_SILENT,
+            CORRECTION_SILENT, CORRECTION_FOCUSED, CORRECTION_ROUGH);
+
     // ---- состояние ----
 
     private final PerfectDelay perfectDelay = new PerfectDelay();
     /** Аккумуляторы поиска цели (переиспользуются, аллокаций в тике нет). */
     private final TargetScan scan = new TargetScan();
+
+    // [+] Элементы ротаций живут столько же, сколько модуль: состояние сглаживания
+    // между включениями не пересоздаётся (как в Private, где элементы в мапе компонента).
+    private final RotationElement intaveRotation = new IntaveRotation();
+    private final RotationElement matrixRotation = new MatrixRotation();
+    private final RotationElement hwRotation = new HWRotation();
+    private RotationElement rotationElement;
+    private LivingEntity previousTarget;
 
     private LivingEntity target;
     private boolean canCrit;
@@ -133,7 +174,8 @@ public final class KillAura extends Module {
         addSettings(fov, attackRange, preRange, elRange, noHitThroughBlocks, smartDistance,
                 smartHitbox, syncTPS, tpsMultiplier, targetSettings, onlyCrits, smartCrits,
                 randomCrits, shieldBreaker, priorityTargeting, priorityMode, targetSwitchDelay,
-                minSwitchDelay, maxSwitchDelay, checks, attackMode, dynamicCps, cooldown);
+                minSwitchDelay, maxSwitchDelay, checks, attackMode, dynamicCps, cooldown,
+                rotationMode, movementCorrection);
         // Статическая ссылка: один канонический объект на call-site —
         // повторная инициализация модулей не плодит дубликаты слоя.
         HudManager.registerOverlay(KillAura::renderFovOverlay);
@@ -141,12 +183,102 @@ public final class KillAura extends Module {
 
     @Override
     public void onEnable() {
+        syncRotationElement();
         reset();
     }
 
     @Override
     public void onDisable() {
+        // AuraNew.onDisable: reset() → resetRotation() → element.onDisable().
         reset();
+        RotationController.resetRotation();
+        if (rotationElement != null) {
+            rotationElement.onDisable();
+        }
+    }
+
+    /**
+     * Тик ротации (START_CLIENT_TICK, до тика игрока): тело доворачивается на цель,
+     * и в этом же тике уходит пакет позиции — как GameUpdateEvent в Private.
+     */
+    public static void rotationTick(Minecraft minecraft) {
+        KillAura aura = ModuleManager.get(KillAura.class);
+        if (aura != null && aura.isEnable()) {
+            aura.updateRotationTick(minecraft);
+        }
+    }
+
+    private void updateRotationTick(Minecraft minecraft) {
+        LocalPlayer player = minecraft.player;
+        if (player == null || minecraft.level == null || minecraft.gameMode == null) {
+            reset();
+            return;
+        }
+        if (player.isSpectator()) {
+            return;
+        }
+        if (checks.is("Выключить после смерти") && player.isDeadOrDying()) {
+            setEnabled(false);
+            return;
+        }
+
+        syncRotationElement();
+        updateTarget(minecraft, player);
+        if (target == null || rotationElement == null) {
+            return;
+        }
+        rotationElement.update(target);
+    }
+
+    /** Смена режима ротации на лету (initRotationElements из Private). */
+    private void syncRotationElement() {
+        RotationElement wanted;
+        if (rotationMode.is(ROTATION_MATRIX)) {
+            wanted = matrixRotation;
+        } else if (rotationMode.is(ROTATION_HW)) {
+            wanted = hwRotation;
+        } else {
+            wanted = intaveRotation;
+        }
+        if (wanted == rotationElement) {
+            return;
+        }
+        if (rotationElement != null) {
+            rotationElement.onDisable();
+        }
+        rotationElement = wanted;
+        rotationElement.onEnable();
+    }
+
+    /**
+     * Коррекция движения при молчаливой ротации (RotationComponent/MoveInputEvent из Private).
+     * Тело развёрнуто на цель, поэтому WASD пересчитывается от камеры.
+     */
+    public void fixMovement(MoveInputEvent event) {
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player == null || target == null) {
+            return;
+        }
+        if (movementCorrection.is(CORRECTION_ROUGH)) {
+            // applyGrubayaPull: направление ввода считается от угла на цель.
+            double dx = target.getX() - player.getX();
+            double dz = target.getZ() - player.getZ();
+            if (Math.sqrt(dx * dx + dz * dz) < 0.2D) {
+                return;
+            }
+            float yawToTarget = Mth.wrapDegrees((float) Math.toDegrees(Math.atan2(dz, dx)) - 90.0F);
+            MoveUtil.fixMovementToTarget(event, player.getYRot(), yawToTarget);
+            return;
+        }
+        if (!RotationController.isRotating()) {
+            return;
+        }
+        float cameraYaw = Rotation.cameraYaw();
+        if (movementCorrection.is(CORRECTION_FOCUSED)) {
+            MoveUtil.fixMovement2(event);
+        } else {
+            MoveUtil.fixMovement(event, cameraYaw);
+        }
     }
 
     @Override
@@ -158,13 +290,8 @@ public final class KillAura extends Module {
             reset();
             return;
         }
-        if (player.isSpectator()) {
-            return;
-        }
-        if (checks.is("Выключить после смерти") && player.isDeadOrDying()) {
-            setEnabled(false);
-            return;
-        }
+        // [+] Цель и ротация обновляются в начале тика (rotationTick), здесь — добивание:
+        // криты, отложенный удар и сама атака уже по свежим углам тела.
 
         // MoveEvent из Private: canCrit предсказывался в момент движения.
         // В конце тика движение уже применено, fallDistance — тот же, что
@@ -180,7 +307,6 @@ public final class KillAura extends Module {
             }
         }
 
-        updateTarget(minecraft, player);
         updateAttack(minecraft, player);
     }
 
@@ -220,16 +346,18 @@ public final class KillAura extends Module {
                 lastTargetSwitchTime = System.currentTimeMillis();
             }
         }
-        if (target == null) {
-            return;
-        }
-        if (!isValidTarget(player, target)) {
-            target = null;
-            return;
-        }
-        if (AuraUtils.fovFromCamera(player, target) > fov.get()) {
+        if (target != null
+                && (!isValidTarget(player, target) || AuraUtils.fovFromCamera(player, target) > fov.get())) {
             target = null;
         }
+        if (previousTarget != null && target == null) {
+            // AuraNew.updateTarget: сброс накопленного lerp и плавный возврат камеры.
+            if (rotationElement != null) {
+                rotationElement.resetLerp();
+            }
+            RotationController.smoothResetRotation();
+        }
+        previousTarget = target;
     }
 
     /**
@@ -633,6 +761,7 @@ public final class KillAura extends Module {
 
     private void reset() {
         target = null;
+        previousTarget = null;
         canCrit = false;
         pendingCritTicks = 0;
         lastAttackTime = 0L;

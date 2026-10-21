@@ -1,6 +1,7 @@
 package swerve.mixins.render;
 
 import swerve.utils.render.spatial.CameraHandle;
+import swerve.utils.rotation.FreeLook;
 import swerve.utils.movement.ElytraFlightRotation;
 import swerve.utils.render.spatial.SpatialCamera;
 
@@ -38,7 +39,12 @@ public abstract class MixinCamera implements CameraHandle {
             return;
         }
         ElytraFlightRotation.captureCamera(yaw, pitch);
-        if (ElytraFlightRotation.isActive()) {
+        if (FreeLook.active()) {
+            // [+] Молчаливая ротация ауры: камера смотрит туда, куда её увёл игрок,
+            // тело при этом уже развёрнуто на цель (FreeLookComponent из Private).
+            yaw = FreeLook.yaw();
+            pitch = FreeLook.pitch();
+        } else if (ElytraFlightRotation.isActive()) {
             yaw = ElytraFlightRotation.getFreeYaw();
             pitch = ElytraFlightRotation.getFreePitch();
         }

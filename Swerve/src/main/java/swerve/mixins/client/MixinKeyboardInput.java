@@ -2,6 +2,7 @@ package swerve.mixins.client;
 
 import swerve.events.movement.MoveInputEvent;
 import swerve.managers.ModuleManager;
+import swerve.modules.impl.combat.KillAura;
 import swerve.modules.impl.movement.ElytraFlight;
 import swerve.utils.movement.ElytraFlightRotation;
 import swerve.utils.render.spatial.SpatialMath;
@@ -32,6 +33,18 @@ public abstract class MixinKeyboardInput extends ClientInput {
         swerve$moveInput.read(this);
         ElytraFlightRotation.onMoveInput(swerve$moveInput);
         if (flight != null && flight.isEnable()) flight.onMoveInput(swerve$moveInput);
+        swerve$moveInput.apply(this);
+    }
+
+    // [+] Молчаливая ротация ауры: тело развёрнуто на цель, поэтому WASD
+    //     пересчитывается от камеры (MoveInputEvent из RotationComponent Private).
+    //     Порядок 1200 — после elytra-коррекции (1100): аура применяет последней.
+    @Inject(method = "tick", at = @At("TAIL"), order = 1200)
+    private void swerve$auraMoveFix(CallbackInfo ci) {
+        KillAura aura = ModuleManager.get(KillAura.class);
+        if (aura == null || !aura.isEnable()) return;
+        swerve$moveInput.read(this);
+        aura.fixMovement(swerve$moveInput);
         swerve$moveInput.apply(this);
     }
 
