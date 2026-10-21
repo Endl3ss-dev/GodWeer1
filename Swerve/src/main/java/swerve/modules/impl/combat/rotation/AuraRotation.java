@@ -2,7 +2,6 @@ package swerve.modules.impl.combat.rotation;
 
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.util.math.vector.Vector2f;
 
 /**
  * Интерфейс ротации для {@link swerve.modules.impl.combat.Aura}.
@@ -10,6 +9,8 @@ import net.minecraft.util.math.vector.Vector2f;
  * <p>
  * Реализации не должны содержать игровой логики (выбор цели, атака, криты) —
  * только вычисление целевых углов yaw/pitch.
+ * <p>
+ * Выходные значения записываются в {@code out}: out[0] = yaw, out[1] = pitch.
  */
 public interface AuraRotation {
 
@@ -31,10 +32,11 @@ public interface AuraRotation {
     /**
      * Вычисляет целевые углы поворота к цели.
      *
-     * @param target  цель (может быть null, если цели нет)
-     * @param mc      экземпляр Minecraft
-     * @param current текущие углы игрока (yaw, pitch) в градусах
-     * @return Vector2f с целевыми yaw и pitch в градусах
+     * @param target цель (может быть null, если цели нет)
+     * @param mc     экземпляр Minecraft
+     * @param currentYaw  текущий yaw игрока в градусах
+     * @param currentPitch текущий pitch игрока в градусах
+     * @param out   массив из 2 элементов: out[0] = целевой yaw, out[1] = целевой pitch
      */
-    Vector2f calculateRotation(LivingEntity target, Minecraft mc, Vector2f current);
+    void calculateRotation(LivingEntity target, Minecraft mc, float currentYaw, float currentPitch, float[] out);
 }

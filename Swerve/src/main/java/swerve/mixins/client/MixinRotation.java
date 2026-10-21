@@ -11,7 +11,6 @@ import swerve.managers.ModuleManager;
 import swerve.modules.impl.combat.Aura;
 import swerve.modules.impl.combat.rotation.AuraRotation;
 import swerve.mixins.accessor.RotationAccessor;
-import net.minecraft.util.math.vector.Vector2f;
 
 /**
  * Миксин, применяющий выбранную ротацию от модуля Aura к взгляду игрока.
@@ -41,10 +40,13 @@ public class MixinRotation {
         }
 
         RotationAccessor accessor = (RotationAccessor) (Object) player;
-        Vector2f current = new Vector2f(accessor.swerve$getYaw(), accessor.swerve$getPitch());
-        Vector2f target = rotation.calculateRotation(aura.getTarget(), mc, current);
+        float currentYaw = accessor.swerve$getYaw();
+        float currentPitch = accessor.swerve$getPitch();
 
-        accessor.swerve$setYaw(target.x);
-        accessor.swerve$setPitch(target.y);
+        float[] out = new float[2];
+        rotation.calculateRotation(aura.getTarget(), mc, currentYaw, currentPitch, out);
+
+        accessor.swerve$setYaw(out[0]);
+        accessor.swerve$setPitch(out[1]);
     }
 }

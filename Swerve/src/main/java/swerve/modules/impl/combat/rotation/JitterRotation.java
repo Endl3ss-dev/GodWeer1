@@ -3,8 +3,7 @@ package swerve.modules.impl.combat.rotation;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.util.math.vector.Vector2f;
-import net.minecraft.util.math.vector.Vec3;
+import net.minecraft.world.phys.Vec3;
 
 import java.util.concurrent.ThreadLocalRandom;
 
@@ -20,9 +19,11 @@ public final class JitterRotation implements AuraRotation {
     }
 
     @Override
-    public Vector2f calculateRotation(LivingEntity target, Minecraft mc, Vector2f current) {
+    public void calculateRotation(LivingEntity target, Minecraft mc, float currentYaw, float currentPitch, float[] out) {
         if (target == null || mc.player == null) {
-            return current;
+            out[0] = currentYaw;
+            out[1] = currentPitch;
+            return;
         }
 
         Vec3 eyes = mc.player.getEyePosition(1.0F);
@@ -41,6 +42,7 @@ public final class JitterRotation implements AuraRotation {
         yaw = Mth.wrapDegrees(yaw + jitterYaw);
         pitch = Mth.clamp(pitch + jitterPitch, -90.0f, 90.0f);
 
-        return new Vector2f(yaw, pitch);
+        out[0] = yaw;
+        out[1] = pitch;
     }
 }

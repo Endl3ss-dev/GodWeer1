@@ -238,7 +238,7 @@ public final class Aura extends Module {
 
         // Применяем настройку скорости плавной ротации.
         if (rotationMode.is("Плавная")) {
-            smoothRotation.setSpeed(smoothSpeed.get());
+            ((SmoothRotation) smoothRotation).setSpeed(smoothSpeed.get());
         }
 
         // canCrit предсказывается в конце тика — движение уже применено,

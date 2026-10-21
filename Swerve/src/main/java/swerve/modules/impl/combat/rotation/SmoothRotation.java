@@ -3,8 +3,7 @@ package swerve.modules.impl.combat.rotation;
 import net.minecraft.client.Minecraft;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.util.math.vector.Vector2f;
-import net.minecraft.util.math.vector.Vec3;
+import net.minecraft.world.phys.Vec3;
 
 /**
  * Ротация "Плавная" — плавная интерполяция текущих углов к целевым.
@@ -27,22 +26,24 @@ public final class SmoothRotation implements AuraRotation {
         initialized = false;
     }
 
-    /** Устанавливает скорость интерполяции (0.0 — без поворота, 1.0 — мгновенно). */
+    /** Устанавливает скорость интерполяции (0.01 — без поворота, 1.0 — мгновенно). */
     public void setSpeed(float speed) {
         this.speed = Mth.clamp(speed, 0.01f, 1.0f);
     }
 
     @Override
-    public Vector2f calculateRotation(LivingEntity target, Minecraft mc, Vector2f current) {
+    public void calculateRotation(LivingEntity target, Minecraft mc, float currentYaw, float currentPitch, float[] out) {
         if (target == null || mc.player == null) {
             initialized = false;
-            return current;
+            out[0] = currentYaw;
+            out[1] = currentPitch;
+            return;
         }
 
         // Инициализируем плавные углы текущими углами игрока
         if (!initialized) {
-            smoothYaw = current.x;
-            smoothPitch = current.y;
+            smoothYaw = currentYaw;
+            smoothPitch = currentPitch;
             initialized = true;
         }
 
@@ -57,8 +58,6 @@ public final class SmoothRotation implements AuraRotation {
         targetYaw = Mth.wrapDegrees(targetYaw);
         targetPitch = Mth.clamp(targetPitch, -90.0f, 90.0f);
 
-        // Скорость интерполяции (0.0 — без поворота, 1.0 — мгновенно)
-
         float deltaYaw = Mth.wrapDegrees(targetYaw - smoothYaw);
         float deltaPitch = targetPitch - smoothPitch;
 
@@ -68,6 +67,7 @@ public final class SmoothRotation implements AuraRotation {
         smoothYaw = Mth.wrapDegrees(smoothYaw);
         smoothPitch = Mth.clamp(smoothPitch, -90.0f, 90.0f);
 
-        return new Vector2f(smoothYaw, smoothPitch);
+        out[0] = smoothYaw;
+        out[1] = smoothPitch;
     }
 }
