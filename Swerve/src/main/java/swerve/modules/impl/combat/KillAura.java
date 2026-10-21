@@ -292,6 +292,10 @@ public final class KillAura extends Module {
         }
         // [+] Цель и ротация обновляются в начале тика (rotationTick), здесь — добивание:
         // криты, отложенный удар и сама атака уже по свежим углам тела.
+        // Страховки повторяются: между START- и END-тиком состояние могло измениться.
+        if (player.isSpectator() || player.isDeadOrDying()) {
+            return;
+        }
 
         // MoveEvent из Private: canCrit предсказывался в момент движения.
         // В конце тика движение уже применено, fallDistance — тот же, что
