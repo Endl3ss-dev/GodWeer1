@@ -21,7 +21,7 @@ import swerve.modules.impl.combat.rotation.AuraRotation;
  * используются методы getYRot()/setYRot() и getXRot()/setXRot() из LivingEntity.
  */
 @Mixin(LocalPlayer.class)
-public class MixinRotation {
+public abstract class MixinRotation {
 
     @Shadow
     public float getYRot();
