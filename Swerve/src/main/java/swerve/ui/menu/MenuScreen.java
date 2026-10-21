@@ -64,6 +64,19 @@ public final class MenuScreen extends Screen {
     };
 
     // ---- действия кликов
+    /**
+     * Сколько настроек резервируется на модуль в упакованном индексе
+     * ({@code moduleIndex * SET_PER_MODULE + settingIndex}).
+     *
+     * <p>Было 16 — и у модулей с 17+ настройками (KillAura: 26) строки начинали
+     * указывать на следующий модуль: клик по «Режим ударов» менял настройку ItemSwap,
+     * а сама строка не реагировала. 20 модулей × 32 = 640 < {@link MenuAnim#MAX_SETTINGS}.
+     */
+    static final int SET_PER_MODULE = 32;
+
+    /** Сколько пунктов списка/сегментов резервируется в младших разрядах payload. */
+    static final int ITEM_STRIDE = 16;
+
     static final int ACT_NONE = 0;
     static final int ACT_TAB = 1;
     static final int ACT_THEME = 2;
@@ -1437,6 +1450,11 @@ public final class MenuScreen extends Screen {
 
     private void row(GuiGraphics g, Module m, Setting s, int x, int y, int w, int h, float sc, int t, int b,
                      boolean live, int mi, int si) {
+        // Строки сверх зарезервированного слота рисуются, но не принимают клики:
+        // иначе индекс уезжает в чужой модуль.
+        if (si >= SET_PER_MODULE) {
+            live = false;
+        }
         int siGlobal = settingIndex(mi, si);
         int animBase = MenuAnim.SETTING_BASE + siGlobal * MenuAnim.SET_STRIDE;
         boolean hv = live && my >= t && my < b && hover(x, Math.round(y - sc), w, h);
@@ -1518,13 +1536,13 @@ public final class MenuScreen extends Screen {
                     int s1 = x + in + Math.round(segW * (i + 1));
                     boolean sh2 = live && hover(s0, Math.round(sy - sc), s1 - s0, sh);
                     if (sh2) {
-                        hot(HOT_SEG + siGlobal * 16 + i);
+                        hot(HOT_SEG + siGlobal * ITEM_STRIDE + i);
                     }
                     Px.textCenter(g, mode, (s0 + s1) / 2, sy + (sh - S(12)) / 2,
                             a > .5f ? Weight.SEMIBOLD : Weight.MEDIUM, S(12),
                             Px.mix(sh2 ? T().text() : T().muted(), onThumb, a));
                     if (live && md.getIndex() != i) {
-                        clipped(s0, sy, s1 - s0, sh, sc, t, b, ACT_MODE_ITEM, siGlobal * 16 + i);
+                        clipped(s0, sy, s1 - s0, sh, sc, t, b, ACT_MODE_ITEM, siGlobal * ITEM_STRIDE + i);
                     }
                 }
             } else {
@@ -1578,7 +1596,7 @@ public final class MenuScreen extends Screen {
                 Px.textCenter(g, on, ox + bw / 2, oy + (S(26) - S(12)) / 2, Weight.MEDIUM, S(12),
                         option.get() ? accText() : T().text());
                 if (live) {
-                    clipped(ox, oy, bw, S(26), sc, t, b, ACT_LIST_ITEM, siGlobal * 16 + i);
+                    clipped(ox, oy, bw, S(26), sc, t, b, ACT_LIST_ITEM, siGlobal * ITEM_STRIDE + i);
                 }
                 ox += bw + S(8);
             }
@@ -1673,7 +1691,7 @@ public final class MenuScreen extends Screen {
     }
 
     static int settingIndex(int moduleIndex, int settingIndex) {
-        return Math.min(MenuAnim.MAX_SETTINGS - 1, moduleIndex * 16 + settingIndex);
+        return Math.min(MenuAnim.MAX_SETTINGS - 1, moduleIndex * SET_PER_MODULE + settingIndex);
     }
 
     private static boolean hasSettings(Module m) {
@@ -1872,8 +1890,7 @@ public final class MenuScreen extends Screen {
                 }
             }
             case ACT_MODE_ITEM -> {
-                int si = payload / 16;
-                int mi = payload % 16;
+                int si = payload / ITEM_STRIDE;
                 Setting s = settingByGlobal(si);
                 if (s instanceof ModeSetting md) {
                     if (mi < md.getMods().size()) {
@@ -1891,8 +1908,8 @@ public final class MenuScreen extends Screen {
                 pop = null;
             }
             case ACT_LIST_ITEM -> {
-                int si = payload / 16;
-                int oi = payload % 16;
+                int si = payload / ITEM_STRIDE;
+                int oi = payload % ITEM_STRIDE;
                 Setting s = settingByGlobal(si);
                 if (s instanceof ListSetting ls && oi < ls.getSettings().size()) {
                     BooleanSetting option = ls.getSettings().get(oi);
@@ -1947,8 +1964,8 @@ public final class MenuScreen extends Screen {
 
     private Setting settingByGlobal(int global) {
         List<Module> all = ModuleManager.getModules();
-        int mi = global / 16;
-        int si = global % 16;
+        int mi = global / SET_PER_MODULE;
+        int si = global % SET_PER_MODULE;
         if (mi >= all.size()) {
             return null;
         }

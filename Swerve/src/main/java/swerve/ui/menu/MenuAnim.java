@@ -44,7 +44,7 @@ public final class MenuAnim {
 
     public static final int MAX_MODULES = 64;
 
-    // ---- настройки: по 6 значений на настройку (индекс = модуль * 16 + номер настройки)
+    // ---- настройки: по 7 значений на настройку (индекс = модуль * MenuScreen.SET_PER_MODULE + номер)
     public static final int SETTING_BASE = MODULE_BASE + MAX_MODULES * MOD_STRIDE;
     public static final int SET_STRIDE = 7;
     public static final int MAX_SETTINGS = 1024;
