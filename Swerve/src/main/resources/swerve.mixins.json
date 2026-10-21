@@ -10,7 +10,6 @@
 		"accessor.LocalPlayerAccessor",
 		"accessor.MouseHandlerAccessor",
 		"accessor.ModelPartAccessor",
-		"accessor.RotationAccessor",
 		"client.MixinAbstractRecipeBookScreen",
 		"client.MixinChatComponent",
 		"client.MixinClientPacketListener",
