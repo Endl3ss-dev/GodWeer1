@@ -1891,10 +1891,12 @@ public final class MenuScreen extends Screen {
             }
             case ACT_MODE_ITEM -> {
                 int si = payload / ITEM_STRIDE;
+                // младшие разряды payload — индекс сегмента внутри ModeSetting
+                int item = payload % ITEM_STRIDE;
                 Setting s = settingByGlobal(si);
                 if (s instanceof ModeSetting md) {
-                    if (mi < md.getMods().size()) {
-                        md.set(md.getMods().get(mi));
+                    if (item < md.getMods().size()) {
+                        md.set(md.getMods().get(item));
                         MenuSound.play(MenuSound.CLICK);
                     }
                 }
