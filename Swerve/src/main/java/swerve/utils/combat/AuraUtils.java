@@ -66,6 +66,33 @@ public final class AuraUtils {
     }
 
     /**
+     * Угол между произвольным направлением взгляда (yaw/pitch) и ближайшей точкой
+     * цели. Нужен индикатору FOV: при молчаливой ротации тело уже развёрнуто на
+     * цель, а камера — ещё нет, поэтому угол обязан считаться от камеры, иначе
+     * индикатор всегда зелёный.
+     */
+    public static double fovFromAngles(Player player, Entity target, float yaw, float pitch) {
+        AABB box = target.getBoundingBox();
+        Vec3 eye = player.getEyePosition(1.0F);
+        double dx = Mth.clamp(eye.x, box.minX, box.maxX) - eye.x;
+        double dy = Mth.clamp(eye.y, box.minY, box.maxY) - eye.y;
+        double dz = Mth.clamp(eye.z, box.minZ, box.maxZ) - eye.z;
+        double length = Math.sqrt(dx * dx + dy * dy + dz * dz);
+        if (length < EPSILON) {
+            return 0.0D;
+        }
+        // Формула Entity.calculateViewVector: (sin(-yaw)*cos(pitch), -sin(pitch), cos(-yaw)*cos(pitch)).
+        double yawRad = Math.toRadians(yaw);
+        double pitchRad = Math.toRadians(pitch);
+        double cosPitch = Math.cos(pitchRad);
+        double vx = -Math.sin(yawRad) * cosPitch;
+        double vy = -Math.sin(pitchRad);
+        double vz = Math.cos(yawRad) * cosPitch;
+        double dot = (vx * dx + vy * dy + vz * dz) / length;
+        return Math.toDegrees(Math.acos(Mth.clamp(dot, -1.0D, 1.0D)));
+    }
+
+    /**
      * Луч взгляда пересекает хитбокс цели в пределах дистанции
      * (RayTraceUtil.rayTraceEntity из Private). Slab-метод без аллокаций;
      * точка старта внутри хитбокса тоже считается попаданием.

@@ -25,7 +25,6 @@
 		"client.MixinScreen",
 		"client.MixinUser",
 		"client.MixinWindow",
-		"network.MixinConnection",
 		"render.MixinCamera",
 		"render.MixinLivingEntityRenderer",
 		"render.MixinMeleeHand",

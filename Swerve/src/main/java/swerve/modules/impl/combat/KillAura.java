@@ -22,15 +22,12 @@ import swerve.utils.player.MoveUtil;
 import swerve.utils.rotation.FreeLook;
 import swerve.utils.rotation.Rotation;
 import swerve.utils.rotation.RotationController;
-import swerve.utils.time.PerfectDelay;
 import swerve.ui.newgui.GuiRender;
 
+import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphics;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ServerboundSetCarriedItemPacket;
-import net.minecraft.network.protocol.game.ServerboundSwingPacket;
 import net.minecraft.tags.FluidTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
@@ -44,7 +41,6 @@ import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.inventory.ClickType;
 import net.minecraft.world.item.AxeItem;
-import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.SwordItem;
 import net.minecraft.world.phys.Vec3;
 
@@ -66,14 +62,15 @@ import java.util.concurrent.ThreadLocalRandom;
  *       свободной ({@code FreeLook}, перехват {@code LocalPlayer.turn});</li>
  *   <li>порядок тика как в Private: цель и ротация — до тика игрока
  *       ({@code START_CLIENT_TICK}), удар — в конце тика;</li>
- *   <li>MoveEvent из Private заменён расчётом canCrit в конце тика: движение
- *       уже применено, fallDistance совпадает с тем, что увидит ванильный крит;</li>
- *   <li>фоновый scheduler рандомных критов заменён счётчиком тиков
- *       (атака из чужого потока небезопасна);</li>
+ *   <li>удар 1.9 ждёт полную перезарядку оружия ({@code getAttackStrengthScale}),
+ *       удар 1.8 — только интервал CPS: режимы больше не совпадают по темпу;</li>
+ *   <li>отложенных ударов в обход гейтов нет: «Рандом криты» лишь пропускают
+ *       часть окон крита, наземный удар при «Только криты» невозможен;</li>
+ *   <li>ручные удары вынесены в отдельную настройку: аура наводит, бьёт игрок;</li>
  *   <li>мёртвые в оригинале настройки подключены к логике: «Не бить через блоки»,
  *       «Синхронизация по TPS», «Выключить после смерти», «Ломать щит» (тело
  *       shieldBreaker в оригинале реализовано, но не вызывалось);</li>
- *   <li> streams из findTarget заменены одним проходом без аллокаций;</li>
+ *   <li>streams из findTarget заменены одним проходом без аллокаций;</li>
  *   <li> Sprint Reset портирован из MoveInput-хука {@code AuraNew.onInput}: без него
  *       удар в спринте отменялся, а спринт не сбрасывался — криты не проходили;</li>
  *   <li> камера настраивается отдельно: «Догоняет» (по умолчанию) — ротация
@@ -86,8 +83,8 @@ import java.util.concurrent.ThreadLocalRandom;
  *
  * <p>Не портировано (сознательно, вне рамок трёх ротаций): режимы Custom/Smooth/
  * Фантайм/СпукиТайм и остальные элементы {@code auraelement/impl}, элитра-аура
- * ({@code ElytraAuraLogic}), «Sprint Reset», захват цели {@code lockOnTarget} и
- * «Таргетированный» — все они принадлежат Custom-ротации и её настройкам.
+ * ({@code ElytraAuraLogic}), захват цели {@code lockOnTarget} и «Таргетированный» —
+ * все они принадлежат Custom-ротации и её настройкам.
  */
 public final class KillAura extends Module {
 
@@ -106,7 +103,7 @@ public final class KillAura extends Module {
     // («Пакетный (RAGE)» и «Обычный (RAGE)» в списке отсутствуют — эти ветки мертвы).
     private static final String SPRINT_NORMAL = "Обычный";
     private static final String SPRINT_LEGIT = "Легитный";
-    private static final String COOLDOWN_DYNAMIC = "Динамический";
+    private static final String COOLDOWN_VANILLA = "Ванильный";
     private static final String COOLDOWN_CUSTOM_SWORD = "Кастомный меч";
 
     // [+] Поведение камеры при ротации. «Догоняет» — молчаливая ротация + плавное
@@ -134,8 +131,11 @@ public final class KillAura extends Module {
             BooleanSetting.of("Только в броне", false));
     // Как в Private: бьём только тогда, когда удар засчитается критом.
     private final BooleanSetting onlyCrits = new BooleanSetting("Только криты", true);
-    private final BooleanSetting smartCrits = new BooleanSetting("Умные криты", false)
-            .visible(onlyCrits::get);
+    // [+] Ручные удары: аура только наводит тело на цель, а бьёт игрок кликом.
+    // Раньше это было единственным рабочим поведением; теперь — осознанная опция.
+    private final BooleanSetting manualAttack = new BooleanSetting("Ручные удары (без автобоя)", false);
+    // [+] «Рандом криты» больше не отменяют условия крита: они лишь пропускают
+    // часть окон (30 %) — удар остаётся человечнее, но наземным быть не может.
     private final BooleanSetting randomCrits = new BooleanSetting("Рандом криты", false)
             .visible(onlyCrits::get);
     // [+] Авто прыжок (AuraNew.onInput): подпрыгиваем под цель, чтобы попасть в окно
@@ -158,13 +158,18 @@ public final class KillAura extends Module {
             BooleanSetting.of("Бить только с оружием", false),
             BooleanSetting.of("Выключить после смерти", true));
     private final ModeSetting attackMode = new ModeSetting("Режим ударов", ATTACK_19, ATTACK_19, ATTACK_18);
+    // 1.8: единственный лимитер — CPS, перезарядки оружия в этой версии нет.
     private final FloatSetting dynamicCps = new FloatSetting("CPS (1.8)", 12.0F, 8.0F, 20.0F, 1.0F)
             .visible(() -> attackMode.is(ATTACK_18));
-    // [+] Кулдаун как в Private (getDynamicCooldown): 550 мс меч, 850 топор, 250 пустая рука, 450 прочее.
-    private final ModeSetting cooldownMode = new ModeSetting("Режим кулдауна", COOLDOWN_DYNAMIC,
-            COOLDOWN_DYNAMIC, COOLDOWN_CUSTOM_SWORD);
+    // [+] 1.9: удар разрешён только после полной перезарядки оружия. Жёсткие
+    // миллисекунды Private (250/450/550/850) не совпадали с реальной скоростью
+    // оружия, поэтому здесь ванильный attackStrengthTicker, а «Кастомный меч» —
+    // необязательная ДОПОЛНИТЕЛЬНАЯ пауза поверх перезарядки.
+    private final ModeSetting cooldownMode = new ModeSetting("Режим кулдауна", COOLDOWN_VANILLA,
+            COOLDOWN_VANILLA, COOLDOWN_CUSTOM_SWORD)
+            .visible(() -> attackMode.is(ATTACK_19));
     private final FloatSetting customSwordCooldown = new FloatSetting("Кулдаун меча (мс)", 450.0F, 50.0F, 1000.0F, 10.0F)
-            .visible(() -> cooldownMode.is(COOLDOWN_CUSTOM_SWORD));
+            .visible(() -> attackMode.is(ATTACK_19) && cooldownMode.is(COOLDOWN_CUSTOM_SWORD));
     // [+] Sprint Reset: без него удар в спринте отменяется, но спринт не сбрасывается —
     // криты не наносятся никогда (в оригинале это делал MoveInput-хук).
     private final ModeSetting sprintReset = new ModeSetting("Sprint Reset", SPRINT_NORMAL,
@@ -181,7 +186,6 @@ public final class KillAura extends Module {
 
     // ---- состояние ----
 
-    private final PerfectDelay perfectDelay = new PerfectDelay();
     /** Аккумуляторы поиска цели (переиспользуются, аллокаций в тике нет). */
     private final TargetScan scan = new TargetScan();
 
@@ -194,14 +198,8 @@ public final class KillAura extends Module {
     private LivingEntity previousTarget;
 
     private LivingEntity target;
-    private boolean canCrit;
-    /** Отложенный удар рандомного крита, в тиках (scheduler из Private). */
-    private int pendingCritTicks;
     private long lastAttackTime;
-    private long lastClickTime;
     private long lastTargetSwitchTime;
-    /** Порог fallDistance рандомных критов, обновляется в shouldAttack (Private). */
-    private float lastRequiredFallDistance;
     /** Сброс спринта: сколько тиков держать forward = 0 (поле {@code p} из Private). */
     private int sprintStopTicks;
     private int sprintTicks;
@@ -210,7 +208,7 @@ public final class KillAura extends Module {
     public KillAura() {
         super("KillAura", "Автоматически атакует ближайших врагов", ModuleCategory.COMBAT);
         addSettings(fov, attackRange, preRange, elRange, noHitThroughBlocks,
-                smartHitbox, syncTPS, tpsMultiplier, targetSettings, onlyCrits, smartCrits,
+                smartHitbox, syncTPS, tpsMultiplier, targetSettings, onlyCrits, manualAttack,
                 randomCrits, shieldBreaker, priorityTargeting, priorityMode, targetSwitchDelay,
                 minSwitchDelay, maxSwitchDelay, checks, attackMode, dynamicCps,
                 cooldownMode, customSwordCooldown, sprintReset, autoJump,
@@ -228,13 +226,14 @@ public final class KillAura extends Module {
 
     @Override
     public void onDisable() {
-        // AuraNew.onDisable: reset() → resetRotation() → element.onDisable().
-        // stopRotation сливает углы тела с камерой — выключение не дёргает обзор.
+        // AuraNew.onDisable: reset() → element.onDisable() → stopRotation().
+        // Порядок важен: Matrix в onDisable просит ускоренный возврат, а stopRotation
+        // выполняется последним и сливает углы тела с камерой — выключение не дёргает обзор.
         reset();
-        RotationController.stopRotation();
         if (rotationElement != null) {
             rotationElement.onDisable();
         }
+        RotationController.stopRotation();
     }
 
     /**
@@ -312,9 +311,12 @@ public final class KillAura extends Module {
         }
 
         // [+] Авто прыжок (AuraNew.onInput): подпрыгиваем под цель, чтобы удар попал
-        // в окно крита. Условия оригинала: цель есть, стоим на земле, не в воде/лаве.
-        if (autoJump.get() && target != null && player.onGround()
-                && !player.isInWater() && !player.isInLava()) {
+        // в окно крита. Прыгаем только когда оружие уже перезаряжено — иначе игрок
+        // прыгал бы без остановки весь кулдаун. В ручном режиме ввод не трогаем.
+        // Место над головой проверяется, чтобы не прыгать впустую в коридоре.
+        if (autoJump.get() && !manualAttack.get() && target != null && attackReady(player)
+                && player.onGround() && !player.isInWater() && !player.isInLava()
+                && AuraUtils.hasHeadroom(player)) {
             event.jump = true;
         }
 
@@ -376,49 +378,18 @@ public final class KillAura extends Module {
         if (minecraft.screen != null || minecraft.isPaused()) {
             return;
         }
-        // [+] Цель и ротация обновляются в начале тика (rotationTick), здесь — добивание:
-        // криты, отложенный удар и сама атака уже по свежим углам тела.
-        // Страховки повторяются: между START- и END-тиком состояние могло измениться.
+        // [+] Цель и ротация обновляются в начале тика (rotationTick), здесь — сама
+        // атака уже по свежим углам тела. Удар проверяет всё заново в updateAttack:
+        // отложенных ударов в обход гейтов больше нет.
         if (player.isSpectator() || player.isDeadOrDying()) {
             return;
         }
-
-        // MoveEvent из Private: canCrit = !isToGround && from.y > to.y && nextFallDistance != 0.
-        // В конце тика движение уже применено, поэтому «падаем» проверяется по
-        // фактической вертикальной скорости и накопленной дистанции падения.
-        canCrit = !player.onGround()
-                && player.getDeltaMovement().y < 0.0D
-                && player.fallDistance > 0.0F;
-
-        // Отложенный удар рандомного крита (scheduler из Private, 1-2 тика).
-        if (pendingCritTicks > 0) {
-            pendingCritTicks--;
-            if (pendingCritTicks == 0 && target != null && target.isAlive() && !target.isRemoved()) {
-                attackEntity(minecraft, player, target);
-            }
-        }
-
         updateAttack(minecraft, player);
     }
 
-    /** Цель для соседних модулей (ElytraFlight). */
+    /** Цель для соседних модулей (ElytraFlight); выключенная аура цели не отдаёт. */
     public LivingEntity getTarget() {
-        return target;
-    }
-
-    /**
-     * Исходящие пакеты (PacketEvent из Private): смена предмета и свинг
-     * руки сбрасывают PerfectDelay.
-     */
-    public void onPacketSend(Packet<?> packet) {
-        if (!isEnable()) {
-            return;
-        }
-        if (packet instanceof ServerboundSetCarriedItemPacket) {
-            perfectDelay.reset(550L);
-        } else if (packet instanceof ServerboundSwingPacket) {
-            perfectDelay.reset(450L);
-        }
+        return isEnable() ? target : null;
     }
 
     // ---- выбор цели ----
@@ -426,7 +397,10 @@ public final class KillAura extends Module {
     private void updateTarget(Minecraft minecraft, LocalPlayer player) {
         LivingEntity potential = findTarget(minecraft, player);
         if (target != potential) {
-            if (targetSwitchDelay.get() && target != null) {
+            // Задержка смены цели не должна удерживать мёртвую/исчезнувшую цель:
+            // иначе аура простаивает весь таймер, пока труп ещё в списке.
+            boolean currentUsable = target != null && target.isAlive() && !target.isRemoved();
+            if (targetSwitchDelay.get() && currentUsable) {
                 float delayTime = randomLerp(minSwitchDelay.get(), maxSwitchDelay.get());
                 if (System.currentTimeMillis() - lastTargetSwitchTime < (long) delayTime) {
                     return;
@@ -555,6 +529,20 @@ public final class KillAura extends Module {
         if (target == null || !target.isAlive() || target.isRemoved()) {
             return;
         }
+        // [+] Ручные удары: аура наводит тело и держит цель, но удар делает игрок
+        // кликом (ванильный attack идёт по углам тела). Так сохраняется ручной
+        // вариант, не дублируя удар двумя пакетами за один тик.
+        if (manualAttack.get()) {
+            return;
+        }
+
+        // Порядок оригинала: checkReturn → темп оружия → сброс спринта → гейт крита.
+        // Сброс спринта стоит ПОСЛЕ проверки перезарядки намеренно: иначе forward
+        // обнулялся бы каждый тик, пока игрок просто бежит с включённой аурой,
+        // и спринт не включался бы вообще.
+        if (checkReturn(player) || !attackReady(player) || !clickIntervalReady()) {
+            return;
+        }
 
         // Классика критов: удар в спринте критом не считается, поэтому спринт гасится
         // ДО гейта крита (в Private сброс живёт внутри гейта, но там сам гейт спринт
@@ -565,7 +553,7 @@ public final class KillAura extends Module {
             if (sprintReset.is(SPRINT_NORMAL)) {
                 sprintStopTicks = 1;
             } else if (sprintReset.is(SPRINT_LEGIT)) {
-                sprintTicks = ThreadLocalRandom.current().nextInt(1, 2);
+                sprintTicks = ThreadLocalRandom.current().nextInt(1, 3);
                 pressTime = System.currentTimeMillis() + ThreadLocalRandom.current().nextInt(15, 51);
             }
             if (((LocalPlayerAccessor) player).swerve$wasSprinting()) {
@@ -573,32 +561,18 @@ public final class KillAura extends Module {
             }
         }
 
-        // Порядок оригинала: checkReturn → shieldBreaker → гейт удара.
-        if (checkReturn(player)) {
+        if (!shouldAttack(player)) {
             return;
         }
+        if (!rayTraceOk(player) || AuraUtils.strictDistance(player, target) >= attackDistance(player)) {
+            return;
+        }
+        // Щит ломаем только когда удар уже разрешён: иначе свап топора пройдёт
+        // без удара, и предмет зря слетает из руки.
         if (shieldBreaker.get() && breakShield(minecraft, player)) {
             return;
         }
-        if (!shouldAttack(player) || !rayTraceOk(player)
-                || AuraUtils.strictDistance(player, target) >= attackDistance(player)) {
-            return;
-        }
-
-        if (attackMode.is(ATTACK_18)) {
-            long now = System.currentTimeMillis();
-            float variation = randomLerp(0.8F, 1.2F);
-            long clickInterval = applyTpsScale((long) (1000.0F / (dynamicCps.get() * variation)));
-            if (now - lastClickTime >= clickInterval) {
-                attackEntity(minecraft, player, target);
-                lastClickTime = now;
-            }
-        } else if (randomCrits.get() && critConditionsClear(player)
-                && ThreadLocalRandom.current().nextFloat() < 0.3F) {
-            pendingCritTicks = ThreadLocalRandom.current().nextInt(1, 3);
-        } else {
-            attackEntity(minecraft, player, target);
-        }
+        attackEntity(minecraft, player, target);
     }
 
     /** checkReturn из Private: не бить во время еды и без оружия. */
@@ -609,118 +583,111 @@ public final class KillAura extends Module {
     }
 
     /**
-     * Готовность к удару (shouldAttack из Private): пауза PerfectDelay,
-     * жидкость и условия критов.
+     * Готовность 1.9: удар только после полной перезарядки оружия.
+     *
+     * <p>Ванильный {@code Player.attack} считает урон по
+     * {@code getAttackStrengthScale(0.5F)}; при шкале 1.0 урон максимален, а крит
+     * засчитывается только при {@code scale > 0.9}. Жёсткие миллисекунды Private
+     * (250/450/550/850) не совпадали с реальной ATTACK_SPEED оружия — отсюда были
+     * и «удары до перезарядки», и лишние паузы. В 1.8 перезарядки нет — там темп
+     * задаёт {@link #clickIntervalReady()}.
+     *
+     * <p>«Кастомный меч» добавляет к полной перезарядке собственную паузу в мс.
      */
-    /**
-     * Гейт удара (shouldAttack из AuraNew), значения и порядок проверок 1:1:
-     * кулдаун инструмента → элитра → жидкость → ветки критов.
-     */
-    private boolean shouldAttack(LocalPlayer player) {
-        if (!perfectDelay.cooldownComplete(dynamicCooldown())) {
+    private boolean attackReady(LocalPlayer player) {
+        if (attackMode.is(ATTACK_18)) {
+            return true;
+        }
+        if (player.getAttackStrengthScale(0.5F) < 1.0F) {
             return false;
         }
-        if (player.isFallFlying()) {
-            return true;
-        }
-        this.lastRequiredFallDistance = ThreadLocalRandom.current().nextFloat() * 0.01F;
-        if (isInLiquid(player)) {
-            return true;
-        }
-
-        boolean headroom = AuraUtils.hasHeadroom(player);
-        boolean crit = critWindow(player, headroom);
-
-        if (onlyCrits.get() && !smartCrits.get()) {
-            return crit;
-        }
-        if (smartCrits.get()) {
-            // Подпрыгнули, ударились головой и уже приземлились: качок вверх даёт
-            // «умный крит» без падения (ветка canSmartCrit из Private).
-            boolean smartCrit = headroom && !player.input.keyPresses.jump()
-                    && !canCrit && player.onGround() && player.verticalCollision;
-            return crit || smartCrit;
-        }
-        if (randomCrits.get()) {
-            return critConditionsClear(player)
-                    || (player.fallDistance > this.lastRequiredFallDistance && canCrit && headroom)
-                    || ThreadLocalRandom.current().nextFloat() < 0.3F;
+        if (cooldownMode.is(COOLDOWN_CUSTOM_SWORD)
+                && player.getMainHandItem().getItem() instanceof SwordItem) {
+            return System.currentTimeMillis() - lastAttackTime >= (long) customSwordCooldown.get();
         }
         return true;
     }
 
     /**
+     * Темп 1.8: CPS из настройки с разбросом 0.8..1.2 и поправкой на TPS.
+     * Для 1.9 всегда true — там работает перезарядка оружия.
+     */
+    private boolean clickIntervalReady() {
+        if (!attackMode.is(ATTACK_18)) {
+            return true;
+        }
+        long interval = applyTpsScale((long) (1000.0F / (dynamicCps.get() * randomLerp(0.8F, 1.2F))));
+        // Быстрее одного удара за тик 1.8 всё равно не может — 50 мс это нижняя граница.
+        return System.currentTimeMillis() - lastAttackTime >= Math.max(50L, interval);
+    }
+
+    /**
+     * Гейт крита (shouldAttack из AuraNew).
+     *
+     * <p>При «Только криты» удар разрешён исключительно в окне ванильного крита.
+     * Раньше отсюда было три обхода: «Умные криты» разрешали удар с земли по
+     * {@code onGround && verticalCollision}, жидкость и элитра возвращали
+     * {@code true} до проверок, а «Рандом криты» с шансом 30 % игнорировали
+     * условия целиком — поэтому аура и била стоя на земле.
+     *
+     * <p>«Рандом криты» сохранены как человекоподобность: часть окон намеренно
+     * пропускается, но наземный удар по-прежнему невозможен.
+     */
+    private boolean shouldAttack(LocalPlayer player) {
+        if (!onlyCrits.get()) {
+            return true;
+        }
+        if (!critWindow(player)) {
+            return false;
+        }
+        return !randomCrits.get() || ThreadLocalRandom.current().nextFloat() >= 0.3F;
+    }
+
+    /**
      * Окно критического удара — ровно те условия, по которым ванильный
      * {@code Player.attack} начисляет крит: падаем, не на земле, не на лестнице,
-     * не в воде, без слепоты, не пассажир, не в спринте. Плюс требование Private
-     * «над головой нет блоков» ({@code isBlockAboveHead}).
+     * не в воде, без слепоты, не пассажир, не в спринте. Дополнительно сохранены
+     * блокеры {@code shouldCritical} из Private: левитация и паутина — в них
+     * «падение» обманчиво, а крит сервер всё равно не начислит.
      *
-     * <p>Так удар проходит в момент прыжка (на падении), а не «когда получится»:
-     * при включённых «Только криты» аура молчит всю остальную часть тика.
+     * <p>Проверки «места над головой» здесь нет: ванильный крит её не требует,
+     * а в пещерах она молча запрещала любые удары. Исключений по земле тоже нет
+     * по построению: {@code !onGround} — обязательное условие, а не ветвь.
      */
-    private boolean critWindow(LocalPlayer player, boolean headroom) {
+    private boolean critWindow(LocalPlayer player) {
         return player.fallDistance > 0.0F
                 && !player.onGround()
                 && !player.onClimbable()
                 && !player.isInWater()
                 && !player.hasEffect(MobEffects.BLINDNESS)
+                && !player.hasEffect(MobEffects.LEVITATION)
                 && !player.isPassenger()
                 && !player.isSprinting()
                 && !player.isFallFlying()
-                && headroom;
-    }
-
-    /**
-     * Блокеры крита (shouldCritical из AuraNew): левитация, жидкость, элитра,
-     * лестница, пассажир, паутина. FallDistance и земля проверяются отдельно.
-     */
-    private boolean critConditionsClear(LocalPlayer player) {
-        return !player.hasEffect(MobEffects.LEVITATION)
-                && !isInLiquid(player)
-                && !player.isFallFlying()
-                && !player.onClimbable()
-                && !player.isPassenger()
                 && !AuraUtils.isPlayerInWeb(player);
     }
 
     /**
-     * Кулдаун инструмента (getDynamicCooldown из Private): меч 550, топор 850,
-     * пустая рука 250, остальное 450; в режиме «Кастомный меч» меч берёт значение из настройки.
+     * Удар с темпом режима.
+     *
+     * <p>1.8: перезарядки нет — интервал CPS уже проверен в
+     * {@link #clickIntervalReady()}. Порядок пакетов как в {@code AttackOrder}
+     * Private для протокола ≤ 1.8: сначала swing, затем attack.
+     *
+     * <p>1.9: удар разрешён только при полной перезарядке (страховка поверх
+     * {@link #attackReady}), порядок ванильный: attack, затем swing.
      */
-    private long dynamicCooldown() {
-        return applyTpsScale(baseCooldown());
-    }
-
-    private long baseCooldown() {
-        LocalPlayer player = Minecraft.getInstance().player;
-        if (player == null) {
-            return 450L;
-        }
-        ItemStack held = player.getMainHandItem();
-        boolean sword = held.getItem() instanceof SwordItem;
-        if (cooldownMode.is(COOLDOWN_CUSTOM_SWORD) && sword) {
-            return (long) customSwordCooldown.get();
-        }
-        if (held.isEmpty()) {
-            return 250L;
-        }
-        if (sword) {
-            return 550L;
-        }
-        if (held.getItem() instanceof AxeItem) {
-            return 850L;
-        }
-        return 450L;
-    }
-
-    /** Удар (attackEntity из Private) с лимитами частоты и кулдауном. */
     private void attackEntity(Minecraft minecraft, LocalPlayer player, Entity entity) {
-        // Private.attackEntity: в режиме 1.9 удар отменяется, если кулдаун инструмента не прошёл.
-        if (attackMode.is(ATTACK_19) && System.currentTimeMillis() - lastAttackTime < dynamicCooldown()) {
-            return;
+        if (attackMode.is(ATTACK_18)) {
+            player.swing(InteractionHand.MAIN_HAND);
+            minecraft.gameMode.attack(player, entity);
+        } else {
+            if (player.getAttackStrengthScale(0.5F) < 1.0F) {
+                return;
+            }
+            minecraft.gameMode.attack(player, entity);
+            player.swing(InteractionHand.MAIN_HAND);
         }
-        minecraft.gameMode.attack(player, entity);
-        player.swing(InteractionHand.MAIN_HAND);
         lastAttackTime = System.currentTimeMillis();
     }
 
@@ -787,12 +754,20 @@ public final class KillAura extends Module {
         return !noHitThroughBlocks.get() || AuraUtils.hasVisiblePoint(player, target);
     }
 
-    /** Дистанция удара (attackDistance из Private): элитра, умная дистанция, креатив. */
+    /**
+     * Дистанция удара (attackDistance из Private): элитра или обычная цель.
+     *
+     * <p>В 1.21.4 сервер проверяет удар по
+     * {@code eye -> AABB < ENTITY_INTERACTION_RANGE + 3.0} (handleInteract):
+     * отдельного «креативного» радиуса больше нет, поэтому потолок берётся из
+     * атрибута игрока, а не из захардкоженной шестёрки.
+     */
     private double attackDistance(LocalPlayer player) {
         if (player.isFallFlying() || (target != null && target.isFallFlying())) {
             return elRange.get();
         }
-        return Math.max(player.isCreative() ? 6.0D : 3.0D, attackRange.get());
+        double serverLimit = player.entityInteractionRange() + 3.0D;
+        return Math.min(serverLimit, Math.max(3.0D, attackRange.get()));
     }
 
     private boolean isHoldingWeapon(LocalPlayer player) {
@@ -812,6 +787,10 @@ public final class KillAura extends Module {
     /** Пригодность цели (isValidTarget из Private). */
     private boolean isValidTarget(LocalPlayer player, LivingEntity entity) {
         if (entity == player || !entity.isAlive() || entity.isRemoved()) {
+            return false;
+        }
+        // Наблюдатель неуязвим: удар по нему — только лишний пакет и звук.
+        if (entity instanceof Player other && other.isSpectator()) {
             return false;
         }
         double limit = attackRange.get() + preRange.get();
@@ -881,7 +860,11 @@ public final class KillAura extends Module {
             return;
         }
         float baseFov = this.fov.get();
-        float calcFov = (float) AuraUtils.fovFromCamera(player, target);
+        // При молчаливой ротации тело уже на цели, а камера — нет: индикатор обязан
+        // считать угол от камеры, иначе он всегда зелёный (баг старой версии).
+        Camera camera = Minecraft.getInstance().gameRenderer.getMainCamera();
+        float calcFov = (float) AuraUtils.fovFromAngles(player, target,
+                Rotation.cameraYaw(), camera.getXRot());
         float centerX = context.guiWidth() * 0.5F;
         float centerY = context.guiHeight() * 0.5F;
         boolean allow = calcFov < baseFov;
@@ -905,15 +888,10 @@ public final class KillAura extends Module {
     private void reset() {
         target = null;
         previousTarget = null;
-        canCrit = false;
-        pendingCritTicks = 0;
         lastAttackTime = 0L;
-        lastClickTime = 0L;
         lastTargetSwitchTime = 0L;
-        lastRequiredFallDistance = 0.0F;
         sprintStopTicks = 0;
         sprintTicks = 0;
         pressTime = 0L;
-        perfectDelay.reset(0L);
     }
 }
