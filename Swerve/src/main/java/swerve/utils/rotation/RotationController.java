@@ -49,8 +49,9 @@ public final class RotationController {
     }
 
     /**
-     * Видимая ротация: тело и камера поворачиваются вместе (как обычный взгляд),
-     * молчаливый режим оставляет камеру игроку и уводит её в {@link FreeLook}.
+     * Видимая ротация («Камера: Всегда на цели»): тело и камера поворачиваются
+     * вместе, как обычный взгляд. Иначе ротация молчаливая: камера уходит в
+     * {@link FreeLook} и остаётся у игрока.
      */
     public static void setVisible(boolean value) {
         visible = value;
@@ -101,7 +102,10 @@ public final class RotationController {
         if (priority > prio) {
             return;
         }
-        if (!visible && task == Task.IDLE) {
+        // Свободный обзор включается на любом живом запросе, а не только на первом:
+        // при переключении «Камера: Всегда на цели» → «Догоняет» иначе камера
+        // осталась бы приклеенной к телу и снова «складывалась» с мышью.
+        if (!visible && !FreeLook.active()) {
             FreeLook.begin(player);
         }
         yawSpeed = yaw;
@@ -171,6 +175,13 @@ public final class RotationController {
     public static void stopRotation() {
         task = Task.IDLE;
         priority = 0;
+        // Слияние перед выключением свободного обзора: тело переезжает в углы камеры,
+        // иначе камера прыгает в момент, когда ротация отпускает управление.
+        LocalPlayer player = Minecraft.getInstance().player;
+        if (player != null && FreeLook.active()) {
+            player.setYRot(FreeLook.yaw());
+            player.setXRot(Mth.clamp(FreeLook.pitch(), -90.0F, 90.0F));
+        }
         FreeLook.end();
     }
 

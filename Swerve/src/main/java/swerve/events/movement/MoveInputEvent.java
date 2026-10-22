@@ -11,10 +11,13 @@ public final class MoveInputEvent {
 
     public float forward;
     public float strafe;
+    /** Прыжок: меняется авто-прыжком ауры, иначе повторяет нажатую клавишу. */
+    public boolean jump;
 
     public void read(ClientInput input) {
         forward = input.forwardImpulse;
         strafe = input.leftImpulse;
+        jump = input.keyPresses.jump();
     }
 
     public void apply(ClientInput input) {
@@ -23,7 +26,7 @@ public final class MoveInputEvent {
         Input original = input.keyPresses;
         int mask = (forward > 0 ? 1 : 0) | (forward < 0 ? 2 : 0)
                 | (strafe > 0 ? 4 : 0) | (strafe < 0 ? 8 : 0)
-                | (original.jump() ? 16 : 0) | (original.shift() ? 32 : 0)
+                | (jump ? 16 : 0) | (original.shift() ? 32 : 0)
                 | (original.sprint() ? 64 : 0);
         input.keyPresses = INPUTS[mask];
     }

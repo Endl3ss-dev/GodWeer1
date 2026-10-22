@@ -19,6 +19,7 @@ import swerve.utils.color.ColorUtils;
 import swerve.utils.combat.AuraUtils;
 import swerve.utils.network.ServerTPS;
 import swerve.utils.player.MoveUtil;
+import swerve.utils.rotation.FreeLook;
 import swerve.utils.rotation.Rotation;
 import swerve.utils.rotation.RotationController;
 import swerve.utils.time.PerfectDelay;
@@ -75,8 +76,12 @@ import java.util.concurrent.ThreadLocalRandom;
  *   <li> streams из findTarget заменены одним проходом без аллокаций;</li>
  *   <li> Sprint Reset портирован из MoveInput-хука {@code AuraNew.onInput}: без него
  *       удар в спринте отменялся, а спринт не сбрасывался — криты не проходили;</li>
- *   <li> «Видимая» ротация поворачивает тело и камеру вместе, остальные режимы
- *       молчаливые (камера остаётся свободной).</li>
+ *   <li> камера настраивается отдельно: «Догоняет» (по умолчанию) — ротация
+ *       молчаливая, а камера плавно доворачивается на цель, только когда мышь
+ *       не двигается; «Свободная» — камера целиком за игроком; «Всегда на цели» —
+ *       камера жёстко следует за телом (ротация становится видимой).</li>
+ *   <li> «Только криты» бьёт строго в окне ванильного крита, а «Авто прыжок»
+ *       подпрыгивает под цель, чтобы это окно вообще наступало.</li>
  * </ul>
  *
  * <p>Не портировано (сознательно, вне рамок трёх ротаций): режимы Custom/Smooth/
@@ -90,7 +95,6 @@ public final class KillAura extends Module {
     private static final String ATTACK_18 = "1.8";
 
     // [+] Ротации: имена ровно те, что в ModeSetting componentMode из Private.
-    private static final String ROTATION_VISIBLE = "Видимая";
     private static final String ROTATION_INTAVE = "Intave";
     private static final String ROTATION_MATRIX = "Matrix";
     private static final String ROTATION_HW = "HW";
@@ -104,6 +108,13 @@ public final class KillAura extends Module {
     private static final String SPRINT_LEGIT = "Легитный";
     private static final String COOLDOWN_DYNAMIC = "Динамический";
     private static final String COOLDOWN_CUSTOM_SWORD = "Кастомный меч";
+
+    // [+] Поведение камеры при ротации. «Догоняет» — молчаливая ротация + плавное
+    // наведение камеры, когда мышь стоит: раньше жёсткий «Видимая» складывал шаг
+    // ауры с движением мыши, из-за чего чувствительность ощущалась выше.
+    private static final String CAMERA_OFF = "Свободная";
+    private static final String CAMERA_CATCH_UP = "Догоняет";
+    private static final String CAMERA_ALWAYS = "Всегда на цели";
 
     // ---- настройки (живые из Private) ----
 
@@ -121,14 +132,16 @@ public final class KillAura extends Module {
             BooleanSetting.of("Мобы", true),
             BooleanSetting.of("Невидимые", true),
             BooleanSetting.of("Только в броне", false));
-    // [!] В Private значение по умолчанию true, но тогда модуль молчит, пока игрок
-    // не в падении (гейт крита требует fallDistance > 0 и canCrit). Для рабочего
-    // «из коробки» дефолт снят; включённая настройка ведёт себя как в оригинале.
-    private final BooleanSetting onlyCrits = new BooleanSetting("Только криты", false);
+    // Как в Private: бьём только тогда, когда удар засчитается критом.
+    private final BooleanSetting onlyCrits = new BooleanSetting("Только криты", true);
     private final BooleanSetting smartCrits = new BooleanSetting("Умные криты", false)
             .visible(onlyCrits::get);
     private final BooleanSetting randomCrits = new BooleanSetting("Рандом криты", false)
             .visible(onlyCrits::get);
+    // [+] Авто прыжок (AuraNew.onInput): подпрыгиваем под цель, чтобы попасть в окно
+    // крита — без него «Только криты» молчит, пока игрок не прыгнет сам. В Private
+    // настройка выключена по умолчанию; здесь включена, иначе криты «не работают».
+    private final BooleanSetting autoJump = new BooleanSetting("Авто прыжок", true);
     private final BooleanSetting shieldBreaker = new BooleanSetting("Ломать щит", true);
     private final BooleanSetting priorityTargeting = new BooleanSetting("Приоритетное наведение", false);
     private final ModeSetting priorityMode = new ModeSetting("Режим приоритета", "Ближайший",
@@ -159,8 +172,10 @@ public final class KillAura extends Module {
 
     // [+] Ротации: только три портированные (componentMode из Private содержит ещё 13 режимов,
     // которых в Swerve нет — мёртвые значения в списке не оставляем).
-    private final ModeSetting rotationMode = new ModeSetting("Ротации", ROTATION_VISIBLE,
-            ROTATION_VISIBLE, ROTATION_INTAVE, ROTATION_MATRIX, ROTATION_HW);
+    private final ModeSetting rotationMode = new ModeSetting("Ротации", ROTATION_INTAVE,
+            ROTATION_INTAVE, ROTATION_MATRIX, ROTATION_HW);
+    private final ModeSetting cameraMode = new ModeSetting("Камера", CAMERA_CATCH_UP,
+            CAMERA_CATCH_UP, CAMERA_OFF, CAMERA_ALWAYS);
     private final ModeSetting movementCorrection = new ModeSetting("Коррекция движения", CORRECTION_SILENT,
             CORRECTION_SILENT, CORRECTION_FOCUSED, CORRECTION_ROUGH);
 
@@ -198,8 +213,8 @@ public final class KillAura extends Module {
                 smartHitbox, syncTPS, tpsMultiplier, targetSettings, onlyCrits, smartCrits,
                 randomCrits, shieldBreaker, priorityTargeting, priorityMode, targetSwitchDelay,
                 minSwitchDelay, maxSwitchDelay, checks, attackMode, dynamicCps,
-                cooldownMode, customSwordCooldown, sprintReset,
-                rotationMode, movementCorrection);
+                cooldownMode, customSwordCooldown, sprintReset, autoJump,
+                rotationMode, cameraMode, movementCorrection);
         // Статическая ссылка: один канонический объект на call-site —
         // повторная инициализация модулей не плодит дубликаты слоя.
         HudManager.registerOverlay(KillAura::renderFovOverlay);
@@ -214,8 +229,9 @@ public final class KillAura extends Module {
     @Override
     public void onDisable() {
         // AuraNew.onDisable: reset() → resetRotation() → element.onDisable().
+        // stopRotation сливает углы тела с камерой — выключение не дёргает обзор.
         reset();
-        RotationController.resetRotation();
+        RotationController.stopRotation();
         if (rotationElement != null) {
             rotationElement.onDisable();
         }
@@ -260,8 +276,10 @@ public final class KillAura extends Module {
 
     /** Смена режима ротации на лету (initRotationElements из Private). */
     private void syncRotationElement() {
-        // Видимая ротация: тело и камера вместе, иначе свободный обзор FreeLook.
-        RotationController.setVisible(rotationMode.is(ROTATION_VISIBLE));
+        // Камера: «Всегда на цели» — тело и камера вместе (свободный обзор выключен),
+        // остальные режимы — молчаливая ротация, камера остаётся за мышью.
+        RotationController.setVisible(cameraMode.is(CAMERA_ALWAYS));
+        FreeLook.setFollowIdle(cameraMode.is(CAMERA_CATCH_UP));
         RotationElement wanted;
         if (rotationMode.is(ROTATION_MATRIX)) {
             wanted = matrixRotation;
@@ -293,6 +311,13 @@ public final class KillAura extends Module {
             return;
         }
 
+        // [+] Авто прыжок (AuraNew.onInput): подпрыгиваем под цель, чтобы удар попал
+        // в окно крита. Условия оригинала: цель есть, стоим на земле, не в воде/лаве.
+        if (autoJump.get() && target != null && player.onGround()
+                && !player.isInWater() && !player.isInLava()) {
+            event.jump = true;
+        }
+
         // [+] Sprint Reset (AuraNew.onInput): пока счётчик держится, forward обнуляется —
         // ванильный спринт гаснет, сервер перестаёт видеть спринт, удар проходит критом.
         if (sprintStopTicks > 0) {
@@ -313,8 +338,8 @@ public final class KillAura extends Module {
         if (target == null) {
             return;
         }
-        // В видимой ротации камера и тело совпадают: пересчёт WASD не нужен.
-        if (rotationMode.is(ROTATION_VISIBLE)) {
+        // Когда камера жёстко на цели, она совпадает с телом: пересчёт WASD не нужен.
+        if (cameraMode.is(CAMERA_ALWAYS)) {
             return;
         }
         if (movementCorrection.is(CORRECTION_ROUGH)) {
@@ -530,21 +555,11 @@ public final class KillAura extends Module {
         if (target == null || !target.isAlive() || target.isRemoved()) {
             return;
         }
-        // Порядок оригинала: checkReturn → shieldBreaker → гейт удара.
-        if (checkReturn(player)) {
-            return;
-        }
-        if (shieldBreaker.get() && breakShield(minecraft, player)) {
-            return;
-        }
-        if (!shouldAttack(player) || !rayTraceOk(player)
-                || AuraUtils.strictDistance(player, target) >= attackDistance(player)) {
-            return;
-        }
 
-        // Классика критов: удар в спринте критом не считается. Private гасит спринт
-        // (Обычный — forward 0 на тик; Легитный — отпускание на 1..2 тика с паузой),
-        // и только после этого, когда сервер увидел остановку, бьёт.
+        // Классика критов: удар в спринте критом не считается, поэтому спринт гасится
+        // ДО гейта крита (в Private сброс живёт внутри гейта, но там сам гейт спринт
+        // не проверяет). Обычный — forward 0 на тик, Легитный — отпускание на 1..2 тика.
+        // Бьём только когда сервер уже увидел остановку спринта.
         boolean liquid = isInLiquid(player);
         if (!liquid && player.isSprinting()) {
             if (sprintReset.is(SPRINT_NORMAL)) {
@@ -556,6 +571,18 @@ public final class KillAura extends Module {
             if (((LocalPlayerAccessor) player).swerve$wasSprinting()) {
                 return;
             }
+        }
+
+        // Порядок оригинала: checkReturn → shieldBreaker → гейт удара.
+        if (checkReturn(player)) {
+            return;
+        }
+        if (shieldBreaker.get() && breakShield(minecraft, player)) {
+            return;
+        }
+        if (!shouldAttack(player) || !rayTraceOk(player)
+                || AuraUtils.strictDistance(player, target) >= attackDistance(player)) {
+            return;
         }
 
         if (attackMode.is(ATTACK_18)) {
@@ -602,16 +629,17 @@ public final class KillAura extends Module {
         }
 
         boolean headroom = AuraUtils.hasHeadroom(player);
-        boolean defaultCrit = critConditionsClear(player)
-                && player.fallDistance > 0.0F && canCrit && headroom;
+        boolean crit = critWindow(player, headroom);
 
         if (onlyCrits.get() && !smartCrits.get()) {
-            return defaultCrit;
+            return crit;
         }
         if (smartCrits.get()) {
+            // Подпрыгнули, ударились головой и уже приземлились: качок вверх даёт
+            // «умный крит» без падения (ветка canSmartCrit из Private).
             boolean smartCrit = headroom && !player.input.keyPresses.jump()
                     && !canCrit && player.onGround() && player.verticalCollision;
-            return defaultCrit || smartCrit;
+            return crit || smartCrit;
         }
         if (randomCrits.get()) {
             return critConditionsClear(player)
@@ -619,6 +647,27 @@ public final class KillAura extends Module {
                     || ThreadLocalRandom.current().nextFloat() < 0.3F;
         }
         return true;
+    }
+
+    /**
+     * Окно критического удара — ровно те условия, по которым ванильный
+     * {@code Player.attack} начисляет крит: падаем, не на земле, не на лестнице,
+     * не в воде, без слепоты, не пассажир, не в спринте. Плюс требование Private
+     * «над головой нет блоков» ({@code isBlockAboveHead}).
+     *
+     * <p>Так удар проходит в момент прыжка (на падении), а не «когда получится»:
+     * при включённых «Только криты» аура молчит всю остальную часть тика.
+     */
+    private boolean critWindow(LocalPlayer player, boolean headroom) {
+        return player.fallDistance > 0.0F
+                && !player.onGround()
+                && !player.onClimbable()
+                && !player.isInWater()
+                && !player.hasEffect(MobEffects.BLINDNESS)
+                && !player.isPassenger()
+                && !player.isSprinting()
+                && !player.isFallFlying()
+                && headroom;
     }
 
     /**
