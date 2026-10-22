@@ -1,5 +1,6 @@
 package swerve;
 
+import swerve.config.ConfigManager;
 import swerve.cosmetics.CosmeticStore;
 import swerve.cosmetics.Wearables;
 import swerve.cosmetics.cape.CapeTextures;
@@ -41,6 +42,9 @@ public class Swerve implements ClientModInitializer {
 
 		// Шрифты грузятся лениво при первом обращении: на этом этапе GL-контекст ещё не готов.
 		ModuleManager.init();
+		// [+] Конфиг читается после менеджера модулей: ключ модуля — имя его класса,
+		// поэтому до регистрации модулей восстанавливать нечего.
+		ConfigManager.init();
 		ClickGuiController.init();
 
 		// Гардероб: сохранённые модели и синхронизация с другими клиентами.

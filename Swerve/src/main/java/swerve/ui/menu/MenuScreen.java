@@ -1,5 +1,6 @@
 package swerve.ui.menu;
 
+import swerve.config.ConfigManager;
 import swerve.cosmetics.melee.MeleeState;
 import swerve.managers.ModuleManager;
 import swerve.modules.Module;
@@ -1957,6 +1958,10 @@ public final class MenuScreen extends Screen {
             default -> {
             }
         }
+        // [+] Любое действие в меню может изменить настройку, бинд, тему или преф.
+        // Дёшево: запись на диск случится не раньше, чем через SAVE_INTERVAL_MS,
+        // и только если содержимое конфига действительно изменилось.
+        ConfigManager.markDirty();
     }
 
     private Module moduleByIndex(int index) {
@@ -1989,6 +1994,7 @@ public final class MenuScreen extends Screen {
         anim.set(MenuAnim.SETTING_BASE + global * MenuAnim.SET_STRIDE + MenuAnim.SET_NUM_POS, f);
         if (n.get() != before) {
             MenuSound.play(MenuSound.TICK, .75f + (float) f * .8f, .55f);
+            ConfigManager.markDirty();
         }
     }
 
@@ -2025,6 +2031,7 @@ public final class MenuScreen extends Screen {
             setPrefValue(pref, v);
             MenuPrefs.sync();
             MenuSound.play(MenuSound.TICK, .8f + (float) f * .6f, .5f);
+            ConfigManager.markDirty();
         }
     }
 
@@ -2258,6 +2265,8 @@ public final class MenuScreen extends Screen {
         if (!closing) {
             closing = true;
             MenuSound.play(MenuSound.CLOSE);
+            // [+] Правки в меню фиксируются сразу при закрытии, не дожидаясь выхода из игры.
+            ConfigManager.saveIfDirty();
         } else {
             super.onClose();
         }
