@@ -1,5 +1,7 @@
 # Graffiti
 
+![Каталог рисунков, перелёт призрака между гранями, проверка ориентации на NORTH/EAST/UP](graffiti-preview.png)
+
 Основной файл: `Swerve/src/main/java/swerve/modules/impl/render/Graffiti.java`
 Пакет фичи: `Swerve/src/main/java/swerve/graffiti/` (`GraffitiDesign`, `GraffitiSpot`, `GraffitiWorld`, `GraffitiQuad`, `GraffitiGhost`, `GraffitiStore`, `GraffitiRenderer`)
 Миксины: `MixinMinecraft` → `startUseItem`, `MixinMouseHandler` → `onPress`
