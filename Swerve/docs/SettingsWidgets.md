@@ -41,6 +41,29 @@
 сразу, а текст `GuiGraphics` копит в буфере — без синхронизации плитка легла бы поверх
 уже нарисованного текста этого же экрана.
 
+## Грабли: `@Shadow` не видит унаследованные поля
+
+Первая версия читала прозрачность виджета через `@Shadow protected float alpha`. Это
+компилируется, но игра падает при загрузке:
+
+```
+Mixin apply for mod swerve failed ... client.MixinAbstractButton -> AbstractButton:
+@Shadow field alpha was not located in the target class AbstractButton
+```
+
+Причина: миксин ищет **поля** только в самом целевом классе, а `alpha` объявлено в
+`AbstractWidget` (для методов поиск идёт и по родителям — поэтому `getX()`, `isFocused()`
+и `renderWidget` тенями работают). Решение — `accessor/AbstractWidgetAccessor.java`
+с `@Accessor("alpha")`, примешанный к владельцу поля; в миксинах виджетов он читается
+через приведение типа:
+
+```java
+((AbstractWidgetAccessor) self).swerve$getAlpha()
+```
+
+`check_mc_api.py` теперь проверяет это статически: каждое `@Shadow`-поле должно быть
+объявлено самим целевым классом, иначе — ошибка с подсказкой про `@Accessor`.
+
 ## Палитра и настройка
 
 Виджеты читают те же значения, что и остальной GUI клиента:

@@ -76,10 +76,6 @@ public final class VanillaWidgets {
         return ColorUtils.interpolateColor(accent(), 0xFFFFFFFF, amount);
     }
 
-    private static int white(int alpha) {
-        return ColorUtils.setAlphaColor(0xFFFFFF, alpha);
-    }
-
     private static int withAlpha(int color, float alphaMul, int baseAlpha) {
         return ColorUtils.setAlphaColor(color, (int) (baseAlpha * clamp01(alphaMul)));
     }

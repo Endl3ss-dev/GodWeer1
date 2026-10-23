@@ -6,6 +6,7 @@
 	"mixins": [
 	],
 	"client": [
+		"accessor.AbstractWidgetAccessor",
 		"accessor.GameRendererAccessor",
 		"accessor.LocalPlayerAccessor",
 		"accessor.MouseHandlerAccessor",

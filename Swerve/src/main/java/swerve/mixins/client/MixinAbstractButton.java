@@ -1,5 +1,6 @@
 package swerve.mixins.client;
 
+import swerve.mixins.accessor.AbstractWidgetAccessor;
 import swerve.ui.newgui.VanillaWidgets;
 
 import net.minecraft.client.gui.GuiGraphics;
@@ -7,7 +8,6 @@ import net.minecraft.client.gui.components.AbstractButton;
 import net.minecraft.client.gui.components.SpriteIconButton;
 
 import org.spongepowered.asm.mixin.Mixin;
-import org.spongepowered.asm.mixin.Shadow;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -25,9 +25,6 @@ import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
  */
 @Mixin(AbstractButton.class)
 public abstract class MixinAbstractButton {
-
-    @Shadow
-    protected float alpha;
 
     @Unique
     private float swerve$hover;
@@ -53,7 +50,8 @@ public abstract class MixinAbstractButton {
         // без flush плитка легла бы поверх уже нарисованного текста этого же экрана.
         graphics.flush();
         VanillaWidgets.button(graphics, self.getX(), self.getY(), self.getWidth(), self.getHeight(),
-                self.getMessage(), swerve$hover, self.active, self.isFocused(), this.alpha);
+                self.getMessage(), swerve$hover, self.active, self.isFocused(),
+                ((AbstractWidgetAccessor) self).swerve$getAlpha());
         ci.cancel();
     }
 }

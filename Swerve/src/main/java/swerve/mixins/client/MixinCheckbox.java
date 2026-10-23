@@ -1,5 +1,6 @@
 package swerve.mixins.client;
 
+import swerve.mixins.accessor.AbstractWidgetAccessor;
 import swerve.ui.newgui.VanillaWidgets;
 
 import net.minecraft.client.gui.GuiGraphics;
@@ -26,9 +27,6 @@ public abstract class MixinCheckbox {
     @Shadow
     private boolean selected;
 
-    @Shadow
-    protected float alpha;
-
     @Unique
     private float swerve$hover;
 
@@ -49,7 +47,8 @@ public abstract class MixinCheckbox {
 
         graphics.flush();
         VanillaWidgets.checkbox(graphics, self.getX(), self.getY(), self.getWidth(), self.getHeight(),
-                self.getMessage(), this.selected, swerve$knob, swerve$hover, self.active, this.alpha);
+                self.getMessage(), this.selected, swerve$knob, swerve$hover, self.active,
+                ((AbstractWidgetAccessor) self).swerve$getAlpha());
         ci.cancel();
     }
 }

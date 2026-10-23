@@ -1,5 +1,6 @@
 package swerve.mixins.client;
 
+import swerve.mixins.accessor.AbstractWidgetAccessor;
 import swerve.ui.newgui.VanillaWidgets;
 
 import net.minecraft.client.gui.GuiGraphics;
@@ -32,9 +33,6 @@ public abstract class MixinAbstractSliderButton {
     @Shadow
     private boolean canChangeValue;
 
-    @Shadow
-    protected float alpha;
-
     @Unique
     private float swerve$hover;
 
@@ -51,7 +49,8 @@ public abstract class MixinAbstractSliderButton {
 
         graphics.flush();
         VanillaWidgets.slider(graphics, self.getX(), self.getY(), self.getWidth(), self.getHeight(),
-                self.getMessage(), this.value, swerve$hover, self.active, this.canChangeValue, this.alpha);
+                self.getMessage(), this.value, swerve$hover, self.active, this.canChangeValue,
+                ((AbstractWidgetAccessor) self).swerve$getAlpha());
         ci.cancel();
     }
 }
