@@ -19,6 +19,7 @@ import swerve.modules.impl.movement.NoWeb;
 import swerve.modules.impl.hud.TargetHud;
 import swerve.modules.impl.render.Arrows;
 import swerve.modules.impl.render.ChinaHat;
+import swerve.modules.impl.render.Graffiti;
 import swerve.modules.impl.render.SpatialGui;
 import swerve.modules.impl.render.Trails;
 import swerve.modules.impl.render.HandShader;
@@ -69,6 +70,8 @@ public final class ModuleManager {
         register(new DrinkUse());
         register(new Trails());
         register(new ChinaHat());
+        // Graffiti: рисунки 1x1 на гранях блоков, своё хранилище config/swerve/graffiti.json.
+        register(new Graffiti());
         register(new Arrows());
         register(new ViewModel());
         register(new HandShader());

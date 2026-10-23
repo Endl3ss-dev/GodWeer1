@@ -5,6 +5,7 @@ import com.llamalad7.mixinextras.injector.wrapmethod.WrapMethod;
 import com.llamalad7.mixinextras.injector.wrapoperation.Operation;
 
 import swerve.mixins.accessor.MouseHandlerAccessor;
+import swerve.modules.impl.render.Graffiti;
 import swerve.utils.movement.ElytraFlightRotation;
 import swerve.utils.input.KeyBoardUtils;
 import swerve.utils.rotation.FreeLook;
@@ -49,6 +50,9 @@ public class MixinMouseHandler {
             return;
         }
         KeyBoardUtils.callMouse(button, action);
+        // [+] Graffiti: нажатие ПКМ запоминается до тика — быстрый клик успевает
+        // отпуститься между тиками, и опрос isDown его уже не увидит.
+        Graffiti.onMousePress(button, action);
         // [+] SpatialGui: взмах рукой по клику на панели от первого лица (по константе модуля).
         SpatialMouse.onPress(action);
     }
