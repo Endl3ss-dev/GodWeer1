@@ -1,50 +1,50 @@
-/statistics _SyXaRiK
-/server surv-delta
-/statistics _SyXaRiK
-/server surv-gamma
-/statistics _SyXaRiK
-/server surv-lambda
-/statistics _SyXaRiK
-/server surv-beta
-/statistics _SyXaRiK
-/server surv-omega
-/statistics _SyXaRiK
-/server surv-alpha
-/statistics _SyXaRiK
-/server surv-sigma
-/statistics _SyXaRiK
+/clan pay 10000000
+/clan pay 1000000
+/clan pay 100000
+/pay sxl3ntlxrdcvrsed 450000000
+/pay sxl3ntlxrdcvrsed 45000000
+/pay sxl3ntlxrdcvrsed 95000000
+/c chat
+/clan chat
+/clan
+/pay sxl3ntlxrdcvrsed 60000000
+/c 1
+/c pay 1
+/c pay 1488
+/c pay 100000000
+/c bal
+/clan
+/clan info
+/hub
+/clan pay 7000000
+/clan pay 70000000
+/clan pay 13000000
+/clan info
+/ohhh
+/clan pay 9000000
+/clan pay 86000000
+/clan pay 120000000
+/statistics
+/statistics KlausBekker
 /shop
-/spawn
-/rtp
-/shop
-/rtp
+/statistics KlausBekker
+/tpa Dimon4ik6757
 /l wd
-/shop
-/casino
-/spawn
-/pay Fall66 125000000
-/rtp
-/spawn
-/shop
-/rtp
-/shop
-/spawn
-/pay DJON_26 100000000
-/pay Fall66 10000000
-/pay JonKu 30000000
-/pay Fall66 10000000
-/pay serza 50000000
-/pay JonKu 100000000
-/pay nastiasose 44000000
-/pay JonKu 1000000000
-/pay JonKu 100000000
+/statistics KlausBekker
 /l wd
-/m JonKu тай гм плс
-/m JonKu ат души
-/rtp
-/l wd
-/spawn
+/statistics KlausBekker
+/pay KlausBekker 45000000
+/balance info
+/clan info
+/statistics KlausBekker
+/clan info
+/statistics KlausBekker
+/clan
+/clan ц
+/party
+/party info
+/m KlausBekker можно на тебе килку протестить? плс
+/c home
 /shop
-/pay Fall66 17000000
-/pay Fall66 53000000
-/pay ERLLINE 80000000
+/clan
+/shop
