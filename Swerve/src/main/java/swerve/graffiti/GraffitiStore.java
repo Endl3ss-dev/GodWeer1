@@ -20,18 +20,19 @@ import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.StandardCopyOption;
-import java.util.ArrayList;
 import java.util.LinkedHashMap;
-import java.util.List;
 import java.util.Map;
 
 /**
- * [+] Хранилище граффити: какие рисунки на каких гранях блоков нанесены.
+ * [+] Хранилище единственного граффити мира.
+ *
+ * <p>Модель намеренно «одно граффити на мир»: игрок носит рисунок с собой, и при
+ * установке в новом месте прежний исчезает. Поэтому карта — {@code мир → рисунок},
+ * без списков и без измерения в ключе: рисунок может «переехать» из Верхнего мира
+ * в Нижний, и в файле останется одна запись.
  *
  * <p>Файл: {@code config/swerve/graffiti.json}. Отдельный от {@code config.json},
- * потому что записей много и они меняются независимо от настроек модуля:
- * держать их в общем конфиге — значит переписывать весь файл настроек
- * при каждом баллончике.
+ * потому что меняется независимо от настроек модуля.
  *
  * <h2>Формат</h2>
  * <pre>
@@ -40,52 +41,34 @@ import java.util.Map;
  *   "worlds": {
  *     "singleplayer": {
  *       "minecraft:overworld": [
- *         {"x": 12, "y": 70, "z": -4, "face": "north", "design": "CAT", "spin": 90.0, "at": 1700000000000}
+ *         {"x": 12, "y": 70, "z": -4, "face": "north", "design": "SKETCH", "spin": 0.0, "at": 1700000000000}
  *       ]
  *     }
  *   }
  * }
  * </pre>
  *
- * <p>Записи с неизвестным рисунком, гранью или нечисловыми координатами
- * молча пропускаются: файл мог остаться от другой версии клиента, и одна
- * битая строка не должна стирать остальные рисунки.
- *
- * <h2>Границы</h2>
- * Не больше {@link #MAX_PER_WORLD} рисунков на мир: список рисуется каждый кадр,
- * и без границы спам баллончиком превращает рендер в слайд-шоу. При переполнении
- * {@link #place} возвращает {@code null}, а модуль показывает предупреждение —
- * тихая потеря рисунка выглядела бы как баг.
+ * <p>Структура файла оставлена прежней (мир → измерение → массив). Файл от версии
+ * с несколькими рисунками читается и схлопывается до самого свежего: так переход
+ * на новую модель не теряет последний рисунок игрока и не требует ручной правки.
  */
 public final class GraffitiStore {
 
     /** Версия формата файла. Несовпадение — файл игнорируется целиком. */
     public static final int FORMAT = 1;
 
-    /** Предел рисунков на один мир. */
-    public static final int MAX_PER_WORLD = 512;
-
-    /** Сколько записей проверять на «блок ещё на месте» за тик. */
-    private static final int PRUNE_CHECKS_PER_TICK = 64;
-
-    /** Через сколько мс после правки писать файл (правки идут пачкой при рисовании). */
-    private static final long SAVE_DELAY_MS = 1_500L;
+    /** Через сколько мс после правки писать файл. */
+    private static final long SAVE_DELAY_MS = 800L;
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
     private static final Path FILE = FabricLoader.getInstance().getConfigDir().resolve("swerve/graffiti.json");
 
-    private record Section(String world, String dimension) {
-    }
-
-    private static final Map<Section, List<GraffitiSpot>> SPOTS = new LinkedHashMap<>();
-    private static final List<GraffitiSpot> EMPTY = List.of();
+    /** Мир → единственный рисунок этого мира. */
+    private static final Map<String, GraffitiSpot> SPOTS = new LinkedHashMap<>();
 
     private static boolean loaded;
     private static boolean dirty;
     private static long dirtySince;
-
-    /** Курсор подчистки: за тик проверяется порция, а не весь список. */
-    private static int pruneCursor;
 
     private GraffitiStore() {
     }
@@ -93,25 +76,31 @@ public final class GraffitiStore {
     // ---- чтение
 
     /**
-     * Рисунки текущего мира и измерения — только для чтения.
+     * Рисунок текущего мира (любое измерение) или {@code null}.
      *
-     * <p>Возвращается живой список без обёртки: рендер зовёт метод каждый кадр,
-     * и {@code Collections.unmodifiableList} здесь означал бы мусор в куче
-     * на каждый кадр. Менять список можно только методами этого класса.
+     * <p>Измерение здесь не фильтруется: запись одна на мир, и рендер сам решает,
+     * показывать ли её (см. {@link #visible()}).
      */
-    public static List<GraffitiSpot> current() {
+    public static GraffitiSpot placed() {
         ensureLoaded();
-        List<GraffitiSpot> list = SPOTS.get(new Section(GraffitiWorld.world(), GraffitiWorld.dimension()));
-        return list == null ? EMPTY : list;
+        return SPOTS.get(GraffitiWorld.world());
+    }
+
+    /** Рисунок, который нужно рисовать сейчас: только в том измерении, где он лежит. */
+    public static GraffitiSpot visible() {
+        GraffitiSpot spot = placed();
+        if (spot == null) {
+            return null;
+        }
+        return spot.dimension().equals(GraffitiWorld.dimension()) ? spot : null;
     }
 
     // ---- запись
 
     /**
-     * Ставит рисунок на грань блока (или заменяет прежний на этой грани).
+     * Ставит рисунок на грань, снимая прежний в этом мире.
      *
-     * @return запись или {@code null}, если в этом мире достигнут {@link #MAX_PER_WORLD}
-     *         и грани ещё не было (замена на существующей грани проходит всегда)
+     * @return новая запись (никогда не {@code null}, если аргументы корректны)
      */
     public static GraffitiSpot place(BlockPos pos, Direction face, GraffitiDesign design, float spin) {
         if (design == null || face == null || pos == null) {
@@ -122,90 +111,50 @@ public final class GraffitiStore {
         // быть ещё от предыдущего, и рисунок ушёл бы не в тот раздел файла.
         GraffitiWorld.refresh();
 
-        Section section = new Section(GraffitiWorld.world(), GraffitiWorld.dimension());
-        List<GraffitiSpot> list = SPOTS.computeIfAbsent(section, key -> new ArrayList<>());
-        GraffitiSpot spot = GraffitiSpot.of(section.world(), section.dimension(), pos, face, design, spin);
-
-        for (int i = 0, size = list.size(); i < size; i++) {
-            if (list.get(i).key().equals(spot.key())) {
-                list.set(i, spot);
-                markDirty();
-                return spot;
-            }
-        }
-
-        if (list.size() >= MAX_PER_WORLD) {
-            return null;
-        }
-
-        list.add(spot);
+        GraffitiSpot spot = GraffitiSpot.of(GraffitiWorld.world(), GraffitiWorld.dimension(),
+                pos.immutable(), face, design, spin);
+        SPOTS.put(spot.world(), spot);
         markDirty();
         return spot;
     }
 
     /**
-     * Стирает рисунок с грани.
+     * Убирает рисунок текущего мира.
      *
-     * @return удалённая запись или {@code null}, если на этой грани рисунка не было
+     * @return удалённая запись или {@code null}, если рисунка не было
      */
-    public static GraffitiSpot remove(BlockPos pos, Direction face) {
+    public static GraffitiSpot remove() {
         ensureLoaded();
         GraffitiWorld.refresh();
-        List<GraffitiSpot> list = SPOTS.get(new Section(GraffitiWorld.world(), GraffitiWorld.dimension()));
-        if (list == null) {
-            return null;
+
+        GraffitiSpot removed = SPOTS.remove(GraffitiWorld.world());
+        if (removed != null) {
+            markDirty();
         }
-        long packed = pos.asLong();
-        for (int i = 0, size = list.size(); i < size; i++) {
-            GraffitiSpot spot = list.get(i);
-            if (spot.position() == packed && spot.face() == face) {
-                list.remove(i);
-                markDirty();
-                return spot;
-            }
-        }
-        return null;
+        return removed;
     }
 
     // ---- тик
 
     /**
-     * Подчистка и отложенная запись. Зовётся из тика модуля.
+     * Проверка «рисунок ещё на месте» и отложенная запись. Зовётся из тика модуля.
      *
-     * <p>Рисунок снимается, если блок исчез (сломали, взорвали): иначе он висел бы
-     * в воздухе после каждого разрушения и копился в файле. За тик проверяется
-     * порция {@value #PRUNE_CHECKS_PER_TICK} записей по кругу — на большом полотне
-     * полный обход каждый тик не нужен, а курсор не даёт одним и тем же записям
-     * проверяться постоянно.
+     * <p>Запись снимается, если блок исчез или его грань закрыли: иначе рисунок
+     * висел бы в воздухе после разрушения блока и оставался в файле навсегда.
+     * Проверка одна — запись в мире тоже одна.
      */
     public static void tick(BlockStateLookup lookup) {
         ensureLoaded();
 
-        List<GraffitiSpot> list = SPOTS.get(new Section(GraffitiWorld.world(), GraffitiWorld.dimension()));
-        if (list != null && !list.isEmpty() && lookup != null) {
-            boolean pruned = false;
-            int checks = Math.min(list.size(), PRUNE_CHECKS_PER_TICK);
-            if (pruneCursor >= list.size()) {
-                pruneCursor = 0;
-            }
-
-            for (int i = 0; i < checks && !list.isEmpty(); i++) {
-                if (pruneCursor >= list.size()) {
-                    pruneCursor = 0;
-                }
-                GraffitiSpot spot = list.get(pruneCursor);
-                if (lookup.exists(spot.pos(), spot.face())) {
-                    pruneCursor++;
-                } else {
-                    // Курсор не сдвигается: на его месте уже стоит следующий элемент.
-                    list.remove(pruneCursor);
-                    pruned = true;
-                }
-            }
-
-            if (pruned) {
-                markDirty();
-            }
+        GraffitiSpot spot = SPOTS.get(GraffitiWorld.world());
+        // Проверять блок можно только в том измерении, где рисунок лежит: в другом
+        // измерении по тем же координатам стоит совсем другой блок, и рисунок был бы
+        // стёрт при первом же переходе через портал.
+        if (spot != null && lookup != null
+                && spot.dimension().equals(GraffitiWorld.dimension())
+                && !lookup.exists(spot.pos(), spot.face())) {
+            SPOTS.remove(spot.world());
+            markDirty();
         }
 
         if (dirty && System.currentTimeMillis() - dirtySince >= SAVE_DELAY_MS) {
@@ -266,6 +215,7 @@ public final class GraffitiStore {
             }
 
             int skipped = 0;
+            int collapsed = 0;
             for (Map.Entry<String, JsonElement> worldEntry : worlds.getAsJsonObject().entrySet()) {
                 if (!worldEntry.getValue().isJsonObject()) {
                     continue;
@@ -280,14 +230,26 @@ public final class GraffitiStore {
                             skipped++;
                             continue;
                         }
-                        SPOTS.computeIfAbsent(new Section(spot.world(), spot.dimension()),
-                                key -> new ArrayList<>()).add(spot);
+                        GraffitiSpot existing = SPOTS.get(spot.world());
+                        if (existing == null) {
+                            SPOTS.put(spot.world(), spot);
+                        } else {
+                            // Файл от версии с несколькими рисунками: остаётся самый свежий.
+                            collapsed++;
+                            if (spot.placedAt() >= existing.placedAt()) {
+                                SPOTS.put(spot.world(), spot);
+                            }
+                        }
                     }
                 }
             }
 
             if (skipped > 0) {
                 Swerve.LOGGER.warn("Graffiti file {}: skipped {} invalid entries", FILE, skipped);
+            }
+            if (collapsed > 0) {
+                Swerve.LOGGER.info("Graffiti file {}: collapsed {} old entries into one per world", FILE, collapsed);
+                markDirty();
             }
         } catch (Exception exception) {
             Swerve.LOGGER.warn("Failed to load graffiti {}", FILE, exception);
@@ -343,31 +305,26 @@ public final class GraffitiStore {
             root.addProperty("format", FORMAT);
 
             JsonObject worlds = new JsonObject();
-            for (Map.Entry<Section, List<GraffitiSpot>> entry : SPOTS.entrySet()) {
-                if (entry.getValue().isEmpty()) {
-                    continue;
-                }
-                Section section = entry.getKey();
-                JsonObject dimensions = worlds.getAsJsonObject(section.world());
+            for (GraffitiSpot spot : SPOTS.values()) {
+                JsonObject dimensions = worlds.getAsJsonObject(spot.world());
                 if (dimensions == null) {
                     dimensions = new JsonObject();
-                    worlds.add(section.world(), dimensions);
+                    worlds.add(spot.world(), dimensions);
                 }
 
+                BlockPos pos = spot.pos();
+                JsonObject item = new JsonObject();
+                item.addProperty("x", pos.getX());
+                item.addProperty("y", pos.getY());
+                item.addProperty("z", pos.getZ());
+                item.addProperty("face", spot.face().getName());
+                item.addProperty("design", spot.design().name());
+                item.addProperty("spin", spot.spin());
+                item.addProperty("at", spot.placedAt());
+
                 JsonArray array = new JsonArray();
-                for (GraffitiSpot spot : entry.getValue()) {
-                    BlockPos pos = spot.pos();
-                    JsonObject item = new JsonObject();
-                    item.addProperty("x", pos.getX());
-                    item.addProperty("y", pos.getY());
-                    item.addProperty("z", pos.getZ());
-                    item.addProperty("face", spot.face().getName());
-                    item.addProperty("design", spot.design().name());
-                    item.addProperty("spin", spot.spin());
-                    item.addProperty("at", spot.placedAt());
-                    array.add(item);
-                }
-                dimensions.add(section.dimension(), array);
+                array.add(item);
+                dimensions.add(spot.dimension(), array);
             }
             root.add("worlds", worlds);
 

@@ -20,7 +20,8 @@ public enum GraffitiDesign {
     TAG("Тег SWERVE", "tag"),
     CAT("Кот", "cat"),
     SKULL("Череп", "skull"),
-    SMILEY("Смайл", "smiley");
+    SMILEY("Смайл", "smiley"),
+    SKETCH("Скетч", "1");
 
     private final String label;
     private final ResourceLocation texture;
