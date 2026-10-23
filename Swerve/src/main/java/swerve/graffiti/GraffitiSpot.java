@@ -6,10 +6,10 @@ import net.minecraft.core.Direction;
 /**
  * [+] Один рисунок на грани блока.
  *
- * <p>Неизменяемая запись: при перерисовке грани создаётся новая (меняются рисунок,
- * поворот и время установки), а старая заменяется в {@link GraffitiStore} по
- * {@link #key()}. Так у рендера и у хранилища всегда согласованные данные —
- * менять поля «на месте» не нужно и нечем.
+ * <p>Неизменяемая запись: при переносе рисунка создаётся новая (меняются позиция,
+ * грань и время установки), а старая просто выбрасывается из {@link GraffitiStore}.
+ * Так у рендера и у хранилища всегда согласованные данные — менять поля «на месте»
+ * не нужно и нечем.
  *
  * @param world     ключ мира ({@code singleplayer} или адрес сервера)
  * @param dimension идентификатор измерения, например {@code minecraft:overworld}
@@ -30,15 +30,6 @@ public record GraffitiSpot(String world, String dimension, long position, Direct
 
     public BlockPos pos() {
         return BlockPos.of(this.position);
-    }
-
-    public GraffitiKey key() {
-        return new GraffitiKey(this.world, this.dimension, this.position, this.face);
-    }
-
-    public GraffitiSpot withDesign(GraffitiDesign design, float spin) {
-        return new GraffitiSpot(this.world, this.dimension, this.position, this.face, design,
-                normalizeSpin(spin), System.currentTimeMillis());
     }
 
     /** Нормализует угол в [0, 360): в файле и в рендере угол всегда канонический. */

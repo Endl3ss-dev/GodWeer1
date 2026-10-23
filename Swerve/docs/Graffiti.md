@@ -1,7 +1,7 @@
 # Graffiti
 
 Основной файл: `Swerve/src/main/java/swerve/modules/impl/render/Graffiti.java`
-Пакет фичи: `Swerve/src/main/java/swerve/graffiti/`
+Пакет фичи: `Swerve/src/main/java/swerve/graffiti/` (`GraffitiDesign`, `GraffitiSpot`, `GraffitiWorld`, `GraffitiQuad`, `GraffitiGhost`, `GraffitiStore`, `GraffitiRenderer`)
 Миксины: `MixinMinecraft` → `startUseItem`, `MixinMouseHandler` → `onPress`
 Категория: `RENDER`
 Регистрация: `swerve.managers.ModuleManager` → `register(new Graffiti())`
