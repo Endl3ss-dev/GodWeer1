@@ -50,7 +50,13 @@ public final class GraffitiRenderer {
     /** Минимальный вклад яркости: в темноте рисунок не должен становиться чёрным квадратом. */
     private static final float MIN_LIGHT = 0.45F;
 
-    /** Тёплый оттенок «не готов» (идёт кулдаун): призрак гаснет и уходит в серый. */
+    /** Ниже этого косинуса между нормалью и взглядом квад виден ребром — не рисуем. */
+    private static final float EDGE_HIDE_BELOW = 0.12F;
+
+    /** Выше этого косинуса квад в полную силу. */
+    private static final float EDGE_FULL_ABOVE = 0.42F;
+
+    /** Оттенок «не готов» (идёт кулдаун): призрак гаснет и уходит в серый. */
     private static final float NOT_READY_DIM = 0.55F;
 
     private GraffitiRenderer() {
@@ -82,9 +88,15 @@ public final class GraffitiRenderer {
     /**
      * Призрак под прицелом: полупрозрачный, в цвете «можно ставить» или «кулдаун».
      *
-     * @param quad   текущая (сглаженная) поза призрака
-     * @param alpha  альфа из {@link GraffitiGhost}
-     * @param ready  {@code false} — идёт кулдаун, рисунок тускнеет
+     * <p>На перелёте «стена → пол» квад на середине пути повёрнут почти ребром к
+     * камере и на кадр превращается в тонкую полоску. Поэтому альфа домножается на
+     * косинус между нормалью квада и направлением на камеру: в тот момент, когда
+     * рисунок схлопывается в линию, он гаснет. Такая поправка не зависит от того,
+     * какие именно грани меняются местами, — она гасит любое положение «ребром».
+     *
+     * @param quad  текущая (сглаженная) поза призрака
+     * @param alpha альфа из {@link GraffitiGhost}
+     * @param ready {@code false} — идёт кулдаун, рисунок тускнеет
      */
     public static void renderGhost(WorldRenderContext context, GraffitiDesign design, GraffitiQuad quad,
                                    float alpha, boolean ready) {
@@ -119,6 +131,21 @@ public final class GraffitiRenderer {
         Vec3 halfRight = quad.right().scale(0.5D);
         Vec3 halfDown = quad.down().scale(0.5D);
         Vec3 origin = quad.center().add(normal);
+
+        // Квад, повёрнутый ребром к камере, — это полоска в один пиксель: гасим его,
+        // пока косинус между нормалью и направлением на камеру мал. Для установленного
+        // рисунка это тоже верно: в таком ракурсе его всё равно закрывает сам блок.
+        Vec3 toCamera = camera.subtract(origin);
+        double distance = toCamera.length();
+        if (distance > 1.0E-4D) {
+            float facing = (float) Math.abs(quad.normal().dot(toCamera.scale(1.0D / distance)));
+            float edgeFade = Mth.clamp((facing - EDGE_HIDE_BELOW) / (EDGE_FULL_ABOVE - EDGE_HIDE_BELOW),
+                    0.0F, 1.0F);
+            alpha *= edgeFade * edgeFade;
+            if (alpha <= 0.004F) {
+                return;
+            }
+        }
 
         int brightness = Math.round(255.0F * Mth.clamp(light, 0.0F, 1.0F));
         int red = Math.round(brightness * Mth.clamp(tintR, 0.0F, 1.0F));

@@ -79,15 +79,23 @@ public record GraffitiQuad(BlockPos pos, Direction face, Vec3 center, Vec3 right
 
         double distance = from.center.distanceTo(to.center);
         double lift = Math.sin(Math.PI * clamped) * distance * 0.35D;
-        Vec3 normal = blendNormal(from.normal, to.normal);
+
+        // Нормаль доворачивается вместе с полётом (плавный шаг), а не смешивается
+        // пополам: при переходе «север ↔ юг» (нормали противоположны) лерп выродился бы
+        // в ноль, и квад всю дорогу летел бы в чужой плоскости.
+        Vec3 normal = blendNormal(from.normal, to.normal, clamped);
         Vec3 center = from.center.lerp(to.center, clamped).add(normal.scale(lift));
 
         Vec3 right = from.right.lerp(to.right, clamped);
         // Ортогонализация Грама — Шмидта: после лерпа базис перестаёт быть ортонормированным.
         right = right.subtract(normal.scale(right.dot(normal)));
         if (right.lengthSqr() < 1.0E-6D) {
-            right = baseRight(to.face);
-            right = right.subtract(normal.scale(right.dot(normal)));
+            // Лерп «сложился» (поворот на 180°): берём базис той стороны, к которой ближе.
+            Vec3 fallback = clamped < 0.5D ? from.right : to.right;
+            if (fallback.cross(normal).lengthSqr() < 1.0E-6D) {
+                fallback = baseRight(to.face);
+            }
+            right = fallback.subtract(normal.scale(fallback.dot(normal)));
         }
         right = right.normalize();
 
@@ -95,10 +103,14 @@ public record GraffitiQuad(BlockPos pos, Direction face, Vec3 center, Vec3 right
         return new GraffitiQuad(to.pos, to.face, center, right, down, normal);
     }
 
-    /** Нормаль, повёрнутая от одной грани к другой (нулевая пара — берём первую). */
-    private static Vec3 blendNormal(Vec3 from, Vec3 to) {
-        Vec3 blended = from.lerp(to, 0.5D);
-        return blended.lengthSqr() < 1.0E-6D ? from : blended.normalize();
+    /** Плавная (smoothstep) интерполяция нормали; вырожденный лерп — берём ближнюю. */
+    private static Vec3 blendNormal(Vec3 from, Vec3 to, float t) {
+        float smooth = t * t * (3.0F - 2.0F * t);
+        Vec3 blended = from.lerp(to, smooth);
+        if (blended.lengthSqr() < 1.0E-4D) {
+            return t < 0.5F ? from : to;
+        }
+        return blended.normalize();
     }
 
     /** Копия с масштабом квада относительно центра (для «проявления» при установке). */

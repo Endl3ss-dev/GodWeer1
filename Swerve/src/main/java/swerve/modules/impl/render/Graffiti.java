@@ -335,7 +335,8 @@ public final class Graffiti extends Module {
             return false;
         }
 
-        GraffitiSpot placed = GraffitiStore.place(target.pos(), target.face(), currentDesign(), spin.get());
+        GraffitiSpot placed = GraffitiStore.place(target.pos(), target.face(), currentDesign(),
+                placementSpin(minecraft, target.face()));
         if (placed == null) {
             return false;
         }
@@ -373,6 +374,28 @@ public final class Graffiti extends Module {
         return new Target(pos.immutable(), face);
     }
 
+    /**
+     * Итоговый поворот рисунка: для пола и потолка — «низом к игроку», как у ванильных
+     * табличек, плюс пользовательский {@code Поворот} как смещение.
+     *
+     * <p>Угол берётся от {@code getDirection()} (целые 90°), а не от точного yaw:
+     * иначе рисунок на полу крутился бы вслед за каждым движением мыши. Для боковых
+     * граней верх картинки всегда вверх, поэтому там остаётся только настройка.
+     */
+    private float placementSpin(Minecraft minecraft, Direction face) {
+        float base = spin.get();
+        if (minecraft.player == null || !face.getAxis().isVertical()) {
+            return GraffitiSpot.normalizeSpin(base);
+        }
+
+        // «Низ» картинки должен смотреть на игрока: это направление, противоположное взгляду.
+        Direction towardPlayer = minecraft.player.getDirection().getOpposite();
+        double angle = face == Direction.UP
+                ? Math.atan2(towardPlayer.getStepX(), towardPlayer.getStepZ())
+                : Math.atan2(towardPlayer.getStepX(), -towardPlayer.getStepZ());
+        return GraffitiSpot.normalizeSpin(base + (float) Math.toDegrees(angle));
+    }
+
     private GraffitiDesign currentDesign() {
         GraffitiDesign design = GraffitiDesign.byLabel(designMode.getCurrent());
         return design == null ? GraffitiDesign.SKETCH : design;
@@ -403,8 +426,7 @@ public final class Graffiti extends Module {
      * <p>Рендер зовёт её каждый кадр, а {@link GraffitiQuad#of} строит десяток
      * векторов: пересобирать их без смены цели или поворота — мусор в куче на кадр.
      */
-    private GraffitiQuad quadFor(Target target) {
-        float spinValue = spin.get();
+    private GraffitiQuad quadFor(Target target, float spinValue) {
         if (this.cachedQuad != null
                 && target.face() == this.cachedFace
                 && target.pos().equals(this.cachedPos)
@@ -448,7 +470,7 @@ public final class Graffiti extends Module {
             return;
         }
 
-        ghost.follow(quadFor(target), frameNanos);
+        ghost.follow(quadFor(target, placementSpin(minecraft, target.face())), frameNanos);
         if (!ghost.visible()) {
             return;
         }
