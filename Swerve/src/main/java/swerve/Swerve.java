@@ -8,6 +8,8 @@ import swerve.cosmetics.cape.ClothSimulations;
 import swerve.cosmetics.melee.HandMovement;
 import swerve.cosmetics.melee.MeleeState;
 import swerve.managers.ModuleManager;
+import swerve.script.ScriptEngine;
+import swerve.script.ScriptStore;
 import swerve.utils.input.ClickGuiController;
 
 import net.fabricmc.api.ClientModInitializer;
@@ -46,6 +48,12 @@ public class Swerve implements ClientModInitializer {
 		// поэтому до регистрации модулей восстанавливать нечего.
 		ConfigManager.init();
 		ClickGuiController.init();
+
+		// [+] Скрипты: пользовательские функции (редактор блоков как в Scratch).
+		// Хранилище читается после менеджера модулей — блоки «модуль …» ищут их по имени,
+		// а движок подписывается на тик и запускает триггеры функций.
+		ScriptStore.init();
+		ScriptEngine.init();
 
 		// Гардероб: сохранённые модели и синхронизация с другими клиентами.
 		CosmeticStore.load();
