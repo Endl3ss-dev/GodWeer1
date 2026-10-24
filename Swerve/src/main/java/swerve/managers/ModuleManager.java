@@ -12,6 +12,7 @@ import swerve.modules.impl.combat.SexAura;
 import swerve.modules.impl.hud.ArrayListHud;
 import swerve.modules.impl.hud.Notifications;
 import swerve.modules.impl.hud.Watermark;
+import swerve.modules.impl.misc.PatPatModule;
 import swerve.modules.impl.player.DrinkUse;
 import swerve.modules.impl.movement.Speed;
 import swerve.modules.impl.movement.ElytraFlight;
@@ -68,6 +69,7 @@ public final class ModuleManager {
         register(new ElytraFlight());
         register(new NoWeb());
         register(new DrinkUse());
+        register(new PatPatModule());
         register(new Trails());
         register(new ChinaHat());
         // Graffiti: рисунки 1x1 на гранях блоков, своё хранилище config/swerve/graffiti.json.

@@ -42,12 +42,26 @@ java {
 	targetCompatibility = JavaVersion.VERSION_21
 }
 
+def patPatJar = file("../PatPat-1.3.1+1.21.4+fabric.jar")
+def patPatLicense = file("../PatPat/LICENSE_PatPat")
+
 jar {
 	def projectName = project.name
 	inputs.property "projectName", projectName
 
 	from("LICENSE") {
 		rename { "${it}_$projectName"}
+	}
+
+	// Bundle the unmodified upstream mod as a Fabric nested mod. Its full readable
+	// source snapshot and LGPL-3.0-only license are kept in ../DeobfPatPat.
+	inputs.file(patPatJar)
+	inputs.file(patPatLicense)
+	from(patPatJar) {
+		into("META-INF/jars")
+	}
+	from(patPatLicense) {
+		into("META-INF/licenses/PatPat")
 	}
 }
 

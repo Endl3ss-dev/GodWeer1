@@ -1,0 +1,78 @@
+package net.lopymine.patpat.utils;
+
+import lombok.experimental.UtilityClass;
+import net.minecraft.ChatFormatting;
+import net.minecraft.network.chat.Component;
+import net.minecraft.network.chat.MutableComponent;
+import net.minecraft.resources.Identifier;
+
+import net.lopymine.patpat.translation.PatTranslation;
+
+import java.util.function.Function;
+
+@UtilityClass
+public class ModMenuUtils {
+
+	public static String getOptionKey(String optionId) {
+		return "modmenu.option." + optionId;
+	}
+
+	public static String getCategoryKey(String categoryId) {
+		return "modmenu.category." + categoryId;
+	}
+
+	public static String getGroupKey(String groupId) {
+		return "modmenu.group." + groupId;
+	}
+
+	public static MutableComponent getName(String key) {
+		return PatTranslation.text(key + ".name");
+	}
+
+	public static MutableComponent getDescription(String key) {
+		return PatTranslation.text(key + ".description");
+	}
+
+	public static MutableComponent getCustom(String key, String custom) {
+		return PatTranslation.text(key + "." + custom);
+	}
+
+	public static MutableComponent getWarn(String key) {
+		return PatTranslation.text(key + ".warn");
+	}
+
+	public static MutableComponent getDescriptionWithWarn(String key) {
+		return TextUtils.empty()
+				.append(ModMenuUtils.getWarn(key).withStyle(ChatFormatting.RED))
+				.append(TextUtils.literal("\n\n"))
+				.append(ModMenuUtils.getDescription(key));
+	}
+
+	public static MutableComponent getOptionName(String optionId) {
+		return getName(getOptionKey(optionId));
+	}
+
+	public static MutableComponent getOptionDescription(String optionId) {
+		return getDescription(getOptionKey(optionId));
+	}
+
+	public static MutableComponent getOptionDescriptionWithWarn(String optionId) {
+		return getDescriptionWithWarn(getOptionKey(optionId));
+	}
+
+	public static MutableComponent getModTitle() {
+		return PatTranslation.text("modmenu.title");
+	}
+
+	public static Identifier getContentId(String filename) {
+		return RLUtils.modId("textures/config/" + filename);
+	}
+
+	public static Function<Boolean, Component> getEnabledOrDisabledFormatter() {
+		return state -> PatTranslation.text("formatter.enabled_or_disabled." + Boolean.TRUE.equals(state));
+	}
+
+	public static Function<Boolean, Component> getEnabledOrDisabledFormatterColored() {
+		return state -> PatTranslation.text("formatter.enabled_or_disabled." + Boolean.TRUE.equals(state)).withStyle(Boolean.TRUE.equals(state) ? ChatFormatting.GREEN : ChatFormatting.RED);
+	}
+}
