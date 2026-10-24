@@ -172,6 +172,16 @@
         "Уведомления": false
       }
     },
+    "PatPatModule": {
+      "enabled": true,
+      "key": 88,
+      "settings": {}
+    },
+    "Scripts": {
+      "enabled": true,
+      "key": -1,
+      "settings": {}
+    },
     "Trails": {
       "enabled": false,
       "key": -1,
@@ -291,7 +301,7 @@
       }
     },
     "TargetHud": {
-      "enabled": false,
+      "enabled": true,
       "key": -1,
       "settings": {
         "Предметы": true,
@@ -368,11 +378,11 @@
     "hoverSounds": true,
     "sliderSounds": true,
     "blur": true,
-    "dim": 40.0,
-    "gradient": true,
+    "dim": 80.0,
+    "gradient": false,
     "animations": true,
     "animSpeed": 1.0,
-    "scale": 100.0,
+    "scale": 130.0,
     "palette": 0
   }
 }

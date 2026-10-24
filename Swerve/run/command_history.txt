@@ -1,38 +1,3 @@
-/statistics _SyXaRiK
-/server surv-delta
-/statistics _SyXaRiK
-/server surv-gamma
-/statistics _SyXaRiK
-/server surv-lambda
-/statistics _SyXaRiK
-/server surv-beta
-/statistics _SyXaRiK
-/server surv-omega
-/statistics _SyXaRiK
-/server surv-alpha
-/statistics _SyXaRiK
-/server surv-sigma
-/statistics _SyXaRiK
-/shop
-/spawn
-/rtp
-/shop
-/rtp
-/l wd
-/shop
-/casino
-/spawn
-/pay Fall66 125000000
-/rtp
-/spawn
-/shop
-/rtp
-/shop
-/spawn
-/pay DJON_26 100000000
-/pay Fall66 10000000
-/pay JonKu 30000000
-/pay Fall66 10000000
 /pay serza 50000000
 /pay JonKu 100000000
 /pay nastiasose 44000000
@@ -48,3 +13,38 @@
 /pay Fall66 17000000
 /pay Fall66 53000000
 /pay ERLLINE 80000000
+/l wd
+/rtp
+/m hotellef насасал
+/tpa weismare
+/m weismare афк?
+/m weismare занят?
+/m weismare ничего
+/m weismare можешь на хом тепнуть?
+/sit
+/meow
+/pay weismare 9900000
+/pay weismare 89000000
+/sethome
+/home
+/ыше
+/sti
+/sit
+/bellyflop
+/meow
+/m Naut_lus нет, у меня отец мертвый
+/m Naut_lus :D
+/m Naut_lus ?
+/m Naut_lus Swerve, самопис
+/m Naut_lus чит
+/m Naut_lus на первом?
+/m Naut_lus по киллам?
+/home
+/spawn
+/m Naut_lus бля, я даж не видел
+/m Naut_lus это... gostler
+/m Naut_lus помнишь наверн
+/m Naut_lus мы кадато в одном клане были
+/m Naut_lus месяца 3 назад, потом я забил
+/home
+/shop
