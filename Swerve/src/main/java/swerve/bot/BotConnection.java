@@ -98,6 +98,8 @@ public final class BotConnection {
     private volatile boolean sprinting;
     private volatile String lastChat = "";
     private volatile long lastChatAt;
+    /** Когда бот отправлял последнее сообщение — чтобы пометить ответ сервера. */
+    private volatile long lastSentAt;
 
     private Socket socket;
     private DataInputStream input;
@@ -521,7 +523,10 @@ public final class BotConnection {
         }
         this.lastChat = text;
         this.lastChatAt = System.currentTimeMillis();
-        this.log.info("чат: " + text);
+        // Ответ, пришедший сразу после нашей отправки, помечаем: так в журнале
+        // видно, что сообщение — реакция на команду бота, а не чужое.
+        boolean afterSend = System.currentTimeMillis() - this.lastSentAt < 2_500L;
+        this.log.chat((afterSend ? "↩ " : "") + text);
     }
 
     private void sendClientSettings() throws IOException {
@@ -602,8 +607,20 @@ public final class BotConnection {
 
     // ---- действия бота
 
+    /**
+     * Отправить сообщение от имени бота.
+     *
+     * <p>Пакет уходит только в собственное соединение бота — клиент игрока в
+     * отправке не участвует. Если бот ещё не в игре (или уже отключился),
+     * сообщение не пишется в сокет: иначе в него улетели бы байты, которые
+     * сервер не ждёт, а причина молчания осталась бы непонятной.
+     */
     public void chat(String text) {
         if (text == null || text.isBlank()) {
+            return;
+        }
+        if (!isPlaying()) {
+            this.log.error("не в игре (" + this.state.displayName() + "): «" + text + "» не отправлено");
             return;
         }
         String message = text.length() > 256 ? text.substring(0, 256) : text;
@@ -619,7 +636,8 @@ public final class BotConnection {
                         .varInt(0)
                         .varInt(0));
             }
-            this.log.info("→ " + message);
+            this.lastSentAt = System.currentTimeMillis();
+            this.log.command("→ " + message);
         } catch (IOException exception) {
             this.log.error("не удалось отправить сообщение: " + exception.getMessage());
         }

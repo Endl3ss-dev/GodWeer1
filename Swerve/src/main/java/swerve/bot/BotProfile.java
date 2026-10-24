@@ -26,6 +26,8 @@ public final class BotProfile {
     private float reconnectDelay = 5.0f;
     private float stepDelay = 0.4f;
     private boolean loopForever = true;
+    /** Пароль для /login и /reg: шаги AUTO_LOGIN/AUTO_REGISTER берут его отсюда. */
+    private String password = "пароль";
 
     private final List<BotStep> steps = new ArrayList<>();
 
@@ -110,6 +112,16 @@ public final class BotProfile {
         this.loopForever = loopForever;
     }
 
+    public String getPassword() {
+        return this.password;
+    }
+
+    public void setPassword(String password) {
+        if (password != null) {
+            this.password = password.trim();
+        }
+    }
+
     public List<BotStep> getSteps() {
         return this.steps;
     }
@@ -161,6 +173,7 @@ public final class BotProfile {
         copy.reconnectDelay = this.reconnectDelay;
         copy.stepDelay = this.stepDelay;
         copy.loopForever = this.loopForever;
+        copy.password = this.password;
         for (int i = 0, size = this.steps.size(); i < size; i++) {
             BotStep step = this.steps.get(i);
             BotStep clone = new BotStep(step.getType());

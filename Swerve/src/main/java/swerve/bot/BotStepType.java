@@ -36,10 +36,15 @@ public enum BotStepType {
     REGISTER(Category.AUTH, "зарегистрироваться: /reg {} {}", Param.text("пароль"), Param.text("пароль")),
     CUSTOM_COMMAND(Category.AUTH, "команда {}", Param.text("/help")),
     CHANGE_PASSWORD(Category.AUTH, "сменить пароль: /changepassword {} {}", Param.text("старый"), Param.text("новый")),
+    AUTO_LOGIN(Category.AUTH, "войти паролем из профиля"),
+    AUTO_REGISTER(Category.AUTH, "зарегистрироваться паролем из профиля"),
 
     // ---- чат
     CHAT(Category.CHAT, "написать в чат {}", Param.text("привет")),
     WAIT_CHAT(Category.CHAT, "ждать в чате «{}», не дольше {} сек", Param.text("текст"), Param.number("15")),
+    WAIT_CHAT_ANY(Category.CHAT, "ждать любое сообщение, не дольше {} сек", Param.number("20")),
+    REPLY_CHAT(Category.CHAT, "если в чате «{}», ответить «{}»", Param.text("координаты"), Param.text("идёт")),
+    SPAM_CHAT(Category.CHAT, "написать «{}» {} раз с паузой {} сек", Param.text("!"), Param.number("3"), Param.number("1")),
 
     // ---- действия
     LOOK(Category.ACTION, "повернуться: yaw {} pitch {}", Param.number("0"), Param.number("0")),
@@ -55,6 +60,8 @@ public enum BotStepType {
     LOOK_YAW(Category.ACTION, "повернуть корпус на {} градусов", Param.number("0")),
     SWAP_OFFHAND(Category.ACTION, "взять предмет в левую руку"),
     STOP_MOVEMENT(Category.ACTION, "остановить движение"),
+    LOOK_RANDOM(Category.ACTION, "повернуться случайно в пределах {} градусов", Param.number("45")),
+    ANTI_AFK(Category.ACTION, "анти-АФК: {} движений подряд", Param.number("3")),
 
     // ---- инвентарь (слоты окна игрока: 5–8 броня, 9–35 рюкзак, 36–44 хотбар, 45 левая рука)
     OPEN_INVENTORY(Category.INVENTORY, "открыть инвентарь"),
@@ -78,6 +85,14 @@ public enum BotStepType {
     IF_FOOD_BELOW(Category.LOGIC, "если еда ниже {}", Param.number("15")),
     IF_DEAD(Category.LOGIC, "если бот мёртв"),
     IF_END(Category.LOGIC, "конец условия"),
+    SET_VAR(Category.LOGIC, "задать переменную {} = {}", Param.text("круг"), Param.text("0")),
+    ADD_VAR(Category.LOGIC, "увеличить переменную {} на {}", Param.text("круг"), Param.number("1")),
+    RANDOM_VAR(Category.LOGIC, "переменная {} = случайное от {} до {}", Param.text("шанс"), Param.number("1"), Param.number("10")),
+    IF_VAR_EQ(Category.LOGIC, "если переменная {} равна {}", Param.text("круг"), Param.text("5")),
+    IF_VAR_BELOW(Category.LOGIC, "если переменная {} меньше {}", Param.text("круг"), Param.text("10")),
+    CHANCE(Category.LOGIC, "если случайное число меньше {} %", Param.number("50")),
+    BREAK_LOOP(Category.LOGIC, "выйти из повтора"),
+    RESET_VARS(Category.LOGIC, "сбросить все переменные"),
     STOP(Category.LOGIC, "остановить бота"),
 
     // ---- прочее
@@ -213,7 +228,8 @@ public enum BotStepType {
 
     public boolean opensBlock() {
         return this == LOOP || this == IF_CHAT || this == IF_ONLINE
-                || this == IF_HEALTH_BELOW || this == IF_FOOD_BELOW || this == IF_DEAD;
+                || this == IF_HEALTH_BELOW || this == IF_FOOD_BELOW || this == IF_DEAD
+                || this == IF_VAR_EQ || this == IF_VAR_BELOW || this == CHANCE;
     }
 
     public boolean closesBlock() {

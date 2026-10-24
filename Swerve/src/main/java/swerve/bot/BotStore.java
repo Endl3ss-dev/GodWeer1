@@ -206,6 +206,8 @@ public final class BotStore {
         profile.setAutoReconnect(bool(data, "autoReconnect", true));
         profile.setReconnectDelay((float) number(data, "reconnectDelay", 5.0));
         profile.setStepDelay((float) number(data, "stepDelay", 0.4));
+        profile.setLoopForever(bool(data, "loopForever", true));
+        profile.setPassword(string(data, "password", "пароль"));
 
         JsonElement steps = data.get("steps");
         if (steps != null && steps.isJsonArray()) {
@@ -255,6 +257,8 @@ public final class BotStore {
                 data.addProperty("autoReconnect", profile.isAutoReconnect());
                 data.addProperty("reconnectDelay", profile.getReconnectDelay());
                 data.addProperty("stepDelay", profile.getStepDelay());
+                data.addProperty("loopForever", profile.isLoopForever());
+                data.addProperty("password", profile.getPassword());
 
                 JsonArray steps = new JsonArray();
                 for (int s = 0, count = profile.getSteps().size(); s < count; s++) {
