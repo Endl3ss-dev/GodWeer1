@@ -1,6 +1,8 @@
 package swerve;
 
 import swerve.config.ConfigManager;
+import swerve.bot.BotManager;
+import swerve.bot.BotStore;
 import swerve.cosmetics.CosmeticStore;
 import swerve.cosmetics.Wearables;
 import swerve.cosmetics.cape.CapeTextures;
@@ -54,6 +56,11 @@ public class Swerve implements ClientModInitializer {
 		// а движок подписывается на тик и запускает триггеры функций.
 		ScriptStore.init();
 		ScriptEngine.init();
+
+		// [+] Боты: профили headless-клиентов и их тик. Хранилище читается до
+		// менеджера — он только держит рантайм и не зависит от загрузки файла.
+		BotStore.init();
+		BotManager.init();
 
 		// Гардероб: сохранённые модели и синхронизация с другими клиентами.
 		CosmeticStore.load();

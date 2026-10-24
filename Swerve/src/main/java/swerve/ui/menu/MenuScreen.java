@@ -12,6 +12,7 @@ import swerve.modules.api.setting.ListSetting;
 import swerve.modules.api.setting.ModeSetting;
 import swerve.modules.api.setting.Setting;
 import swerve.modules.api.setting.TextSetting;
+import swerve.ui.bot.BotStudioScreen;
 import swerve.ui.menu.MenuText.Weight;
 import swerve.ui.newgui.GuiBlur;
 import swerve.ui.newgui.GuiTheme;
@@ -62,6 +63,7 @@ public final class MenuScreen extends Screen {
             {"cosmetics-s", "Косметика"},
             {"hud-s", "HUD"},
             {"sliders", "Настройки"},
+            {"server", "Боты"},
     };
 
     // ---- действия кликов
@@ -1133,6 +1135,13 @@ public final class MenuScreen extends Screen {
     }
 
     private void dockClick(int i) {
+        // [+] Боты — отдельное окно (студия профилей), а не страница меню:
+        // поведение бота не помещается в колонку настроек.
+        if (i == 4) {
+            content(MenuSound.PAGE);
+            Minecraft.getInstance().setScreen(new BotStudioScreen(this));
+            return;
+        }
         Page to = i == 3 ? Page.SETTINGS : i == 1 ? Page.COSMETICS : Page.MODULES;
         if (i == 2) {
             category = ModuleCategory.INTERFACE;
