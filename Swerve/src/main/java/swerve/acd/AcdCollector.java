@@ -73,6 +73,20 @@ public final class AcdCollector {
     /** Сколько включённых модулей перечислять в контексте (дальше — только счётчик). */
     private static final int MAX_CONTEXT_MODULES = 8;
 
+    /** Источник служебных отметок самого детектора (включение/выключение сборки). */
+    private static final String SRC_SELF = "AntiCheatDetector";
+
+    /**
+     * Почему отметка сборки лежит в «Неизвестном», а не в «Сети»: это не событие
+     * соединения, а наше собственное действие. Первый прогон на живом сервере это и
+     * показал — счётчик NETWORK_DIAGNOSTIC (6 записей) состоял только из таких
+     * включений и выключений, то есть врал о сети при нуле сетевых событий. Ни одна из девяти категорий не описывает
+     * «модуль включился», а придумывать десятую — значило бы переписать классификатор;
+     * нейтральная корзина с подписанным источником даёт меньше ложных выводов.
+     */
+    private static final String LIFECYCLE_NOTE =
+            "служебная отметка самого детектора, к соединению отношения не имеет";
+
     /** Причина, уже записанная пакетом причины: по ней {@link #onDisconnect} не дублирует тот же текст. */
     private static volatile String lastKickReason = "";
 
@@ -182,9 +196,16 @@ public final class AcdCollector {
         String message = relative
                 ? "сервер скорректировал позицию относительно чего-то (смещение не измеряем)"
                 : "сервер вернул игрока на свою позицию: сдвиг " + num(distance) + " блока";
+        // Оговорка обязательна: ClientboundPlayerPositionPacket — это не только setback.
+        // Им же выполняют /tp, возврат на спавн и респаун, и по одному пакету их не
+        // развести. Без этой фразы читатель додумывает «античит вернул меня за 730 блоков».
+        String teleportCaveat = relative ? ""
+                : "; тот же пакет присылают обычные телепорты (спавн, /tp, респаун) — "
+                  + "отличить их от коррекции античита по одному пакету невозможно";
         String detail = "собственная скорость на момент коррекции " + num(speed(client))
                 + " блока/тик; причина коррекции клиенту неизвестна"
-                + (relatives == null ? "" : ", флагов относительности: " + relatives.size());
+                + (relatives == null ? "" : ", флагов относительности: " + relatives.size())
+                + teleportCaveat;
         emit(AcdCategory.MOVEMENT_DIAGNOSTIC, AcdCategory.MOVEMENT_DIAGNOSTIC.defaultSeverity(),
                 AcdConfidence.CONFIRMED, SRC_POSITION, "", message, detail, true);
     }
@@ -288,7 +309,7 @@ public final class AcdCollector {
     public static void onInternalError(String where, Throwable failure) {
         String raw = failure == null ? "?" : failure.getClass().getName() + ": " + failure.getMessage();
         emit(AcdCategory.CLIENT_ERROR, AcdSeverity.WARNING, AcdConfidence.CONFIRMED,
-                "AntiCheatDetector", raw, "сбой в самом детекторе (" + where + ")",
+                SRC_SELF, raw, "сбой в самом детекторе (" + where + ")",
                 "сбор остановлен, накопленная история сохранена", false);
     }
 
@@ -420,13 +441,13 @@ public final class AcdCollector {
      * промежуток времени вообще наблюдался, а не только набор событий.
      */
     public static void noteCollectionStarted() {
-        emit(AcdCategory.NETWORK_DIAGNOSTIC, AcdSeverity.INFO, AcdConfidence.CONFIRMED,
-                "AntiCheatDetector", "", "включён сбор диагностики", "", false);
+        emit(AcdCategory.UNKNOWN_EVENT, AcdSeverity.INFO, AcdConfidence.CONFIRMED,
+                SRC_SELF, "", "включён сбор диагностики", LIFECYCLE_NOTE, false);
     }
 
     public static void noteCollectionStopped(int recorded) {
-        emit(AcdCategory.NETWORK_DIAGNOSTIC, AcdSeverity.INFO, AcdConfidence.CONFIRMED,
-                "AntiCheatDetector", "", "сбор выключен, в истории записей: " + recorded, "", false);
+        emit(AcdCategory.UNKNOWN_EVENT, AcdSeverity.INFO, AcdConfidence.CONFIRMED,
+                SRC_SELF, "", "сбор выключен, в истории записей: " + recorded, LIFECYCLE_NOTE, false);
     }
 
     private static String serverLabel() {

@@ -134,7 +134,11 @@ public final class AcdFormatter {
 
         JsonObject session = new JsonObject();
         session.addProperty("id", report.sessionId());
-        session.addProperty("observed", report.sessionsObserved());
+        // Ключ называется sessionsObserved, а не observed: в этом же документе рядом лежит
+        // summary.observed — число записей с достоверностью OBSERVED. Реальный прогон
+        // показал, как это читается: «session.observed: 2» против «summary.observed: 33»
+        // выглядит как противоречие, хотя первое — счётчик переподключений.
+        session.addProperty("sessionsObserved", report.sessionsObserved());
         session.addProperty("server", emptyToDash(report.sessionServer()));
         session.addProperty("started", report.sessionStartMs() == 0L ? "" : stamp(report.sessionStartMs(), FULL));
         session.addProperty("ended", report.sessionEndMs() == 0L ? "" : stamp(report.sessionEndMs(), FULL));

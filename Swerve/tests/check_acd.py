@@ -39,6 +39,9 @@
  17. Имена pattern-переменных (`x instanceof T name`) не перекрывают параметры объёмлющего
      метода: Java запрещает это, и `javac` отвечает «variable is already defined» — ровно та
      поломка, которую пропустили все предыдущие проверки (проверено на реальном сборе).
+ 18. Служебные отметки `noteCollection*` не притворяются сетевыми событиями: категория —
+     нейтральная, источник — константа, примечание объясняет природу записи. Правило
+     родилось из первого прогона на живом сервере, где «Сеть» состояла из них целиком.
 
 Чего проверка не видит: реальную загрузку миксинов, GLFW-буфер обмена, гонки потоков,
 поведение в игре. Это проверяется прогоном харнесса и ручным чек-листом в документации.
@@ -858,6 +861,49 @@ def check_name_collisions(files: dict[str, str]) -> None:
                          f"с именем параметра: javac ответит «variable is already defined»")
 
 
+# --------------------------------------------------------------------------- #
+# 18 — служебные отметки сборки: категория, источник и оговорка
+# --------------------------------------------------------------------------- #
+def check_lifecycle_markers(collector_src: str) -> None:
+    """`noteCollectionStarted/Stopped` — про сам детектор, а не про сеть.
+
+    Первый прогон на живом сервере дал `NETWORK_DIAGNOSTIC=6` из шести записей, и все
+    шесть — «включён сбор» / «сбор выключен». Счётчик категории врал: ни одного
+    сетевого события в нём не было. Правило держит это на месте: категория —
+    нейтральная корзина, источник — именованная константа (а не строка, которую
+    можно напечатать в одном месте и рассогласовать в другом), и к каждой отметке
+    приложено объяснение её природы.
+    """
+    code = strip_comments(collector_src)
+    methods = re.findall(r"public static void (noteCollection\w+)\(", code)
+    if len(methods) < 2:
+        fail("AcdCollector: потеряна хотя бы одна служебная отметка сборки "
+             f"(найдено {len(methods)}: {methods}) — по ним видно, какой промежуток вообще наблюдался")
+        return
+    for name in methods:
+        signature = f"public static void {name}("
+        body = region(code, signature)
+        if not body:
+            fail(f"AcdCollector.{name}: не удалось разобрать тело")
+            continue
+        if "AcdCategory.NETWORK_DIAGNOSTIC" in body:
+            fail(f"AcdCollector.{name}: отметка о собственной сборке записана в категорию "
+                 "«Сеть» — счётчик NETWORK_DIAGNOSTIC начнёт врать о соединениях")
+        if "AcdCategory.UNKNOWN_EVENT" not in body:
+            fail(f"AcdCollector.{name}: отметка не в нейтральной категории; ни одна из девяти "
+                 "категорий не описывает «модуль включился», выдумывать десятую нельзя")
+        if "SRC_SELF" not in body:
+            fail(f"AcdCollector.{name}: источник отметки задан строкой вместо SRC_SELF — "
+                 "в отчёте такие записи перестанут собираться в один источник")
+        if "LIFECYCLE_NOTE" not in body:
+            fail(f"AcdCollector.{name}: к отметке не приложено примечание LIFECYCLE_NOTE — "
+                 "читатель «Unknown» будет гадать, что это за событие")
+    # источник должен быть назван тем же именем, что фигурирует в отчёте
+    if 'String SRC_SELF = "AntiCheatDetector"' not in collector_src:
+        fail("AcdCollector: SRC_SELF должен равняться «AntiCheatDetector» — по этой строке "
+             "записи ищут в выгрузке и в GUI")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", default=None, help="корень репозитория (по умолчанию — рядом с тестом)")
@@ -896,6 +942,7 @@ def main() -> int:
     check_settings_wiring(root, module_src, acd_files)
     check_gui(root)
     check_harness(root, index)
+    check_lifecycle_markers(collector_src)
     check_name_collisions({**acd_by_path, "modules/impl/misc/AntiCheatDetector.java": module_src,
                            "ui/menu/MenuScreen.java": read(root / "src/main/java/swerve/ui/menu/MenuScreen.java"),
                            "mixins/client/MixinClientPacketListener.java": read(
