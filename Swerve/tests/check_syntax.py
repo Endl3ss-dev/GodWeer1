@@ -18,7 +18,8 @@
 `check_types.py` и `check_scope.py`, а остальное видно только настоящему javac.
 
 Использование:
-    pip3 install --break-system-packages tree_sitter tree_sitter_java
+    pip3 install --target ~/.pylibs tree_sitter tree_sitter_java   # песочница: /usr не сохраняется
+    # либо обычно: pip3 install --break-system-packages tree_sitter tree_sitter_java
     python3 Swerve/tests/check_syntax.py [путь-к-src]
 
 Код возврата: 0 — чисто, 1 — есть находки, 2 — не установлены зависимости.
@@ -28,14 +29,28 @@ from __future__ import annotations
 import sys
 from pathlib import Path
 
-try:
-    from tree_sitter import Language, Parser
-    import tree_sitter_java as tsj
-except ImportError:  # pragma: no cover
-    print("Нужны зависимости: pip3 install --break-system-packages tree_sitter tree_sitter_java")
+# Песочница не сохраняет /usr: пакеты, поставленные через pip --break-system-packages,
+# исчезают при пересоздании окружения, а ~/.local исключён из снимка. Поэтому
+# дополнительно ищем библиотеки в ~/.pylibs — туда их ставит
+#   pip3 install --target ~/.pylibs tree_sitter tree_sitter_java
+# и этот каталог переживает пересоздание песочницы.
+def _load_parser():
+    for extra in (), Path.home() / ".pylibs":
+        if extra and str(extra) not in sys.path:
+            sys.path.insert(0, str(extra))
+        try:
+            from tree_sitter import Language, Parser
+            import tree_sitter_java as tsj
+        except ImportError:
+            continue
+        return Parser(Language(tsj.language()))
+    print("Нужны зависимости: pip3 install --target ~/.pylibs tree_sitter tree_sitter_java")
+    print("(или в системный python: pip3 install --break-system-packages tree_sitter tree_sitter_java)")
     sys.exit(2)
 
-PARSER = Parser(Language(tsj.language()))
+
+
+PARSER = _load_parser()
 SWERVE = Path(__file__).resolve().parents[1]
 
 
