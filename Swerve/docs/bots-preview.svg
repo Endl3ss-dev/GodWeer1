@@ -1,0 +1,275 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="760" viewBox="0 0 1200 760" font-family="Segoe UI, Arial, sans-serif">
+  <title>Swerve · студия ботов (макет раскладки)</title>
+  <rect width="1200" height="760" fill="#0d0d13"/>
+
+  <!-- окно -->
+  <rect x="14" y="14" width="1172" height="732" rx="22" fill="#232330" stroke="#FFFFFF26"/>
+  <line x1="30" y1="86" x2="1170" y2="86" stroke="#FFFFFF12"/>
+
+  <!-- шапка -->
+  <circle cx="52" cy="50" r="17" fill="#8B7BFF3A"/>
+  <g stroke="#8B7BFF" stroke-width="2" fill="none">
+    <rect x="41" y="40" width="22" height="8" rx="2"/>
+    <rect x="41" y="53" width="22" height="8" rx="2"/>
+  </g>
+  <text x="80" y="46" fill="#F2F0FA" font-size="22" font-weight="700">Студия ботов</text>
+  <text x="80" y="66" fill="#9A96AC" font-size="13">headless-клиенты · протокол 1.21.4 · 3 профиля</text>
+  <rect x="966" y="34" width="152" height="34" rx="17" fill="#57C97A22" stroke="#57C97A70"/>
+  <circle cx="986" cy="51" r="4" fill="#57C97A"/>
+  <text x="998" y="56" fill="#EAF5EC" font-size="13" font-weight="600">работают: 1</text>
+  <rect x="1132" y="32" width="38" height="38" rx="12" fill="#FFFFFF10"/>
+  <path d="M1143 43 L1159 59 M1159 43 L1143 59" stroke="#9A96AC" stroke-width="2" stroke-linecap="round"/>
+
+  <!-- панель профилей (выехала) -->
+  <rect x="26" y="98" width="324" height="634" rx="18" fill="#1B1B26" stroke="#8B7BFF70"/>
+  <text x="48" y="126" fill="#F2F0FA" font-size="16" font-weight="700">Профили</text>
+  <text x="330" y="126" fill="#6E6A80" font-size="12" text-anchor="end">3 / 64</text>
+  <rect x="296" y="140" width="30" height="30" rx="9" fill="#57C97A28"/>
+  <path d="M306 147 L318 155 L306 163 Z" fill="#57C97A"/>
+  <rect x="260" y="140" width="30" height="30" rx="9" fill="#E0574C28"/>
+  <rect x="270" y="149" width="10" height="12" rx="2" fill="#E0574C"/>
+
+  <!-- профиль 1 (активен, работает) -->
+  <rect x="38" y="152" width="300" height="68" rx="12" fill="#8B7BFF38" stroke="#8B7BFF9A"/>
+  <circle cx="58" cy="176" r="5" fill="#57C97A"/>
+  <text x="74" y="176" fill="#F2F0FA" font-size="15" font-weight="700">Ферма</text>
+  <text x="74" y="194" fill="#9A96AC" font-size="11">Farmer1 · play.example.ru:25565</text>
+  <text x="74" y="209" fill="#6E6A80" font-size="10">12 шагов</text>
+  <rect x="298" y="166" width="34" height="34" rx="10" fill="#E0574C48"/>
+  <rect x="310" y="177" width="10" height="12" rx="2" fill="#E0574C"/>
+
+  <!-- профиль 2 -->
+  <rect x="38" y="228" width="300" height="68" rx="12" fill="#FFFFFF10"/>
+  <circle cx="58" cy="252" r="5" fill="#6FA8FF"/>
+  <text x="74" y="252" fill="#F2F0FA" font-size="15" font-weight="700">Копалка</text>
+  <text x="74" y="270" fill="#9A96AC" font-size="11">Digger2 · localhost:25565</text>
+  <text x="74" y="285" fill="#6E6A80" font-size="10">7 шагов</text>
+  <rect x="298" y="242" width="34" height="34" rx="10" fill="#57C97A34"/>
+  <path d="M309 250 L322 259 L309 268 Z" fill="#57C97A"/>
+
+  <!-- профиль 3 -->
+  <rect x="38" y="304" width="300" height="68" rx="12" fill="#FFFFFF0A"/>
+  <circle cx="58" cy="328" r="5" fill="#6E6A80"/>
+  <text x="74" y="328" fill="#D8D5E4" font-size="15" font-weight="700">Тест</text>
+  <text x="74" y="346" fill="#9A96AC" font-size="11">TestBot · 127.0.0.1:25566</text>
+  <text x="74" y="361" fill="#6E6A80" font-size="10">3 шага</text>
+  <rect x="298" y="318" width="34" height="34" rx="10" fill="#57C97A34"/>
+  <path d="M309 326 L322 335 L309 344 Z" fill="#57C97A"/>
+
+  <!-- кнопки панели -->
+  <rect x="38" y="666" width="148" height="40" rx="12" fill="#8B7BFF4C" stroke="#8B7BFFA6"/>
+  <path d="M52 678 L62 686 M52 694 L62 686" stroke="#B7ACFF" stroke-width="2.4" stroke-linecap="round"/>
+  <text x="112" y="691" fill="#E7E2FF" font-size="14" font-weight="700" text-anchor="middle">Создать</text>
+  <rect x="194" y="666" width="68" height="40" rx="12" fill="#FFFFFF14"/>
+  <text x="228" y="692" fill="#9A96AC" font-size="16" text-anchor="middle">⧉</text>
+  <rect x="270" y="666" width="68" height="40" rx="12" fill="#E0574C24"/>
+  <text x="304" y="692" fill="#C98080" font-size="16" text-anchor="middle">🗑</text>
+
+  <!-- карточка подключения -->
+  <rect x="366" y="98" width="500" height="214" rx="16" fill="#1B1B26" stroke="#FFFFFF1A"/>
+  <text x="386" y="126" fill="#F2F0FA" font-size="16" font-weight="700">Подключение</text>
+  <text x="492" y="126" fill="#57C97A" font-size="12">в игре · 12.4 64.0 -8.2 · ♥ 20</text>
+  <rect x="712" y="110" width="136" height="38" rx="12" fill="#E0574C52" stroke="#E0574CB0"/>
+  <rect x="728" y="121" width="10" height="12" rx="2" fill="#E0574C"/>
+  <text x="746" y="133" fill="#F3B4AE" font-size="14" font-weight="700">Остановить</text>
+
+  <g font-size="12" fill="#9A96AC">
+    <text x="386" y="158">Имя профиля</text>
+    <text x="548" y="158">Сервер</text>
+    <text x="806" y="158">Порт</text>
+    <text x="386" y="240">Ник в игре</text>
+    <text x="464" y="240">Пароль</text>
+    <text x="552" y="240">Пауза шага, с</text>
+    <text x="646" y="240">Переподкл., с</text>
+  </g>
+  <g fill="#FFFFFF10" stroke="#FFFFFF34">
+    <rect x="386" y="166" width="152" height="44" rx="11"/>
+    <rect x="548" y="166" width="248" height="44" rx="11"/>
+    <rect x="806" y="166" width="42" height="44" rx="11"/>
+    <rect x="386" y="248" width="68" height="44" rx="11"/>
+    <rect x="464" y="248" width="78" height="44" rx="11"/>
+    <rect x="552" y="248" width="84" height="44" rx="11"/>
+    <rect x="646" y="248" width="84" height="44" rx="11"/>
+    <rect x="740" y="248" width="52" height="44" rx="11"/>
+    <rect x="800" y="248" width="48" height="44" rx="11"/>
+  </g>
+  <g font-size="15" fill="#F2F0FA">
+    <text x="398" y="194">Ферма</text>
+    <text x="560" y="194">play.example.ru</text>
+    <text x="816" y="194">25565</text>
+    <text x="398" y="276">Farmer1</text>
+    <text x="476" y="276">пароль</text>
+    <text x="564" y="276">0.4</text>
+    <text x="658" y="276">5.0</text>
+  </g>
+  <rect x="748" y="256" width="38" height="22" rx="11" fill="#57C97AE0"/>
+  <circle cx="775" cy="267" r="8" fill="#FFFFFF"/>
+  <rect x="808" y="256" width="38" height="22" rx="11" fill="#57C97AE0"/>
+  <circle cx="835" cy="267" r="8" fill="#FFFFFF"/>
+
+  <!-- панель поведения -->
+  <rect x="366" y="324" width="500" height="408" rx="16" fill="#1B1B26" stroke="#FFFFFF1A"/>
+  <text x="386" y="352" fill="#F2F0FA" font-size="16" font-weight="700">Поведение</text>
+  <text x="474" y="352" fill="#6E6A80" font-size="12">шаг 4 / 12</text>
+  <rect x="816" y="334" width="30" height="30" rx="9" fill="#57C97A2E"/>
+  <circle cx="831" cy="349" r="5" fill="none" stroke="#57C97A" stroke-width="2"/>
+  <circle cx="831" cy="349" r="2" fill="#57C97A"/>
+
+  <g font-size="12" font-weight="700">
+    <rect x="386" y="366" width="108" height="32" rx="10" fill="#8B7BFF30" stroke="#8B7BFF80"/>
+    <text x="440" y="387" fill="#DCD6FF" text-anchor="middle">+ Авторизация</text>
+    <rect x="502" y="366" width="102" height="32" rx="10" fill="#8B7BFF22" stroke="#8B7BFF66"/>
+    <text x="553" y="387" fill="#C6BCF5" text-anchor="middle">+ Регистрация</text>
+    <rect x="612" y="366" width="86" height="32" rx="10" fill="#8B7BFF22" stroke="#8B7BFF66"/>
+    <text x="655" y="387" fill="#C6BCF5" text-anchor="middle">+ Ферма</text>
+    <rect x="706" y="366" width="86" height="32" rx="10" fill="#8B7BFF22" stroke="#8B7BFF66"/>
+    <text x="749" y="387" fill="#C6BCF5" text-anchor="middle">+ Чат-бот</text>
+  </g>
+
+  <!-- плашки -->
+  <g font-size="15">
+    <!-- 1 -->
+    <rect x="380" y="410" width="472" height="52" rx="12" fill="#2A3550" stroke="#5B8DEF9A"/>
+    <text x="392" y="443" fill="#7E7C90" font-size="12" font-weight="700">1</text>
+    <rect x="406" y="426" width="10" height="18" rx="5" fill="#57C97AE0"/>
+    <circle cx="411" cy="431" r="3" fill="#FFFFFF"/>
+    <text x="428" y="443" fill="#E4E8F5" font-size="15">подключиться к серверу</text>
+
+    <!-- 2 + язычок -->
+    <rect x="402" y="458" width="58" height="20" rx="9" fill="#2A3550"/>
+    <rect x="380" y="464" width="472" height="52" rx="12" fill="#2A3550" stroke="#5B8DEF9A"/>
+    <text x="392" y="497" fill="#7E7C90" font-size="12" font-weight="700">2</text>
+    <rect x="406" y="480" width="10" height="18" rx="5" fill="#57C97AE0"/>
+    <circle cx="411" cy="485" r="3" fill="#FFFFFF"/>
+    <text x="428" y="497" fill="#E4E8F5" font-size="15">ждать</text>
+    <rect x="482" y="472" width="34" height="38" rx="8" fill="#5B8DEF60" stroke="#5B8DEFB0"/>
+    <text x="492" y="497" fill="#EAF0FF" font-size="14" font-weight="700">2</text>
+    <text x="524" y="497" fill="#E4E8F5" font-size="15">сек</text>
+
+    <!-- 3 -->
+    <rect x="402" y="512" width="58" height="20" rx="9" fill="#2F3A46"/>
+    <rect x="380" y="518" width="472" height="52" rx="12" fill="#2F3A46" stroke="#E0A34C9A"/>
+    <text x="392" y="551" fill="#7E7C90" font-size="12" font-weight="700">3</text>
+    <rect x="406" y="534" width="10" height="18" rx="5" fill="#57C97AE0"/>
+    <circle cx="411" cy="539" r="3" fill="#FFFFFF"/>
+    <text x="428" y="551" fill="#E4E8F5" font-size="15">войти: /login</text>
+    <rect x="554" y="526" width="74" height="38" rx="8" fill="#E0A34C60" stroke="#E0A34CB0"/>
+    <text x="566" y="551" fill="#FFF3DF" font-size="14" font-weight="700">пароль</text>
+
+    <!-- 4 (активна, редактируется значение) -->
+    <rect x="402" y="566" width="58" height="20" rx="9" fill="#2F3A46"/>
+    <rect x="380" y="572" width="472" height="52" rx="12" fill="#2E3A3D" stroke="#4CBF7AF0" stroke-width="2"/>
+    <text x="392" y="605" fill="#7E7C90" font-size="12" font-weight="700">4</text>
+    <rect x="406" y="588" width="10" height="18" rx="5" fill="#57C97AE0"/>
+    <circle cx="411" cy="593" r="3" fill="#FFFFFF"/>
+    <text x="428" y="605" fill="#E4E8F5" font-size="15">ждать в чате «</text>
+    <rect x="538" y="580" width="84" height="38" rx="8" fill="#4CBF7A80" stroke="#4CBF7AE0"/>
+    <text x="550" y="605" fill="#FFFFFF" font-size="14" font-weight="700">Успешно</text>
+    <text x="632" y="605" fill="#E4E8F5" font-size="15">», не дольше</text>
+    <rect x="744" y="580" width="38" height="38" rx="8" fill="#4CBF7A55" stroke="#4CBF7AB0"/>
+    <text x="754" y="605" fill="#EAF7EE" font-size="14" font-weight="700">15</text>
+
+    <!-- 5 (вложенная) -->
+    <rect x="430" y="620" width="58" height="20" rx="9" fill="#2E3A3D"/>
+    <rect x="408" y="636" width="30" height="36" rx="4" fill="#4CBF7A60"/>
+    <rect x="408" y="626" width="472" height="52" rx="12" fill="#2E3A3D" stroke="#4CBF7A9A"/>
+    <text x="420" y="659" fill="#7E7C90" font-size="12" font-weight="700">5</text>
+    <rect x="434" y="642" width="10" height="18" rx="5" fill="#57C97AE0"/>
+    <circle cx="439" cy="647" r="3" fill="#FFFFFF"/>
+    <text x="456" y="659" fill="#E4E8F5" font-size="15">написать в чат</text>
+    <rect x="600" y="634" width="72" height="38" rx="8" fill="#4CBF7A60" stroke="#4CBF7AB0"/>
+    <text x="612" y="659" fill="#EAFAF0" font-size="14" font-weight="700">привет</text>
+
+    <!-- 6 -->
+    <rect x="380" y="680" width="472" height="44" rx="12" fill="#3A2F3A" stroke="#E06A9B9A"/>
+    <text x="392" y="708" fill="#7E7C90" font-size="12" font-weight="700">6</text>
+    <text x="428" y="708" fill="#E4E8F5" font-size="15">повторить</text>
+    <rect x="518" y="686" width="34" height="32" rx="8" fill="#E06A9B60" stroke="#E06A9BB0"/>
+    <text x="527" y="708" fill="#FFEDF4" font-size="14" font-weight="700">3</text>
+    <text x="560" y="708" fill="#E4E8F5" font-size="15">раза</text>
+  </g>
+
+  <!-- каталог -->
+  <rect x="880" y="98" width="292" height="404" rx="16" fill="#1B1B26" stroke="#FFFFFF1A"/>
+  <text x="900" y="126" fill="#F2F0FA" font-size="16" font-weight="700">Каталог шагов</text>
+  <text x="1156" y="126" fill="#6E6A80" font-size="12" text-anchor="end">64 шага</text>
+
+  <rect x="896" y="142" width="260" height="42" rx="11" fill="#FFFFFF12" stroke="#8B7BFFA6"/>
+  <circle cx="914" cy="163" r="6" fill="none" stroke="#8B7BFF" stroke-width="2"/>
+  <path d="M919 168 L925 174" stroke="#8B7BFF" stroke-width="2"/>
+  <text x="934" y="168" fill="#F2F0FA" font-size="14">пароль</text>
+  <rect x="1112" y="163" width="2" height="20" fill="#8B7BFF"/>
+
+  <g font-size="12" font-weight="600">
+    <rect x="896" y="196" width="60" height="30" rx="9" fill="#5B8DEF58" stroke="#5B8DEFB0"/>
+    <text x="926" y="215" fill="#F2F0FA" text-anchor="middle">Подкл.</text>
+    <rect x="962" y="196" width="62" height="30" rx="9" fill="#FFFFFF0F"/>
+    <text x="993" y="215" fill="#9A96AC" text-anchor="middle">Автор.</text>
+    <rect x="1030" y="196" width="52" height="30" rx="9" fill="#FFFFFF0F"/>
+    <text x="1056" y="215" fill="#9A96AC" text-anchor="middle">Чат</text>
+    <rect x="1088" y="196" width="68" height="30" rx="9" fill="#FFFFFF0F"/>
+    <text x="1122" y="215" fill="#9A96AC" text-anchor="middle">Действ.</text>
+    <rect x="896" y="232" width="72" height="30" rx="9" fill="#FFFFFF0F"/>
+    <text x="932" y="251" fill="#9A96AC" text-anchor="middle">Инвент.</text>
+    <rect x="974" y="232" width="62" height="30" rx="9" fill="#FFFFFF0F"/>
+    <text x="1005" y="251" fill="#9A96AC" text-anchor="middle">Логика</text>
+    <rect x="1042" y="232" width="62" height="30" rx="9" fill="#FFFFFF0F"/>
+    <text x="1073" y="251" fill="#9A96AC" text-anchor="middle">Прочее</text>
+  </g>
+
+  <g font-size="13">
+    <rect x="892" y="274" width="268" height="34" rx="9" fill="#FFFFFF16"/>
+    <rect x="898" y="282" width="4" height="18" rx="2" fill="#5B8DEF"/>
+    <text x="912" y="296" fill="#F2F0FA">войти: /login пароль</text>
+    <rect x="892" y="312" width="268" height="34" rx="9" fill="#FFFFFF0C"/>
+    <rect x="898" y="320" width="4" height="18" rx="2" fill="#E0A34C"/>
+    <text x="912" y="334" fill="#D8D5E4">войти паролем из профиля</text>
+    <rect x="892" y="350" width="268" height="34" rx="9" fill="#FFFFFF0C"/>
+    <rect x="898" y="358" width="4" height="18" rx="2" fill="#E0A34C"/>
+    <text x="912" y="372" fill="#D8D5E4">зарегистрироваться паролем…</text>
+    <rect x="892" y="388" width="268" height="34" rx="9" fill="#FFFFFF0C"/>
+    <rect x="898" y="396" width="4" height="18" rx="2" fill="#E0A34C"/>
+    <text x="912" y="410" fill="#D8D5E4">команда /changepassword …</text>
+    <rect x="892" y="426" width="268" height="34" rx="9" fill="#FFFFFF0C"/>
+    <rect x="898" y="434" width="4" height="18" rx="2" fill="#E0A34C"/>
+    <text x="912" y="448" fill="#D8D5E4">сменить пароль: /changepass…</text>
+  </g>
+
+  <!-- журнал -->
+  <rect x="880" y="514" width="292" height="218" rx="16" fill="#1B1B26" stroke="#FFFFFF1A"/>
+  <text x="900" y="542" fill="#F2F0FA" font-size="16" font-weight="700">Журнал</text>
+  <text x="1134" y="542" fill="#6E6A80" font-size="11" text-anchor="end">6 записей</text>
+
+  <g font-size="12" font-weight="600">
+    <rect x="892" y="554" width="60" height="30" rx="9" fill="#8B7BFF60" stroke="#8B7BFFB0"/>
+    <text x="922" y="573" fill="#F2F0FA" text-anchor="middle">Чат</text>
+    <rect x="958" y="554" width="86" height="30" rx="9" fill="#FFFFFF0F"/>
+    <text x="1001" y="573" fill="#9A96AC" text-anchor="middle">Команды</text>
+    <rect x="1050" y="554" width="112" height="30" rx="9" fill="#FFFFFF0F"/>
+    <text x="1106" y="573" fill="#9A96AC" text-anchor="middle">Полный вывод</text>
+  </g>
+
+  <g font-size="12">
+    <circle cx="900" cy="604" r="3" fill="#F2F0FA"/>
+    <text x="912" y="608" fill="#6E6A80" font-size="11">12:04:03</text>
+    <text x="972" y="608" fill="#F2F0FA">Добро пожаловать на сервер!</text>
+
+    <circle cx="900" cy="632" r="3" fill="#6FA8FF"/>
+    <text x="912" y="636" fill="#6E6A80" font-size="11">12:04:04</text>
+    <text x="972" y="636" fill="#6FA8FF">→ /login пароль</text>
+
+    <circle cx="900" cy="660" r="3" fill="#57C97A"/>
+    <text x="912" y="664" fill="#6E6A80" font-size="11">12:04:05</text>
+    <text x="972" y="664" fill="#57C97A">Вход выполнен</text>
+
+    <circle cx="900" cy="688" r="3" fill="#F2F0FA"/>
+    <text x="912" y="692" fill="#6E6A80" font-size="11">12:04:06</text>
+    <text x="972" y="692" fill="#F2F0FA">Успешно авторизован</text>
+
+    <circle cx="900" cy="716" r="3" fill="#E0B44C"/>
+    <text x="912" y="720" fill="#6E6A80" font-size="11">12:04:07</text>
+    <text x="972" y="720" fill="#E0B44C">ждём в чате: координаты</text>
+  </g>
+
+  <text x="14" y="756" fill="#6E6A80" font-size="10">Swerve · макет окна «Боты»: выдвижные профили, крупные плашки, поиск шагов, журнал с вкладками</text>
+</svg>

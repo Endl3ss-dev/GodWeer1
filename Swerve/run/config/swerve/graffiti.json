@@ -1,18 +1,4 @@
 {
   "format": 1,
-  "worlds": {
-    "mp:mc.hypemc.pro": {
-      "minecraft:overworld": [
-        {
-          "x": 5,
-          "y": 78,
-          "z": 3,
-          "face": "east",
-          "design": "SKETCH",
-          "spin": 0.0,
-          "at": 1792785562165
-        }
-      ]
-    }
-  }
+  "worlds": {}
 }

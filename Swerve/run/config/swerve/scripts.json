@@ -1,0 +1,33 @@
+{
+  "format": 1,
+  "client": "Swerve",
+  "variables": {},
+  "functions": [
+    {
+      "name": "Пример",
+      "key": -1,
+      "stack": {
+        "type": "trigger_manual",
+        "values": [],
+        "next": {
+          "type": "notify",
+          "values": [
+            "Привет! Это скрипт Swerve"
+          ],
+          "next": {
+            "type": "wait",
+            "values": [
+              "1"
+            ],
+            "next": {
+              "type": "notify",
+              "values": [
+                "Привяжи функцию к клавише и нажми её в игре"
+              ]
+            }
+          }
+        }
+      }
+    }
+  ]
+}
