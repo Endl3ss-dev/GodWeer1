@@ -12,6 +12,8 @@ Checks performed
   3. Every mixin injector (Inject/Redirect/ModifyArg/ModifyReturnValue/
      WrapOperation/ModifyVariable/Accessor/Invoker) names a member that exists
      in the target class hierarchy, with a matching descriptor when given.
+     `@Shadow` fields additionally must be declared by the target class itself:
+     mixin does not resolve inherited fields and fails at load otherwise.
   4. Inject / ModifyReturnValue handler signatures bind to the target: the
      handler may capture any prefix of the target parameters but must end with
      CallbackInfo (void target) or CallbackInfoReturnable (non-void target).
@@ -266,6 +268,24 @@ class ApiIndex:
                 if descriptor is not None and field_desc != descriptor:
                     continue
                 return True
+        return False
+
+    def declares_field(self, binary_name, name, descriptor=None):
+        """Field declared by this exact class, ignoring superclasses.
+
+        `@Shadow` on a field resolves against the target class only: an inherited
+        field is invisible to it and the mixin fails at load with
+        "`@Shadow` field X was not located in the target class".
+        """
+        info = self.classes.get(binary_name.replace(".", "/"))
+        if info is None:
+            return False
+        for field_name, field_desc in info.fields:
+            if field_name != name:
+                continue
+            if descriptor is not None and field_desc != descriptor:
+                continue
+            return True
         return False
 
 # --------------------------------------------------------------------------- #
@@ -702,6 +722,39 @@ def check_mixins(path, source, imports, api, report):
                                 report.error(path, f"@At field {binary}.{member}{descriptor} does not exist")
                         elif not api.find_methods(binary, member, descriptor):
                             report.error(path, f"@At method {binary}.{member}{descriptor} does not exist")
+
+    check_shadow_fields(path, strip_comments(source), mixin_classes, api, short, report)
+
+
+SHADOW = re.compile(r"@Shadow\b")
+FIELD_NAME = re.compile(r"([A-Za-z_$][\w$]*)\s*;\s*$")
+
+
+def check_shadow_fields(path, source, mixin_classes, api, short, report):
+    """`@Shadow` fields must be declared by the target class itself.
+
+    Mixin resolves shadowed *fields* against the target class only (shadowed *methods*
+    are also looked up in superclasses).  A shadow on an inherited field therefore
+    compiles and then fails at load with
+    "`@Shadow` field alpha was not located in the target class ...".
+    Such a field must be read through an `@Accessor` on the declaring class instead.
+    """
+    for match in SHADOW.finditer(source):
+        tail = source[match.end():]
+        stops = [index for index in (tail.find(";"), tail.find("{"), tail.find("(")) if index >= 0]
+        stop = min(stops) if stops else -1
+        if stop < 0 or tail[stop] != ";":
+            continue  # shadowed method (abstract or with a body) — not a field
+        name = FIELD_NAME.search(tail[:stop] + ";")
+        if not name:
+            continue
+        field = name.group(1)
+        if any(api.declares_field(binary, field) for binary in mixin_classes):
+            report.count("shadow fields verified")
+        else:
+            report.error(path, f"@Shadow field '{field}' is not declared by {short}; "
+                               "mixin resolves shadowed fields in the target class only — "
+                               "use an @Accessor on the declaring class")
 
 
 STATIC_CALL = re.compile(r"\b([A-Z]\w*)\s*\.\s*(\w+)\s*\(")

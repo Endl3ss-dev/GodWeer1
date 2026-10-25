@@ -6,12 +6,16 @@
 	"mixins": [
 	],
 	"client": [
+		"accessor.AbstractWidgetAccessor",
 		"accessor.GameRendererAccessor",
 		"accessor.LocalPlayerAccessor",
 		"accessor.MouseHandlerAccessor",
 		"accessor.ModelPartAccessor",
+		"client.MixinAbstractButton",
 		"client.MixinAbstractRecipeBookScreen",
+		"client.MixinAbstractSliderButton",
 		"client.MixinChatComponent",
+		"client.MixinCheckbox",
 		"client.MixinClientPacketListener",
 		"client.MixinGui",
 		"client.MixinInputConstants",
@@ -34,7 +38,8 @@
 		"render.MixinLevelRenderer",
 		"render.MixinPlayerModel",
 		"render.MixinPlayerRenderer",
-		"render.MixinRenderTarget"
+		"render.MixinRenderTarget",
+		"world.MixinWebBlock"
 	],
 	"injectors": {
 		"defaultRequire": 1

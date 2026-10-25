@@ -3,6 +3,8 @@ package swerve.mixins.client;
 import com.mojang.authlib.GameProfile;
 
 import swerve.Swerve;
+import swerve.managers.ModuleManager;
+import swerve.modules.impl.render.Graffiti;
 import swerve.utils.render.spatial.SpatialState;
 
 import net.minecraft.client.Minecraft;
@@ -27,6 +29,17 @@ public class MixinMinecraft {
             return;
         }
         cir.setReturnValue(new GameProfile(profile.getId(), Swerve.CLIENT_NICKNAME));
+    }
+
+    // [+] Graffiti: ПКМ по открытой грани наносит рисунок и отменяет ванильное действие —
+    // иначе в приседе вместе с граффити поставился бы блок, а с едой в руке началось бы поедание.
+    // Отмена только по факту нанесения: не подошла грань/дистанция — ПКМ идёт в ваниллу как обычно.
+    @Inject(method = "startUseItem", at = @At("HEAD"), cancellable = true)
+    private void swerve$graffitiUse(CallbackInfo ci) {
+        Graffiti graffiti = ModuleManager.get(Graffiti.class);
+        if (graffiti != null && graffiti.onVanillaUse()) {
+            ci.cancel();
+        }
     }
 
     // [+] SpatialGui: смена экрана снимает перехват сразу (с анимацией закрытия), не дожидаясь кадра.
