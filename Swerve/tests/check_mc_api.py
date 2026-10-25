@@ -476,6 +476,14 @@ JAVA_LANG_TYPES = {
     "Boolean": "java/lang/Boolean", "Integer": "java/lang/Integer",
     "Float": "java/lang/Float", "Double": "java/lang/Double",
     "Long": "java/lang/Long", "Throwable": "java/lang/Throwable",
+    # Mixin handlers routinely capture the exception a target method takes; without
+    # these the whole handler was silently skipped instead of verified.
+    "Exception": "java/lang/Exception", "RuntimeException": "java/lang/RuntimeException",
+    "Error": "java/lang/Error", "IllegalStateException": "java/lang/IllegalStateException",
+    "IllegalArgumentException": "java/lang/IllegalArgumentException",
+    "NullPointerException": "java/lang/NullPointerException",
+    "Class": "java/lang/Class", "Runnable": "java/lang/Runnable", "Thread": "java/lang/Thread",
+    "Number": "java/lang/Number", "Character": "java/lang/Character",
 }
 CALLBACK_TYPES = {
     "CallbackInfo": "Lorg/spongepowered/asm/mixin/injection/callback/CallbackInfo;",

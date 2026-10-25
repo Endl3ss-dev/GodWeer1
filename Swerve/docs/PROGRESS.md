@@ -6,6 +6,95 @@
 
 ---
 
+## 2026-10-26 — AntiCheatDetector: диагностика событий античита (12 классов, 2 миксина)
+
+### Зачем
+
+Модуль-накопитель того, что сервер уже показал клиенту: системные сообщения, причина
+отключения, серверная коррекция позиции, выданная скорость, неизвестные каналы полезной
+нагрузки, ошибки обработки пакетов. Задача — наблюдение и выгрузка (`Copy All Logs`,
+файл, локальный чат), а не обход: см. `docs/AntiCheatDetector.md` §5.
+
+### Что доказано (байткод 1.21.4, `tests/mc_disasm.py`)
+
+* `ClientPacketListener.handleSystemChat/handleDisguisedChat/handlePlayerChat/
+  handleMovePlayer(ClientboundPlayerPositionPacket)/handleSetEntityMotion/handleLogin` и
+  `ClientCommonPacketListenerImpl.handleCustomPayload/handleDisconnect/onDisconnect/
+  onPacketError` — существующие методы с ровно теми дескрипторами, что стоят в `@Inject`
+  (`check_mc_api`: 72/72 подписки колбэков, 0 пропущено; раньше «unresolved types» скрывал
+  хендлер `onPacketError` — в `check_mc_api.py` добавлены типы `java.lang` в
+  `JAVA_LANG_TYPES`, после чего подпись начала проверяться; отрицательный контроль:
+  переставленные параметры дают ERROR и код 1).
+* `onDisconnect` вызывают и `net.minecraft.network.Connection`, и
+  `ClientCommonPacketListenerImpl` — значит он бывает в потоке netty; отсюда
+  `AcdStore` со всеми мутациями под одним замком и `volatile`-политикой, а выключение
+  сборки уходит в `client.execute`.
+* `Window.setClipboardString` в 1.21.4 нет (0 совпадений по jar) — буфер обмена берётся
+  через `Minecraft.keyboardHandler.setClipboard`; `RegistrationPayload` тоже нет, поэтому
+  «сервер объявил канал античита» реализовано как id discarded-полезной нагрузки.
+* `DisconnectionDetails` несёт только `reason/report/bugReportLink` — никакие
+  «таймаут/пинг» не выводятся из пакета, и коллектор не делает вид, что различает их.
+
+### Что сделано
+
+* `swerve/acd`: `AcdCategory` (9 категорий, расширяется одной строкой), `AcdSeverity`,
+  `AcdConfidence` (CONFIRMED/OBSERVED/HEURISTIC), `AcdEvent` (исходный текст отдельно от
+  описания, лимиты 4096/512, пометка об обрезке), `AcdRule`+`AcdRules` (8 правил,
+  исключающие маркеры, первое совпадение), `AcdClassifier` (`§`-коды, `Locale.ROOT`,
+  окно поиска 2048), `AcdReport` (+`since` для окна выгрузки), `AcdStore` (кольцо
+  50…20 000, склейка повторов, счётчики вытеснения/слияний, сессии), `AcdCollector`
+  (десять источников, `emit` с фильтрами, `announce` в чат по настройке),
+  `AcdFormatter` (текст + JSON + `paginate` с честной отметкой об обрезке), `AcdExporter`
+  (буфер обмена, файл через `.tmp`+move, чат, очистка).
+* `ActionSetting` (настройка-кнопка, в конфиг не пишется: `SettingCodec` отдаёт `null`),
+  ветка `ActionSetting` и `ACT_ACTION = 31` в `MenuScreen`, регистрация в `ModuleManager`,
+  `MixinClientCommonPacketListenerImpl` (4 хендлера) + 6 хендлеров в `MixinClientPacketListener`,
+  `docs/AntiCheatDetector.md`.
+* Обязательный сценарий выполнен архитектурно: `AcdStore` статический (история живёт вне
+  модуля), все источники gated одним `volatile boolean`, а `openPopup`/`ACT_MODULE_OPEN`
+  в `MenuScreen` не зависят от `isEnable()` — окно настроек выключенного модуля открывается,
+  и `Copy All Logs` остаётся кликабельным. Проверено правил 13 `check_acd.py`.
+
+### Дефекты, найденные и исправлённые в ходе работы (свои же)
+
+* «Показывать важное в чате сразу» была декоративной: `AcdStore.announces()` не читался
+  нигде — добавлен `announce` в `emit` (только новая запись, только WARNING/CRITICAL,
+  только из игрового потока). Мутация «убить это чтение» теперь ловится (правило 12).
+* `AcdFormatter` зависел бы от `AcdExporter` (формат-строки) — `render` переведён на
+  булев признак, цикл пакетов убран.
+* `AcdEvent.sameKey` не включал важность → эскалация `INFO → CRITICAL` проглатывалась
+  слиянием; `merge` откатывал `lastTimeMs` назад при опоздавшем событии — оба исправлены.
+* `AcdExporter.printToChat` молча терял хвост при переполнении (40 записей × ≤ 512
+  символов > 60 кусков по 240) — разбивка вынесена в `AcdFormatter.paginate`, которая
+  обязана поставить отметку «опущено строк: N из M, символов: K».
+* `if flags.sessionContext() {` — собственная опечатка без скобок, найдена `check_syntax`
+  (11 находок), а не глазами.
+* `AcdCollector` импортировал `AntiCheatDetector` (наблюдающий пакет зависел от модуля) —
+  заменено на `AcdStore.setStopHook`; правило 6 `check_acd.py` теперь ловит такую связь.
+
+### Чем измерено
+
+`check_acd.py` (16 правил: `найдено: 0`; печатает «правил в таблице: 8, корпус: 28
+случаев, файлов ACD: 12, миксинов с ACD: 2», «проверок в харнессе — 224») и
+`check_acd_mutations.py` (`мутаций: 32, поймано: 32, пропущено: 0`, контроль чист).
+Плюс общие проверки: `check_syntax` 235 файлов/0, `check_types` 275 классов/0,
+`check_config` 0, `check_scope` 0, `check_mc_api` 0. `check_acd_run.py` — код 2:
+`javac` в среде нет (`jdk4py` с PyPI даёт только runtime без `jdk.compiler`).
+
+### НЕ ПРОВЕРЕНО
+
+Не компилировалось (`./gradlew build` не запускался), харнесс `tests/AcdHarness.java`
+написан и разобран tree-sitter (0 ERROR-узлов), но не выполнялся; игра не запускалась;
+полнота текстовых правил на реальных логах сервера не измерена. Подробности —
+`docs/AntiCheatDetector.md`, раздел «НЕ ПРОВЕРЕНО».
+
+### Следующее действие
+
+Прогнать `check_acd_run.py` на машине с JDK 21 (ожидается «AcdHarness: пройдено 224,
+провалено 0»), затем `./gradlew build` + чек-лист §10 документа на сервере с GrimAC.
+
+---
+
 ## 2026-10-25 — Speed: точка внедрения перенесена с подмены скорости на ускорение
 
 ### Зачем
