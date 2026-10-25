@@ -17,6 +17,7 @@
 		"client.MixinChatComponent",
 		"client.MixinCheckbox",
 		"client.MixinClientPacketListener",
+		"client.MixinClientCommonPacketListenerImpl",
 		"client.MixinGui",
 		"client.MixinInputConstants",
 		"client.MixinKeyboardHandler",
