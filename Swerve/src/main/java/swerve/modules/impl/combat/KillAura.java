@@ -744,7 +744,15 @@ public final class KillAura extends Module {
         }
         if (smartHitbox.get() && target != null) {
             Vec3 visiblePoint = AuraUtils.visibleTargetPoint(player, target);
-            return player.getEyePosition(1.0F).distanceTo(visiblePoint) <= attackDistance(player);
+            if (player.getEyePosition(1.0F).distanceTo(visiblePoint) > attackDistance(player)) {
+                return false;
+            }
+            // [+] «Улучшить хитбоксы» не отменяет «Не бить через блоки»: раньше эта
+            // ветка возвращала результат сразу, и включение одной настройки молча
+            // выключало другую — аура била сквозь стену. hasVisiblePoint останавливается
+            // на первой открытой точке, поэтому сверх уже сделанных проверок это обычно
+            // ровно один clip.
+            return !noHitThroughBlocks.get() || AuraUtils.hasVisiblePoint(player, target);
         }
         if (!AuraUtils.lookRayHitsBox(player, target, attackDistance(player))) {
             return false;
