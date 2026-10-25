@@ -83,6 +83,14 @@ public final class Graffiti extends Module {
 
     private static boolean eventsRegistered;
 
+    /**
+     * Проверка «грань ещё существует» для {@link GraffitiStore#tick}: статическая лямбда
+     * без захватов компилируется в синглтон, поэтому в тике не создаётся. Раньше на месте
+     * вызова стояла лямбда, захватывавшая {@code minecraft}, — новый объект каждый тик.
+     */
+    private static final GraffitiStore.BlockStateLookup LEVEL_LOOKUP =
+            (pos, face) -> GraffitiStore.faceExists(Minecraft.getInstance().level, pos, face);
+
     private final ModeSetting designMode = new ModeSetting("Рисунок", GraffitiDesign.SKETCH.label(),
             designLabels());
     private final ModeSetting activation = new ModeSetting("Активация", MODE_SNEAK, MODE_SNEAK, MODE_USE, MODE_BIND);
@@ -251,7 +259,7 @@ public final class Graffiti extends Module {
             handleErase(minecraft);
         }
 
-        GraffitiStore.tick((pos, face) -> GraffitiStore.faceExists(minecraft.level, pos, face));
+        GraffitiStore.tick(LEVEL_LOOKUP);
     }
 
     /**

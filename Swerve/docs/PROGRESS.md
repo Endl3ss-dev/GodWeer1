@@ -6,6 +6,87 @@
 
 ---
 
+## 2026-10-25 — Скрипты: кольцо в стеке блоков и OutOfMemoryError в тике
+
+### Находка (из логов, не из предположений)
+
+`run/logs/2026-10-24-6.log` (сервер авторизации, 20:26–20:30) и `debug.log` содержат
+падение клиента:
+
+```
+[20:29:30] [Render thread/ERROR] (net.minecraft.client.Minecraft) Out of memory
+java.lang.OutOfMemoryError: Java heap space
+    at java.util.ArrayList.grow(ArrayList.java:240)
+    at com.google.gson.JsonArray.add(JsonArray.java:117)
+    at swerve.script.ScriptStore.encodeChain(ScriptStore.java:294)
+    at swerve.script.ScriptStore.save(ScriptStore.java:256)
+    at swerve.script.ScriptStore.tick(ScriptStore.java:152)
+```
+
+Корень — `ScriptBlocks.detach`: открепляя блок, метод отдавал родителю
+`target.getNext()`, то есть блоки под `target` оставались и в исходном стеке, и в
+перетаскиваемой цепочке. Возврат цепочки на место (`insert`) замыкал список в
+кольцо: `tail.next` указывал на прежнюю голову. Дальше `encodeChain` шёл по кольцу
+и добавлял объекты в `JsonArray`, пока не кончалась память. Воспроизводилось
+простым кликом по блоку: `finishDrag` при `!moved` возвращает блок в исходную
+позицию, а `beginDrag` уже открепил его.
+
+### Что изменено
+
+| Файл | Причина |
+| --- | --- |
+| `script/ScriptBlocks.java` | `detach` рвёт связь родителя (`previous.next = null`, `holder.head = null`) — цепочка под блоком уезжает вместе с ним, как в Scratch, но в исходном стеке её больше нет; `insert` возвращает `boolean` и отказывает, если цепочку вкладывают в неё саму (проверка головы контейнера добавлена к прежней проверке C-блока); обходы в `at`/`contains`/`indexOf`/`holderOf`/`detach` ограничены `MAX_CHAIN` |
+| `script/ScriptBlock.java` | `MAX_CHAIN = 4000` и пределы в `chainLength`/`tail`/`flatten`: обход испорченной модели не может крутиться вечно |
+| `script/ScriptStore.java` | `encodeChain` получил предел длины (`MAX_BLOCKS` на весь файл) и глубины (`MAX_DEPTH`), усечение пишется в лог один раз; `decodeChain` использует ту же константу `MAX_DEPTH` вместо литерала `200` |
+| `ui/script/ScriptScreen.java` | новый `attach(holder, index, block)`: при отказе вставки цепочка уходит в конец корневого стека, иначе откреплённый блок молча исчез бы из редактора; все восемь точек вставки переведены на него |
+| `docs/Scripts.md` | раздел «Инварианты модели стеков» и разбор этого падения |
+| `tests/check_script_blocks.py` | новая проверка (см. ниже) |
+
+### Чем проверено
+
+```
+check_script_blocks        найдено: 0   (статика + перебор перетаскиваний + мутация)
+check_script_blocks /tmp/mut/... → код 1 на копии со старым detach:
+    «в родителя снова подставляется target.getNext()», «голова контейнера не
+     обнуляется», «связь родителя не рвётся» — проверка ловит исходный баг
+check_syntax               файлов: 235, находок: 0
+check_types                файлов: 235, классов: 275, находок: 0
+check_scope                найдено: 0
+check_mc_api               static references checked: 693, shadow fields verified: 11
+check_config / check_killaura / check_pvp_utils / check_speed / check_acd   0
+check_hotpath              105 жёстких (105 в исключениях), информационных 116
+check_hotpath_mutations    8/8 поймано
+check_acd_mutations        35/35
+check_speed_mutations      18/18
+```
+
+`check_script_blocks.py` состоит из трёх частей: статические требования к исходникам
+(в `detach` нет `target.getNext()`, есть `setNext(null)`/`setHead(null)`;
+`encodeChain` ограничен бюджетом и глубиной; `ScriptScreen` не вызывает
+`ScriptBlocks.insert` вне `attach`); перебор перетаскиваний в модели (стек длины
+1–4, все пары «взять i — положить в j», вложенные пасты) с проверкой ацикличности,
+сохранности и уникальности блоков; мутация «прежний detach + прежний insert»,
+которая обязана воспроизвести кольцо (воспроизводит в 3 из 6 случаев).
+
+### Ограничения
+
+* Это **модельная** проверка алгоритма, а не исполнение Java: JDK в песочнице нет,
+  `javac`/`./gradlew build` недоступны (см. журнал ниже: Temurin → `curl 35`).
+  Порт написан построчно по `ScriptBlocks`, но расхождение порта и оригинала
+  проверка не заметит — статическая часть привязана к конкретным конструкциям.
+* Воспроизведение в рантайме не выполнено: подтверждение — стек из лога клиента и
+  разбор кода, а не запуск исправленной сборки на машине владельца.
+* `run/logs` — единственный источник рантайм-факта; новых прогонов после этой
+  правки нет.
+
+### Следующее действие
+
+На машине владельца: `./gradlew build`, затем в редакторе скриптов кликнуть по
+первому блоку цепочки (детект регрессии), перетащить блок в собственную «пасть»
+(должен уехать в конец стека, не исчезнуть), перезапустить клиент и проверить, что
+`config/swerve/scripts.json` сохранился без усечения (в логе не должно быть
+`Script stack is longer than`).
+
 ## 2026-10-26 — AntiCheatDetector: диагностика событий античита (12 классов, 2 миксина)
 
 ### Зачем

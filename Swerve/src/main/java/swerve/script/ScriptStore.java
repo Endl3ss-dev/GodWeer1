@@ -52,6 +52,7 @@ public final class ScriptStore {
 
     private static final long SAVE_INTERVAL_MS = 2_000L;
     private static final int MAX_BLOCKS = 4_000;
+    private static final int MAX_DEPTH = 200;
 
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().disableHtmlEscaping().create();
     private static final Path FILE = FabricLoader.getInstance().getConfigDir().resolve("swerve/scripts.json");
@@ -65,6 +66,7 @@ public final class ScriptStore {
     private static boolean hooksRegistered;
     private static long lastSaveMs;
     private static String lastWritten;
+    private static boolean truncationWarned;
 
     private ScriptStore() {
     }
@@ -246,6 +248,9 @@ public final class ScriptStore {
             }
             root.add("variables", variables);
 
+            // Один бюджет на весь файл: ограничение считается по всем функциям сразу,
+            // чтобы сохранение не могло занять память даже при испорченной модели.
+            int[] budget = {MAX_BLOCKS};
             JsonArray functions = new JsonArray();
             for (int i = 0, size = FUNCTIONS.size(); i < size; i++) {
                 ScriptFunction function = FUNCTIONS.get(i);
@@ -253,7 +258,10 @@ public final class ScriptStore {
                 data.addProperty("name", function.getName());
                 data.addProperty("key", function.getKey());
                 if (function.getHead() != null) {
-                    data.add("stack", encodeChain(function.getHead()));
+                    JsonObject stack = encodeChain(function.getHead(), 0, budget);
+                    if (stack != null) {
+                        data.add("stack", stack);
+                    }
                 }
                 functions.add(data);
             }
@@ -280,12 +288,28 @@ public final class ScriptStore {
         }
     }
 
-    private static JsonObject encodeChain(ScriptBlock head) {
+    /**
+     * [+] Запись цепочки блоков с ограничением обхода.
+     *
+     * <p>Раскладка редактора обязана быть ациклической (см.
+     * {@link ScriptBlocks#detach}), но сохранение не имеет права полагаться на это:
+     * одно кольцо в ссылках {@code next} раньше крутило этот цикл до
+     * {@code java.lang.OutOfMemoryError} прямо в тике — {@code JsonArray} рос, пока
+     * не кончилась память (лог: {@code ScriptStore.encodeChain -> save -> tick}).
+     * Поэтому обход ограничен и по длине ({@link #MAX_BLOCKS} на весь файл), и по
+     * глубине вложенности ({@link #MAX_DEPTH}): усечение пишется в лог, клиент живёт.
+     */
+    private static JsonObject encodeChain(ScriptBlock head, int depth, int[] budget) {
+        if (head == null || depth > MAX_DEPTH) {
+            return null;
+        }
+
         ScriptBlock block = head;
         JsonObject first = null;
         JsonObject previous = null;
 
-        while (block != null) {
+        while (block != null && budget[0] > 0) {
+            budget[0]--;
             JsonObject data = new JsonObject();
             data.addProperty("type", block.getType() == null ? "unknown" : block.getType().id());
 
@@ -296,7 +320,14 @@ public final class ScriptStore {
             data.add("values", values);
 
             if (block.getInner() != null) {
-                data.add("inner", encodeChain(block.getInner()));
+                JsonObject inner = encodeChain(block.getInner(), depth + 1, budget);
+                if (inner != null) {
+                    data.add("inner", inner);
+                } else if (!truncationWarned) {
+                    truncationWarned = true;
+                    Swerve.LOGGER.warn("Script nesting is deeper than {} levels; inner blocks of function stack were not saved",
+                            MAX_DEPTH);
+                }
             }
 
             if (first == null) {
@@ -307,11 +338,17 @@ public final class ScriptStore {
             previous = data;
             block = block.getNext();
         }
+
+        if (block != null && !truncationWarned) {
+            truncationWarned = true;
+            Swerve.LOGGER.warn("Script stack is longer than {} blocks or contains a cycle; saved truncated",
+                    MAX_BLOCKS);
+        }
         return first;
     }
 
     private static ScriptBlock decodeChain(JsonElement element, int depth) {
-        if (element == null || !element.isJsonObject() || depth > 200) {
+        if (element == null || !element.isJsonObject() || depth > MAX_DEPTH) {
             return null;
         }
 

@@ -30,14 +30,11 @@ import net.minecraft.resources.ResourceLocation;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.EquipmentSlot;
 import net.minecraft.world.entity.player.Player;
-import net.minecraft.world.phys.Vec3;
 
 import org.joml.Matrix4f;
 
-import java.util.HashMap;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 
 public final class Arrows extends Module {
@@ -80,8 +77,20 @@ public final class Arrows extends Module {
     private final FloatSetting size = new FloatSetting("Размер", 13.0F, 8.0F, 28.0F, 0.5F);
     private final FloatSetting distance = new FloatSetting("Дистанция", 58.0F, 30.0F, 120.0F, 1.0F);
 
-    private final Map<UUID, ArrowState> states = new HashMap<>();
-    private final Set<UUID> seen = new HashSet<>();
+    /**
+     * Состояния стрелок списком, а не {@code HashMap}.
+     *
+     * <p>Итерация {@code HashMap} в каждом кадре создаёт объект-итератор, а
+     * {@code entrySet().removeIf(...)} — ещё и захватывающую лямбду. Игроков рядом
+     * единицы, поэтому линейный поиск по массиву дешевле двух аллокаций за кадр.
+     * Пометка «видел в этом кадре» заменяет прежний {@code HashSet} и его {@code clear()}.
+     */
+    private final List<ArrowState> states = new ArrayList<>();
+    private int frame;
+
+    /** Scratch-буферы интерполяции (x, y, z): кадр рисуется в одном потоке. */
+    private static final double[] SELF = new double[3];
+    private static final double[] OTHER = new double[3];
 
     public Arrows() {
         super("Arrows", "Стрелочки на игроков вокруг прицела", ModuleCategory.RENDER);
@@ -125,12 +134,23 @@ public final class Arrows extends Module {
         float arrowSize = size.get();
         float y = centerY - distance.get();
         float selfYaw = Mth.lerp(partialTick, minecraft.player.yRotO, minecraft.player.getYRot());
-        Vec3 selfPos = interpolate(minecraft.player, partialTick);
+        double[] self = SELF;
+        interpolate(minecraft.player, partialTick, self);
         ResourceLocation arrowTexture = TEXTURES[texture.getIndex()];
 
-        seen.clear();
+        frame++;
+        if (frame == Integer.MAX_VALUE) {
+            // Переполнение счётчика: иначе все стрелки разом посчитались бы пропавшими.
+            frame = 1;
+            for (int i = 0; i < states.size(); i++) {
+                states.get(i).seenFrame = 0;
+            }
+        }
 
-        for (AbstractClientPlayer player : minecraft.level.players()) {
+        // Индексный обход: for-each по списку игроков тоже создаёт итератор.
+        List<AbstractClientPlayer> players = minecraft.level.players();
+        for (int index = 0; index < players.size(); index++) {
+            AbstractClientPlayer player = players.get(index);
             if (player == minecraft.player || !player.isAlive() || player.isSpectator()) {
                 continue;
             }
@@ -143,12 +163,12 @@ public final class Arrows extends Module {
                 continue;
             }
 
-            UUID uuid = player.getUUID();
-            ArrowState state = states.computeIfAbsent(uuid, id -> new ArrowState());
-            seen.add(uuid);
+            ArrowState state = stateFor(player.getUUID());
+            state.seenFrame = frame;
 
-            Vec3 targetPos = interpolate(player, partialTick);
-            float targetYaw = relativeYaw(targetPos, selfPos, selfYaw);
+            double[] other = OTHER;
+            interpolate(player, partialTick, other);
+            float targetYaw = relativeYaw(other, self, selfYaw);
             state.rotation = interpolateAngle(state.rotation, targetYaw, ROTATION_SMOOTHING);
             state.alpha = Mth.lerp(FADE_IN, state.alpha, 1.0F);
             float alpha = Mth.clamp(state.alpha, 0.0F, 1.0F);
@@ -162,14 +182,34 @@ public final class Arrows extends Module {
             renderArrow(poseStack, arrowTexture, centerX, centerY, y, arrowSize, state.rotation, drawColor, shadowColor);
         }
 
-        states.entrySet().removeIf(entry -> {
-            if (seen.contains(entry.getKey())) {
-                return false;
+        fadeMissing();
+    }
+
+    /** Состояние игрока по UUID; новый объект создаётся только для нового игрока. */
+    private ArrowState stateFor(UUID id) {
+        for (int i = 0; i < states.size(); i++) {
+            ArrowState state = states.get(i);
+            if (state.id.equals(id)) {
+                return state;
             }
-            ArrowState state = entry.getValue();
+        }
+        ArrowState created = new ArrowState(id);
+        states.add(created);
+        return created;
+    }
+
+    /** Гашение стрелок игроков, которых не было в этом кадре (бывший removeIf). */
+    private void fadeMissing() {
+        for (int i = states.size() - 1; i >= 0; i--) {
+            ArrowState state = states.get(i);
+            if (state.seenFrame == frame) {
+                continue;
+            }
             state.alpha = Mth.lerp(FADE_OUT, state.alpha, 0.0F);
-            return state.alpha <= 0.02F;
-        });
+            if (state.alpha <= 0.02F) {
+                states.remove(i);
+            }
+        }
     }
 
     private void renderArrow(PoseStack poseStack, ResourceLocation arrowTexture, float centerX, float centerY,
@@ -236,24 +276,30 @@ public final class Arrows extends Module {
     }
 
     private void fadeAll() {
-        states.entrySet().removeIf(entry -> {
-            ArrowState state = entry.getValue();
+        for (int i = states.size() - 1; i >= 0; i--) {
+            ArrowState state = states.get(i);
             state.alpha = Mth.lerp(FADE_OUT, state.alpha, 0.0F);
-            return state.alpha <= 0.02F;
-        });
+            if (state.alpha <= 0.02F) {
+                states.remove(i);
+            }
+        }
     }
 
-    private Vec3 interpolate(Player player, float partialTick) {
-        return new Vec3(
-                Mth.lerp(partialTick, player.xo, player.getX()),
-                Mth.lerp(partialTick, player.yo, player.getY()),
-                Mth.lerp(partialTick, player.zo, player.getZ())
-        );
+    /**
+     * Интерполяция позиции в scratch-буфер {@code out} (x, y, z).
+     *
+     * <p>Раньше метод возвращал {@code Vec3}, то есть создавал объект на каждого игрока
+     * в каждом кадре. Значения те же: {@code Mth.lerp(partialTick, prev, current)}.
+     */
+    private void interpolate(Player player, float partialTick, double[] out) {
+        out[0] = Mth.lerp(partialTick, player.xo, player.getX());
+        out[1] = Mth.lerp(partialTick, player.yo, player.getY());
+        out[2] = Mth.lerp(partialTick, player.zo, player.getZ());
     }
 
-    private float relativeYaw(Vec3 target, Vec3 self, float selfYaw) {
-        double dx = target.x - self.x;
-        double dz = target.z - self.z;
+    private float relativeYaw(double[] target, double[] self, float selfYaw) {
+        double dx = target[0] - self[0];
+        double dz = target[2] - self[2];
         float yaw = (float) -Math.toDegrees(Math.atan2(dx, dz));
         return Mth.wrapDegrees(yaw - selfYaw);
     }
@@ -263,7 +309,14 @@ public final class Arrows extends Module {
     }
 
     private static final class ArrowState {
+        private final UUID id;
         private float alpha;
         private float rotation;
+        /** Номер кадра, в котором игрока видели; замена прежнему множеству seen. */
+        private int seenFrame;
+
+        private ArrowState(UUID id) {
+            this.id = id;
+        }
     }
 }

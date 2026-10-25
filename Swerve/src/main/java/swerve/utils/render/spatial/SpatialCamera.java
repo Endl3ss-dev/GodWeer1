@@ -22,6 +22,9 @@ import net.minecraft.world.phys.shapes.VoxelShape;
  * либо свободный взгляд/параллакс от первого лица; обратный переход при закрытии.
  */
 public final class SpatialCamera {
+    /** Позиция блока на кадр без аллокации: рендер идёт в одном потоке. */
+    private static final BlockPos.MutableBlockPos BLOCK_POS = new BlockPos.MutableBlockPos();
+
 
     private static final float MAX_YAW_OFFSET = 90.0F;
     private static final float PARALLAX_TAU_MS = 50.0F;
@@ -316,9 +319,12 @@ public final class SpatialCamera {
         double camY = entity.getY() + module.cameraHeightOffset();
         double camZ = entity.getZ() - Math.cos(yawRad) * distance + Math.sin(yawRad) * sideOffset;
 
+        // Три Vec3 ниже нужны API: Level.clip и AABB принимают только объекты.
         Vec3 eye = new Vec3(entity.getX(), entity.getY() + entity.getEyeHeight(), entity.getZ());
         Vec3 target = new Vec3(camX, camY, camZ);
-        BlockPos blockPos = BlockPos.containing(camX, camY, camZ);
+        // BlockPos.MutableBlockPos вместо BlockPos.containing: позиция нужна только для
+        // getBlockState/getCollisionShape/bounds().move и никуда не сохраняется.
+        BlockPos blockPos = BLOCK_POS.set(camX, camY, camZ);
         BlockState state = level.getBlockState(blockPos);
         VoxelShape shape = state.getCollisionShape(level, blockPos);
         boolean insideBlock = !state.isAir() && !shape.isEmpty()

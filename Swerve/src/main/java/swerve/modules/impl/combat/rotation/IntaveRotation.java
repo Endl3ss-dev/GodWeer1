@@ -2,7 +2,6 @@ package swerve.modules.impl.combat.rotation;
 
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.phys.Vec3;
 
 import swerve.utils.rotation.GcdUtil;
 
@@ -30,14 +29,13 @@ public final class IntaveRotation extends AbstractRotationElement {
             return;
         }
 
-        Vec3 targetPos = new Vec3(
-                target.getX(),
-                target.getY() + target.getEyeHeight() * (0.6D + this.random.nextDouble() * 0.2D),
-                target.getZ());
-        Vec3 playerPos = mc().player.getEyePosition(1.0F);
-        double dx = targetPos.x - playerPos.x;
-        double dy = targetPos.y - playerPos.y;
-        double dz = targetPos.z - playerPos.z;
+        // Точка прицела и глаза — скалярами: значения те же, Vec3 на тик не нужен.
+        double targetX = target.getX();
+        double targetY = target.getY() + target.getEyeHeight() * (0.6D + this.random.nextDouble() * 0.2D);
+        double targetZ = target.getZ();
+        double dx = targetX - mc().player.getX();
+        double dy = targetY - mc().player.getEyeY();
+        double dz = targetZ - mc().player.getZ();
 
         float baseYaw = (float) Math.toDegrees(Math.atan2(dz, dx)) - 90.0F;
         float basePitch = (float) -Math.toDegrees(Math.atan2(dy, Math.sqrt(dx * dx + dz * dz)));

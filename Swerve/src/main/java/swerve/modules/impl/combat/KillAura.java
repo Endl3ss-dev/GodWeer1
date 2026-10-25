@@ -744,7 +744,12 @@ public final class KillAura extends Module {
         }
         if (smartHitbox.get() && target != null) {
             Vec3 visiblePoint = AuraUtils.visibleTargetPoint(player, target);
-            if (player.getEyePosition(1.0F).distanceTo(visiblePoint) > attackDistance(player)) {
+            // Дистанция от глаз до выбранной точки — без Vec3 от getEyePosition(1.0F):
+            // это те же координаты (getX(), getEyeY(), getZ()).
+            double dx = visiblePoint.x - player.getX();
+            double dy = visiblePoint.y - player.getEyeY();
+            double dz = visiblePoint.z - player.getZ();
+            if (Math.sqrt(dx * dx + dy * dy + dz * dz) > attackDistance(player)) {
                 return false;
             }
             // [+] «Улучшить хитбоксы» не отменяет «Не бить через блоки»: раньше эта

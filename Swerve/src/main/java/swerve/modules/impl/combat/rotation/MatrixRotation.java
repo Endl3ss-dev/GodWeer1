@@ -2,7 +2,6 @@ package swerve.modules.impl.combat.rotation;
 
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.phys.Vec3;
 
 import swerve.utils.rotation.GcdUtil;
 import swerve.utils.rotation.RotationController;
@@ -68,13 +67,12 @@ public final class MatrixRotation extends AbstractRotationElement {
         float dtScale = dt * 60.0F;
         this.lastUpdateMs = now;
 
-        Vec3 eyes = mc().player.getEyePosition(1.0F);
-        Vec3 targetPoint = new Vec3(
-                target.getX(),
-                target.getY() + target.getEyeHeight() * AIM_HEIGHT_FACTOR,
-                target.getZ());
+        // Точка прицела и глаза — скалярами (Vec3 на каждый тик не нужен).
+        double pointX = target.getX();
+        double pointY = target.getY() + target.getEyeHeight() * AIM_HEIGHT_FACTOR;
+        double pointZ = target.getZ();
 
-        if (!isPointVisible(targetPoint)) {
+        if (!isPointVisible(pointX, pointY, pointZ)) {
             float frozenYaw = GcdUtil.getSensitivity(this.smoothYaw);
             float frozenPitch = GcdUtil.getSensitivity(this.smoothPitch);
             this.lerpYaw = frozenYaw;
@@ -83,9 +81,9 @@ public final class MatrixRotation extends AbstractRotationElement {
             return;
         }
 
-        double dx = targetPoint.x - eyes.x;
-        double dy = targetPoint.y - eyes.y;
-        double dz = targetPoint.z - eyes.z;
+        double dx = pointX - mc().player.getX();
+        double dy = pointY - mc().player.getEyeY();
+        double dz = pointZ - mc().player.getZ();
         double horizontal = Math.sqrt(dx * dx + dz * dz);
 
         float targetYaw = (float) Math.toDegrees(Math.atan2(dz, dx)) - 90.0F;

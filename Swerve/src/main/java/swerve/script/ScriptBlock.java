@@ -17,6 +17,19 @@ package swerve.script;
  */
 public final class ScriptBlock implements BlockHolder {
 
+    /**
+     * [+] Жёсткий предел длины стека.
+     *
+     * <p>Ссылки {@code next}/{@code inner} изменяемые, а редактор двигает блоки
+     * перестановкой ссылок. Предел — предохранитель на случай кольца: любой обход
+     * стека обязан остановиться, даже если модель испорчена. Без него обход
+     * крутился вечно, а {@code ScriptStore.encodeChain} при этом ещё и добавлял
+     * объекты в {@code JsonArray} — это и дало {@code OutOfMemoryError} в тике
+     * (см. запись в docs/PROGRESS.md). Тот же предел использует загрузчик
+     * ({@code ScriptStore.MAX_BLOCKS} = 4000).
+     */
+    public static final int MAX_CHAIN = 4_000;
+
     private final BlockType type;
     private final String[] values;
 
@@ -91,24 +104,25 @@ public final class ScriptBlock implements BlockHolder {
     /** Длина стека начиная с этого блока (без вложенных стеков). */
     public int chainLength() {
         int length = 0;
-        for (ScriptBlock block = this; block != null; block = block.getNext()) {
+        for (ScriptBlock block = this; block != null && length < MAX_CHAIN; block = block.getNext()) {
             length++;
         }
         return length;
     }
 
+    /** Последний блок стека; при кольце — блок на пределе {@link #MAX_CHAIN}. */
     public ScriptBlock tail() {
-        ScriptBlock block = this;
-        while (block.getNext() != null) {
-            block = block.getNext();
+        ScriptBlock last = this;
+        for (int steps = 1; steps < MAX_CHAIN && last.getNext() != null; steps++) {
+            last = last.getNext();
         }
-        return block;
+        return last;
     }
 
     /** Все блоки стека в порядке выполнения — удобно для поиска и подсчёта. */
     public java.util.List<ScriptBlock> flatten() {
-        java.util.List<ScriptBlock> list = new java.util.ArrayList<>();
-        for (ScriptBlock block = this; block != null; block = block.getNext()) {
+        java.util.List<ScriptBlock> list = new java.util.ArrayList<>(16);
+        for (ScriptBlock block = this; block != null && list.size() < MAX_CHAIN; block = block.getNext()) {
             list.add(block);
         }
         return list;

@@ -50,14 +50,22 @@ public abstract class AbstractRotationElement implements RotationElement {
         RotationController.update(this.request, yawSpeed, pitchSpeed, ticks, priority);
     }
 
-    /** Точка видна, если между глазами и ней нет коллизий блоков (isPointVisible из Private). */
-    protected boolean isPointVisible(Vec3 point) {
+    /**
+     * Точка видна, если между глазами и ней нет коллизий блоков (isPointVisible из Private).
+     *
+     * <p>Координаты, а не {@code Vec3}: элемент ротации вызывается каждый тик, и раньше
+     * каждая проверка строила {@code Vec3} только для того, чтобы прочитать три числа.
+     * Внутри {@code Level.clip} два {@code Vec3} всё равно нужны — их принимает API.
+     */
+    protected boolean isPointVisible(double x, double y, double z) {
         if (mc().player == null || mc().level == null) {
             return false;
         }
-        Vec3 eye = mc().player.getEyePosition(1.0F);
+        // Глаза без аллокации: getEyePosition(1.0F) = (getX(), getY() + eyeHeight, getZ()).
         BlockHitResult result = mc().level.clip(new ClipContext(
-                eye, point, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, mc().player));
+                new Vec3(mc().player.getX(), mc().player.getEyeY(), mc().player.getZ()),
+                new Vec3(x, y, z),
+                ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, mc().player));
         return result.getType() == HitResult.Type.MISS;
     }
 

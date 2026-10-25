@@ -1237,7 +1237,7 @@ public final class ScriptScreen extends Screen {
             return;
         }
         if (!this.dragFromPalette) {
-            ScriptBlocks.insert(this.dragOriginHolder, this.dragOriginIndex, this.dragBlock);
+            attach(this.dragOriginHolder, this.dragOriginIndex, this.dragBlock);
         }
         this.dragBlock = null;
         this.dragOriginHolder = null;
@@ -1264,7 +1264,7 @@ public final class ScriptScreen extends Screen {
         // Клик по блоку без движения — это не перетаскивание: возвращаем на место,
         // иначе блок молча менял бы порядок от простого нажатия.
         if (!fromPalette && !moved) {
-            ScriptBlocks.insert(this.dragOriginHolder, this.dragOriginIndex, block);
+            attach(this.dragOriginHolder, this.dragOriginIndex, block);
             return;
         }
 
@@ -1285,7 +1285,7 @@ public final class ScriptScreen extends Screen {
             if (fromPalette) {
                 appendToScript(block);
             } else {
-                ScriptBlocks.insert(this.dragOriginHolder, this.dragOriginIndex, block);
+                attach(this.dragOriginHolder, this.dragOriginIndex, block);
             }
             return;
         }
@@ -1300,16 +1300,16 @@ public final class ScriptScreen extends Screen {
 
         // Шляпа всегда остаётся первым блоком: иначе функция потеряет триггер.
         if (block.getType() != null && block.getType().hat()) {
-            ScriptBlocks.insert(this.selected, 0, block);
+            attach(this.selected, 0, block);
             ScriptStore.markDirty();
             return;
         }
 
         ScriptCanvas.DropZone zone = this.canvas.dropZoneAt(x, y, S(30));
         if (zone != null) {
-            ScriptBlocks.insert(zone.holder, zone.index, block);
+            attach(zone.holder, zone.index, block);
         } else {
-            ScriptBlocks.insert(this.selected, Integer.MAX_VALUE, block);
+            attach(this.selected, Integer.MAX_VALUE, block);
         }
         ScriptStore.markDirty();
         MenuSound.play(MenuSound.DROP, 1.0f, 0.45f);
@@ -1320,12 +1320,35 @@ public final class ScriptScreen extends Screen {
             return;
         }
         if (block.getType() != null && block.getType().hat()) {
-            ScriptBlocks.insert(this.selected, 0, block);
+            attach(this.selected, 0, block);
         } else {
-            ScriptBlocks.insert(this.selected, Integer.MAX_VALUE, block);
+            attach(this.selected, Integer.MAX_VALUE, block);
         }
         ScriptStore.markDirty();
         MenuSound.play(MenuSound.DROP, 1.0f, 0.45f);
+    }
+
+    /**
+     * [+] Вставка с гарантией, что блок не потеряется.
+     *
+     * <p>{@link ScriptBlocks#insert} отказывает, если цепочку пытаются вложить в неё
+     * саму (иначе список замкнулся бы в кольцо). Игнорировать отказ нельзя: блок к
+     * этому моменту уже откреплён от прежнего контейнера, и без возврата он молча
+     * исчез бы из редактора. Поэтому при отказе цепочка уезжает в конец корневого
+     * стека — блок остаётся видимым, а кольца не возникает.
+     */
+    private void attach(BlockHolder holder, int index, ScriptBlock block) {
+        if (block == null) {
+            return;
+        }
+        if (ScriptBlocks.insert(holder, index, block)) {
+            return;
+        }
+        if (this.selected != null && ScriptBlocks.insert(this.selected, Integer.MAX_VALUE, block)) {
+            swerve.Swerve.LOGGER.debug("Script block moved to the end: nesting a stack into itself is rejected");
+            return;
+        }
+        swerve.Swerve.LOGGER.warn("Script block could not be attached to any container");
     }
 
     private void deleteChain(ScriptBlock block) {

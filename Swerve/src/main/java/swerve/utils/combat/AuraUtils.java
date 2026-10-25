@@ -19,15 +19,64 @@ import net.minecraft.util.Mth;
  *
  * <p>Адаптировано из Private/src/java/org/privates/client/utils/rotation/AuraUtil.java
  * и RayTraceUtil.java: перебор точек хитбокса заменён аналитическим clamp'ом
- * (та же ближайшая точка AABB без сотен raytrace-вызовов), все расчёты —
- * без аллокаций в тике.
+ * (та же ближайшая точка AABB без сотен raytrace-вызовов).
+ *
+ * <p><b>Аллокации.</b> Раньше здесь стояло «все расчёты — без аллокаций в тике», и это
+ * было неправдой: {@code player.getEyePosition(1.0F)} создаёт {@code Vec3} (байткод 1.21.4:
+ * {@code new Vec3} в обоих перегрузах), {@code getViewVector} — тоже, а
+ * {@code visibleTargetPoint} дополнительно строил по {@code Vec3} на каждую из девяти
+ * точек. Теперь глаза и вектор взгляда считаются скалярами: {@code getEyePosition(1.0F)}
+ * — это {@code (getX(), getY() + eyeHeight, getZ())}, а вектор взгляда повторяет
+ * {@code Entity.calculateViewVector} во float (см. {@link #viewVector}).
+ *
+ * <p>Что осталось аллоцирующим и почему это не лечится: {@code Level.clip} принимает
+ * только {@code Vec3}, поэтому каждая проверка видимости — это два {@code Vec3},
+ * {@code ClipContext} и {@code BlockHitResult} внутри ванильного метода;
+ * {@code noCollision} требует {@code AABB} (один на тик и только при включённом
+ * автопрыжке); {@code visibleTargetPoint} возвращает {@code Vec3}, потому что таков
+ * контракт вызывающего кода (одна аллокация вместо десяти).
  */
 public final class AuraUtils {
 
     /** Порог, ниже которого направление на цель считается неопределимым. */
     private static final double EPSILON = 1.0E-7D;
 
+    /** {@code (float) (Math.PI / 180.0)} — та же константа, что в {@code Entity.calculateViewVector}. */
+    private static final float DEG_TO_RAD = (float) (Math.PI / 180.0);
+
+    /** Вектор взгляда: клиентский поток один, поэтому scratch-буфер безопасен. */
+    private static final double[] VIEW = new double[3];
+
+    /** Позиция блока для {@code getBlockState} без {@code BlockPos.containing} (он аллоцирует). */
+    private static final BlockPos.MutableBlockPos BLOCK_POS = new BlockPos.MutableBlockPos();
+
     private AuraUtils() {
+    }
+
+    /**
+     * Вектор взгляда игрока без аллокации.
+     *
+     * <p>Точная копия {@code Entity.calculateViewVector} по байткоду 1.21.4:
+     * {@code f = xRot * (float)(Math.PI/180)}, {@code g = -yRot * (float)(Math.PI/180)},
+     * результат {@code (sin(g)*cos(f), -sin(f), cos(g)*cos(f))}, умножение во {@code float}
+     * и уже потом расширение до {@code double}. {@code Mth.sin}/{@code Mth.cos} — таблица
+     * (в байткоде {@code Mth.SIN}), поэтому вызовы обязаны идти через {@code Mth}, а не
+     * через {@code Math}: иначе значения разойдутся на последних битах.
+     *
+     * <p>{@code getViewVector(1.0F)} отличается от этого только {@code getViewXRot(1.0F)},
+     * у которого в байткоде есть точная ветка «{@code f == 1.0F} → текущий угол», так что
+     * значения совпадают бит в бит.
+     */
+    private static void viewVector(Player player, double[] out) {
+        float pitchRad = player.getXRot() * DEG_TO_RAD;
+        float yawRad = -player.getYRot() * DEG_TO_RAD;
+        float cosYaw = Mth.cos(yawRad);
+        float sinYaw = Mth.sin(yawRad);
+        float cosPitch = Mth.cos(pitchRad);
+        float sinPitch = Mth.sin(pitchRad);
+        out[0] = sinYaw * cosPitch;
+        out[1] = -sinPitch;
+        out[2] = cosYaw * cosPitch;
     }
 
     /**
@@ -37,10 +86,15 @@ public final class AuraUtils {
      */
     public static double strictDistance(Player player, Entity target) {
         AABB box = target.getBoundingBox();
-        Vec3 eye = player.getEyePosition(1.0F);
-        double dx = Mth.clamp(eye.x, box.minX, box.maxX) - eye.x;
-        double dy = Mth.clamp(eye.y, box.minY, box.maxY) - eye.y;
-        double dz = Mth.clamp(eye.z, box.minZ, box.maxZ) - eye.z;
+        // Глаза без Vec3: getEyePosition(1.0F) — это new Vec3(getX(), getY() + eyeHeight, getZ()),
+        // а Mth.lerp(1.0, xo, x) = xo + (x - xo) при вычитании без округления даёт ровно x
+        // (Sterbenz: |x - xo| < 1 блока на тик, |x| < 2^52 — всегда в игре).
+        double eyeX = player.getX();
+        double eyeY = player.getEyeY();
+        double eyeZ = player.getZ();
+        double dx = Mth.clamp(eyeX, box.minX, box.maxX) - eyeX;
+        double dy = Mth.clamp(eyeY, box.minY, box.maxY) - eyeY;
+        double dz = Mth.clamp(eyeZ, box.minZ, box.maxZ) - eyeZ;
         return Math.sqrt(dx * dx + dy * dy + dz * dz);
     }
 
@@ -52,16 +106,19 @@ public final class AuraUtils {
      */
     public static double fovFromCamera(Player player, Entity target) {
         AABB box = target.getBoundingBox();
-        Vec3 eye = player.getEyePosition(1.0F);
-        Vec3 view = player.getViewVector(1.0F);
-        double dx = Mth.clamp(eye.x, box.minX, box.maxX) - eye.x;
-        double dy = Mth.clamp(eye.y, box.minY, box.maxY) - eye.y;
-        double dz = Mth.clamp(eye.z, box.minZ, box.maxZ) - eye.z;
+        double eyeX = player.getX();
+        double eyeY = player.getEyeY();
+        double eyeZ = player.getZ();
+        double dx = Mth.clamp(eyeX, box.minX, box.maxX) - eyeX;
+        double dy = Mth.clamp(eyeY, box.minY, box.maxY) - eyeY;
+        double dz = Mth.clamp(eyeZ, box.minZ, box.maxZ) - eyeZ;
         double length = Math.sqrt(dx * dx + dy * dy + dz * dz);
         if (length < EPSILON) {
             return 0.0D;
         }
-        double dot = (view.x * dx + view.y * dy + view.z * dz) / length;
+        double[] view = VIEW;
+        viewVector(player, view);
+        double dot = (view[0] * dx + view[1] * dy + view[2] * dz) / length;
         return Math.toDegrees(Math.acos(Mth.clamp(dot, -1.0D, 1.0D)));
     }
 
@@ -73,10 +130,12 @@ public final class AuraUtils {
      */
     public static double fovFromAngles(Player player, Entity target, float yaw, float pitch) {
         AABB box = target.getBoundingBox();
-        Vec3 eye = player.getEyePosition(1.0F);
-        double dx = Mth.clamp(eye.x, box.minX, box.maxX) - eye.x;
-        double dy = Mth.clamp(eye.y, box.minY, box.maxY) - eye.y;
-        double dz = Mth.clamp(eye.z, box.minZ, box.maxZ) - eye.z;
+        double eyeX = player.getX();
+        double eyeY = player.getEyeY();
+        double eyeZ = player.getZ();
+        double dx = Mth.clamp(eyeX, box.minX, box.maxX) - eyeX;
+        double dy = Mth.clamp(eyeY, box.minY, box.maxY) - eyeY;
+        double dz = Mth.clamp(eyeZ, box.minZ, box.maxZ) - eyeZ;
         double length = Math.sqrt(dx * dx + dy * dy + dz * dz);
         if (length < EPSILON) {
             return 0.0D;
@@ -98,10 +157,11 @@ public final class AuraUtils {
      * точка старта внутри хитбокса тоже считается попаданием.
      */
     public static boolean lookRayHitsBox(Player player, Entity target, double distance) {
-        Vec3 eye = player.getEyePosition(1.0F);
-        Vec3 view = player.getViewVector(1.0F);
+        double[] view = VIEW;
+        viewVector(player, view);
         AABB box = target.getBoundingBox();
-        return rayIntersectsBox(eye.x, eye.y, eye.z, view.x, view.y, view.z, distance, box);
+        return rayIntersectsBox(player.getX(), player.getEyeY(), player.getZ(),
+                view[0], view[1], view[2], distance, box);
     }
 
     /** Классический slab-тест пересечения луча с AABB, без ветвлений на аллокации. */
@@ -175,9 +235,19 @@ public final class AuraUtils {
      * (isPointVisible из Private).
      */
     public static boolean isPointVisible(Player player, Vec3 point) {
-        Vec3 eye = player.getEyePosition(1.0F);
+        return isPointVisible(player, point.x, point.y, point.z);
+    }
+
+    /**
+     * Прямая видимость точки по координатам — чтобы перебор точек хитбокса не строил
+     * {@code Vec3} на каждую. Два {@code Vec3} внутри остаются: {@code Level.clip}
+     * принимает только их.
+     */
+    public static boolean isPointVisible(Player player, double x, double y, double z) {
         BlockHitResult result = player.level().clip(new ClipContext(
-                eye, point, ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player));
+                new Vec3(player.getX(), player.getEyeY(), player.getZ()),
+                new Vec3(x, y, z),
+                ClipContext.Block.COLLIDER, ClipContext.Fluid.NONE, player));
         return result.getType() == HitResult.Type.MISS;
     }
 
@@ -192,17 +262,18 @@ public final class AuraUtils {
     public static Vec3 visibleTargetPoint(Player player, LivingEntity target) {
         fillTargetPoints(target);
         double[] p = POINTS;
-        Vec3 eye = player.getEyePosition(1.0F);
+        double eyeX = player.getX();
+        double eyeY = player.getEyeY();
+        double eyeZ = player.getZ();
         double bestDistance = Double.MAX_VALUE;
         int bestIndex = -1;
         for (int i = 0; i < p.length; i += 3) {
-            Vec3 point = new Vec3(p[i], p[i + 1], p[i + 2]);
-            if (!isPointVisible(player, point)) {
+            if (!isPointVisible(player, p[i], p[i + 1], p[i + 2])) {
                 continue;
             }
-            double dx = p[i] - eye.x;
-            double dy = p[i + 1] - eye.y;
-            double dz = p[i + 2] - eye.z;
+            double dx = p[i] - eyeX;
+            double dy = p[i + 1] - eyeY;
+            double dz = p[i + 2] - eyeZ;
             double distance = Math.sqrt(dx * dx + dy * dy + dz * dz);
             if (distance < bestDistance) {
                 bestDistance = distance;
@@ -221,7 +292,7 @@ public final class AuraUtils {
         fillTargetPoints(target);
         double[] p = POINTS;
         for (int i = 0; i < p.length; i += 3) {
-            if (isPointVisible(player, new Vec3(p[i], p[i + 1], p[i + 2]))) {
+            if (isPointVisible(player, p[i], p[i + 1], p[i + 2])) {
                 return true;
             }
         }
@@ -275,7 +346,8 @@ public final class AuraUtils {
     public static boolean isPlayerInWeb(Player player) {
         double x = player.getX();
         double z = player.getZ();
-        return player.level().getBlockState(BlockPos.containing(x, player.getY(), z)).is(Blocks.COBWEB)
-                || player.level().getBlockState(BlockPos.containing(x, player.getEyeY(), z)).is(Blocks.COBWEB);
+        BlockPos.MutableBlockPos pos = BLOCK_POS;
+        return player.level().getBlockState(pos.set(x, player.getY(), z)).is(Blocks.COBWEB)
+                || player.level().getBlockState(pos.set(x, player.getEyeY(), z)).is(Blocks.COBWEB);
     }
 }

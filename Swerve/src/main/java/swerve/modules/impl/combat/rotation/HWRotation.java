@@ -2,7 +2,6 @@ package swerve.modules.impl.combat.rotation;
 
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.phys.Vec3;
 
 import swerve.utils.rotation.GcdUtil;
 
@@ -60,14 +59,14 @@ public final class HWRotation extends AbstractRotationElement {
 
         this.fpsMultiplier = Mth.clamp(deltaTime * 60.0F, 0.5F, 2.0F);
 
-        Vec3 playerEyes = mc().player.getEyePosition(1.0F);
-        Vec3 targetPos = new Vec3(
-                target.getX(),
-                target.getY() + target.getEyeHeight() * 0.5D,
-                target.getZ());
-        double dx = targetPos.x - playerEyes.x;
-        double dy = targetPos.y - playerEyes.y;
-        double dz = targetPos.z - playerEyes.z;
+        // Цель на половине высоты глаз и глаза игрока — сразу скалярами: точка нужна
+        // только ради трёх разностей, а Vec3 на каждый тик — лишняя работа сборщику.
+        double targetX = target.getX();
+        double targetY = target.getY() + target.getEyeHeight() * 0.5D;
+        double targetZ = target.getZ();
+        double dx = targetX - mc().player.getX();
+        double dy = targetY - mc().player.getEyeY();
+        double dz = targetZ - mc().player.getZ();
         double horizontal = Math.sqrt(dx * dx + dz * dz);
 
         float targetYaw = (float) Math.toDegrees(Math.atan2(dz, dx)) - 90.0F;
