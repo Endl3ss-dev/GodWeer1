@@ -74,9 +74,17 @@
 
 ### Чем измерено
 
-`check_acd.py` (16 правил: `найдено: 0`; печатает «правил в таблице: 8, корпус: 28
+Первая настоящая компиляция (владелец, `gradlew.bat build`) дала ровно одну ошибку:
+`MenuScreen.java:1886: variable action is already defined in method runAction(int,int)` —
+pattern-переменная `action` перекрывала параметр `runAction(int action, int payload)`.
+Исправлено переименованием в `pressed`; в `check_acd.py` добавлено правило 17 (по всему
+`src/main/java` оно даёт 0 находок, на сломанном дереве находит именно это), в
+`check_acd_mutations.py` — соответствующая мутация (`мутаций: 33, поймано: 33,
+пропущено: 0`). Повторный прогон сборки и `check_acd_run.py` — за владельцем.
+
+`check_acd.py` (17 правил: `найдено: 0`; печатает «правил в таблице: 8, корпус: 28
 случаев, файлов ACD: 12, миксинов с ACD: 2», «проверок в харнессе — 224») и
-`check_acd_mutations.py` (`мутаций: 32, поймано: 32, пропущено: 0`, контроль чист).
+`check_acd_mutations.py` (`мутаций: 33, поймано: 33, пропущено: 0`, контроль чист).
 Плюс общие проверки: `check_syntax` 235 файлов/0, `check_types` 275 классов/0,
 `check_config` 0, `check_scope` 0, `check_mc_api` 0. `check_acd_run.py` — код 2:
 `javac` в среде нет (`jdk4py` с PyPI даёт только runtime без `jdk.compiler`).

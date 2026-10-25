@@ -1883,8 +1883,11 @@ public final class MenuScreen extends Screen {
             }
             case ACT_ACTION -> {
                 Setting s = settingByGlobal(payload);
-                if (s instanceof ActionSetting action) {
-                    action.trigger();
+                // Имя не «action»: метод вызывается как runAction(int action, …), и в
+                // Java pattern-переменная не имеет права перекрывать параметр объёмлющего
+                // метода — компилятор отвечает «variable action is already defined».
+                if (s instanceof ActionSetting pressed) {
+                    pressed.trigger();
                     MenuSound.play(MenuSound.CLICK);
                 }
             }

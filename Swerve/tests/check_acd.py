@@ -36,6 +36,9 @@
  15. В файлах ACD и в документе нет чужой письменности (CJK/арабика) и нет прилипшей
      латиницы к русскому слову — тексты отчёта читают люди.
  16. `docs/AntiCheatDetector.md` есть, содержит обязательные разделы и раздел о границе.
+ 17. Имена pattern-переменных (`x instanceof T name`) не перекрывают параметры объёмлющего
+     метода: Java запрещает это, и `javac` отвечает «variable is already defined» — ровно та
+     поломка, которую пропустили все предыдущие проверки (проверено на реальном сборе).
 
 Чего проверка не видит: реальную загрузку миксинов, GLFW-буфер обмена, гонки потоков,
 поведение в игре. Это проверяется прогоном харнесса и ручным чек-листом в документации.
@@ -717,7 +720,7 @@ def check_gui(root: Path) -> None:
     text_row = row_body.find("instanceof TextSetting")
     if action_row < 0 or text_row < 0 or action_row > text_row:
         fail("MenuScreen: ветка ActionSetting должна стоять до общего фолбэка TextSetting")
-    if "action.trigger()" not in code:
+    if ".trigger()" not in code:
         fail("MenuScreen: клик по ACT_ACTION не вызывает trigger()")
     popup = region(code, "private void openPopup(Module m) {")
     if "isEnable()" in popup:
@@ -817,6 +820,44 @@ def check_docs(root: Path) -> None:
         fail("docs/AntiCheatDetector.md: документ тоньше, чем требует домашний формат")
 
 
+# --------------------------------------------------------------------------- #
+# 17 — паттерн-переменная не имеет права перекрывать параметр метода
+# --------------------------------------------------------------------------- #
+METHOD_HEAD = re.compile(r"(?:private|public|protected|static|final|synchronized|abstract|default)"
+                         r"[\w\s<>,\[\].?]*?\b(\w+)\s*\(([^)]*)\)\s*(?:throws[\w., ]*)?\{")
+PATTERN_VAR = re.compile(r"instanceof\s+[A-Za-z_][\w.<>\[\]]*\s+(\w+)")
+
+
+def method_block(text: str, open_at: int) -> str:
+    """Тело метода: от `{` с индексом open_at до парной `}`."""
+    depth, index = 1, open_at + 1
+    while index < len(text) and depth:
+        if text[index] == "{":
+            depth += 1
+        elif text[index] == "}":
+            depth -= 1
+        index += 1
+    return text[open_at + 1:index - 1]
+
+
+def check_name_collisions(files: dict[str, str]) -> None:
+    for path, source in files.items():
+        code = strip_comments(source)
+        for match in METHOD_HEAD.finditer(code):
+            params = set()
+            for arg in match.group(2).split(","):
+                parts = arg.strip().rsplit(None, 1)
+                if len(parts) == 2 and re.fullmatch(r"\w+", parts[1]):
+                    params.add(parts[1])
+            if not params:
+                continue
+            body = method_block(code, match.end() - 1)
+            for var in PATTERN_VAR.finditer(body):
+                if var.group(1) in params:
+                    fail(f"{path}: {match.group(1)}() — pattern-переменная «{var.group(1)}» совпадает "
+                         f"с именем параметра: javac ответит «variable is already defined»")
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--root", default=None, help="корень репозитория (по умолчанию — рядом с тестом)")
@@ -855,6 +896,12 @@ def main() -> int:
     check_settings_wiring(root, module_src, acd_files)
     check_gui(root)
     check_harness(root, index)
+    check_name_collisions({**acd_by_path, "modules/impl/misc/AntiCheatDetector.java": module_src,
+                           "ui/menu/MenuScreen.java": read(root / "src/main/java/swerve/ui/menu/MenuScreen.java"),
+                           "mixins/client/MixinClientPacketListener.java": read(
+                               root / "src/main/java/swerve/mixins/client/MixinClientPacketListener.java"),
+                           "mixins/client/MixinClientCommonPacketListenerImpl.java": read(
+                               root / "src/main/java/swerve/mixins/client/MixinClientCommonPacketListenerImpl.java")})
     hygiene = {**acd_files, "modules/impl/misc/AntiCheatDetector.java": module_src,
                "tests/AcdHarness.java": read(root / "tests/AcdHarness.java")}
     if (root / "docs/AntiCheatDetector.md").is_file():
