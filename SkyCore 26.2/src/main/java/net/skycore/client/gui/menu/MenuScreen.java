@@ -612,7 +612,7 @@ public final class MenuScreen extends Screen {
                 light() ? MenuDraw.a(0xFFFFFF, 242) : MenuDraw.a(MenuPalette.bg(), 240));
         MenuDraw.outline(plateX, plateY, plateW, plateH, radius, MenuDraw.a(MenuPalette.text(), light() ? 24 : 26));
         gradHairline(plateX + radius, plateY, plateW - radius, radius);
-        MenuDraw.iconCsCentered(IconGlyphs.COSMETICA, x - S(4), plateY, logoSize + S(8), plateH, logoSize,
+        MenuDraw.iconCsCentered(IconGlyphs.STAR, x - S(4), plateY, logoSize + S(8), plateH, logoSize,
                 MenuDraw.a(MenuPalette.accent(), light() ? 220 : 255));
 
         float textY = plateY + (plateH - MenuText.lineHeight(Weight.BOLD, fontSize)) * 0.5F;
