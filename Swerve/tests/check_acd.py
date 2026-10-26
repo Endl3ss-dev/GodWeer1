@@ -522,6 +522,8 @@ def check_rules(rules_src: str, rules: list[dict]) -> None:
                 fail(f"правило {rule['id']}: маркер содержит код формата")
         if not rule["reason"].strip():
             fail(f"правило {rule['id']}: пустое объяснение — в отчёте не будет причины")
+        elif matches(rule["reason"].lower(), rule):
+            fail(f"правило {rule['id']}: формулировка причины содержит собственный маркер")
         if rule["severity"] not in {"INFO", "NOTICE", "WARNING", "CRITICAL"}:
             fail(f"правило {rule['id']}: неизвестная важность {rule['severity']}")
     if "String[]" not in rules_src:

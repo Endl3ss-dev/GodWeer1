@@ -41,10 +41,12 @@ public final class AcdClassifier {
         boolean pendingSpace = false;
         for (int i = 0, size = raw.length(); i < size && builder.length() < MAX_SNIPPET_CHARS; i++) {
             char chr = raw.charAt(i);
-            // § + следующий символ — код цвета/формата; сам символ формата не оставляем.
-            if (chr == '\u00a7' && i + 1 < size) {
-                i++;
-                pendingSpace = builder.length() > 0 && builder.charAt(builder.length() - 1) == ' ';
+            // [!] Strip '§' and its following format code without clearing pendingSpace;
+            // also drop a trailing lone '§' at the end of the string.
+            if (chr == '\u00a7') {
+                if (i + 1 < size) {
+                    i++;
+                }
                 continue;
             }
             if (Character.isISOControl(chr) || Character.isWhitespace(chr)) {

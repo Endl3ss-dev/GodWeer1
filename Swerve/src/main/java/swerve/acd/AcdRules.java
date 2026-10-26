@@ -37,13 +37,14 @@ public final class AcdRules {
     };
 
     private static final AcdRule[] TABLE = {
+            // [!] Keep rule reason strings free of their own trigger markers so self-scan checks pass.
             AcdRule.of("ac:name", AcdCategory.FLAG_NOTIFICATION, AcdSeverity.WARNING,
-                    "название защиты или слово «античит» встретилось в тексте, который прислал сервер; "
-                            + "внутренний флаг античита клиенту не передаётся, так что это совпадение, а не доказательство",
+                    "в тексте, который прислал сервер, встретилось имя известной системы защиты; "
+                            + "внутренний флаг защиты клиенту не передаётся, так что это совпадение, а не доказательство",
                     AC_NAMES),
 
             AcdRule.excluding("flag:violation", AcdCategory.FLAG_NOTIFICATION, AcdSeverity.WARNING,
-                    "текст описывает нарушение; такие же формулировки бывают у плагинов и в переписке админов",
+                    "текст похож на уведомление о срабатывании проверки; такие же формулировки бывают у плагинов и в переписке админов",
                     FLAG_WORDS, new String[] {"no violation", "without violation"}),
 
             AcdRule.of("packet:bad", AcdCategory.ANTI_CHEAT_WARNING, AcdSeverity.WARNING,
@@ -51,8 +52,8 @@ public final class AcdRules {
                     "badpackets", "bad packet", "illegal packet", "packet order", "некорректный пакет"),
 
             AcdRule.of("move:speed", AcdCategory.FLAG_NOTIFICATION, AcdSeverity.WARNING,
-                    "формулировка про скорость движения; ванильный сервер пишет «moved too quickly» в свой лог, "
-                            + "в чат такое попадает только если это сказал плагин",
+                    "формулировка про превышение скорости движения; ванильный сервер пишет такое в свой лог, "
+                            + "в чат оно попадает только от плагина",
                     SPEED_WORDS),
 
             AcdRule.of("move:flight", AcdCategory.FLAG_NOTIFICATION, AcdSeverity.WARNING,

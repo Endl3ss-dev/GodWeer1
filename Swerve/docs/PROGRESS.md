@@ -6,6 +6,80 @@
 
 ---
 
+## 2026-10-26 — Milestones A–D: аудит репозитория, запуск Java 21 + ECJ 3.45.0 и стабилизация ACD
+
+### Зачем
+
+Выполнить аудит репозитория (`GodWeer1`, 14 проектов, 235 исходников `Swerve`), поднять
+в песочнице реальную компиляцию и исполнение на Java 21 (`Temurin-21.0.8+9` из `jdk4py` +
+`Eclipse Compiler for Java 3.45.0` и `gson 2.13.2` из `@vscjava/java-language-server` в
+`~/.cache`) и закрыть пункт «Следующее действие» прошлой записи: прогон
+`tests/check_acd_run.py` и `tests/check_elytra_flight_parity.py` на JVM 21.
+
+### Что доказано (компиляция ECJ 3.45.0 + исполнение на OpenJDK 21.0.8)
+
+1. Все 235 файлов `Swerve/src/main/java` компилируются `ECJ 3.45.0 (-21)` против
+   `minecraft-merged-a172fc6613-1.21.4-loom.mappings.1_21_4.layered+hash.2198-v2.jar`
+   и `fabric-api-0.119.4+1.21.4` в 278 `.class`-файлов без единой ошибки.
+2. Первая реальная компиляция `tests/AcdHarness.java` выявила ошибку компиляции на
+   строке 530 (`event(1712345678000L, 1L, ...)` — 11 аргументов при 10-аргументной
+   сигнатуре хелпера `event(...)`), которую не видел `tree-sitter`.
+3. Первый реальный запуск `swerve.acd.AcdHarness` на JVM 21 выявил 11 провалов из 463
+   проверок (`пройдено 452, провалено 11`), в том числе два производственных дефекта в
+   `swerve.acd`:
+   - `AcdClassifier.snippet(String)` (`AcdClassifier.java:43-48`): строка
+     `pendingSpace = builder.length() > 0 && builder.charAt(builder.length() - 1) == ' '`
+     всегда сбрасывала отложенный пробел при встрече `§x` после пробела (так как пробел в
+     `builder` ещё не записан), склеивая `"§a§lFlag §rfor Grim"` в `"Flagfor Grim"`; кроме
+     того, условие `i + 1 < size` оставляло одиночный хвостовой `'§'` в строке.
+   - `AcdRules.TABLE` (`AcdRules.java:42-60`): формулировки `reason` у правил `ac:name`,
+     `flag:violation` и `move:speed` содержали собственные маркеры (`«античит»`,
+     `«нарушение»`, `«moved too quickly»`), нарушая инвариант `rulesTable()`
+     (`!rule.matches(rule.reason().toLowerCase(Locale.ROOT))`).
+   - В `tests/AcdHarness.java`: `buffersAndOrder()` вызывал `setCapacity(30)` при
+     `MIN_CAPACITY = 50` (ужатие зажималось до 50), `event(7 аргументов)` передавал
+     `sessionId = 0` вместо `AcdStore.sessionId()`, а `formatterJson()` проверял
+     `off.contains("\"sessionId\"")` при выключенном `sessionContext = false`.
+4. Аудит `modules/impl/movement/NoWeb.java:178-184` зафиксировал архитектурный дефект
+   жизненного цикла: `NoWeb` переопределяет `setEnabled(boolean state)` без вызова
+   `super.setEnabled(state)`, из-за чего переключение `NoWeb` биндом или из GUI обходит
+   `Module.applyEnabled`, не показывает уведомление `NotificationManager.toggle` и не
+   вызывает `ConfigManager.markDirty()`. По правилу границы `NoWeb.java` без отдельного
+   поручения владельца не изменялся.
+
+### Что изменено
+
+* `src/main/java/swerve/acd/AcdClassifier.java` — в `snippet()` вырезание `§` и следующего
+  символа не сбрасывает `pendingSpace`, а одиночный хвостовой `'§'` отбрасывается.
+* `src/main/java/swerve/acd/AcdRules.java` — объяснения правил `ac:name`, `flag:violation`
+  и `move:speed` переформулированы без включения собственных маркеров срабатывания.
+* `tests/AcdHarness.java` — исправлены вызов `event(...)` в `formatterJson()`, проверка
+  ужатия буфера выше `MIN_CAPACITY = 50` (`80 → 50`), проброс `AcdStore.sessionId()` в
+  7-аргументном `event(...)` и проверка `sessionContext = false` в JSON.
+* `tests/check_acd.py` и `tests/check_acd_mutations.py` — добавлена статическая проверка,
+  что `rule.reason()` не срабатывает на собственное правило, и соответствующая 36-я мутация.
+* `tests/check_acd_run.py` — добавлен поиск `javac` и `gson` в `~/.cache` для работы в
+  песочнице без аргументов командной строки.
+* `docs/AntiCheatDetector.md` — обновлены фактические результаты прогона `check_acd_run.py`
+  и `check_acd_mutations.py`.
+
+### Чем измерено (код возврата 0 у всех)
+
+* `python3 Swerve/tests/check_acd_run.py` → `AcdHarness: пройдено 464, провалено 0`, `харнесс пройден`.
+* `python3 Swerve/tests/check_acd.py` → `проверок в харнессе — 225`, `найдено: 0`.
+* `python3 Swerve/tests/check_acd_mutations.py` → `мутаций: 36, поймано: 36, пропущено: 0`.
+* `python3 Swerve/tests/check_elytra_flight_parity.py --ecj ...` → `PASS: 1664 movement cases, 101 GCD values, 325 input corrections match AlphaDLC`.
+* `python3 Swerve/tests/check_speed.py` и `check_speed_mutations.py` → `0` находок, `18/18` мутаций поймано.
+* `python3 Swerve/tests/check_syntax.py` (235 файлов), `check_types.py` (235 файлов / 275 классов), `check_scope.py`, `check_config.py`, `check_mc_api.py` (72/72 сигнатур колбэков, 35 миксинов), `check_pvp_utils.py`, `check_killaura.py` → `найдено: 0`.
+
+### Открыто после итерации
+
+1. `NoWeb.java:178-184`: удаление дублирующего `setEnabled(boolean state)` (чтобы тогл шёл через `Module.applyEnabled` с уведомлением и `ConfigManager.markDirty()`), плюс уточнение комментария `MAX_TICK_SPEED` — ждёт подтверждения владельца.
+2. Вопросы из `docs/GrimAC.md` (порядок удара `KillAura` в `START_CLIENT_TICK`, потолок `Дистанция` 3.0, пакетная ротация `AutoPotion`) — изменения боевого поведения, ждут решения владельца.
+3. Полная сборка `./gradlew build` (Loom remapJar) и проверка в живом клиенте — на стороне владельца.
+
+---
+
 ## 2026-10-26 — AntiCheatDetector: диагностика событий античита (12 классов, 2 миксина)
 
 ### Зачем

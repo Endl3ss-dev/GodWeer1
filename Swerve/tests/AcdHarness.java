@@ -98,19 +98,22 @@ public final class AcdHarness {
         check(AcdStore.snapshot(1000).size() == 50, "лимит больше буфера не добавляет записей");
         check(AcdStore.snapshot(-10).size() == 0, "отрицательный лимит не роняет снимок");
 
-        // Уменьшение ёмкости — тоже вытеснение старых, а не «обрезка хвоста».
-        AcdStore.setCapacity(60);
-        check(AcdStore.capacity() == 60, "ёмкость выросла");
+        // [!] Test capacity shrink above MIN_CAPACITY (50): grow to 80, fill 30 more, then shrink to 50.
+        AcdStore.setCapacity(80);
+        check(AcdStore.capacity() == 80, "ёмкость выросла");
         check(AcdStore.size() == 50, "при росте записи не теряются");
         check("m70".equals(AcdStore.snapshot().events()[0].message()), "порядок пережил рост ёмкости");
-        AcdStore.setCapacity(30);
-        check(AcdStore.size() == 30, "при ужатии остаются новые");
-        check("m90".equals(AcdStore.snapshot().events()[0].message()), "ужатие отрезало старые, не новые");
-        check(AcdStore.snapshot().dropped() == 90, "учтены и вытеснение кольцом, и ужатие");
-        check(AcdStore.snapshot().capacity() == 30, "снимок несёт актуальную ёмкость");
+        for (int i = 120; i < 150; i++) {
+            store(AcdCategory.NETWORK_DIAGNOSTIC, "m" + i);
+        }
+        AcdStore.setCapacity(50);
+        check(AcdStore.size() == 50, "при ужатии остаются новые");
+        check("m100".equals(AcdStore.snapshot().events()[0].message()), "ужатие отрезало старые, не новые");
+        check(AcdStore.snapshot().dropped() == 100, "учтены и вытеснение кольцом, и ужатие");
+        check(AcdStore.snapshot().capacity() == 50, "снимок несёт актуальную ёмкость");
 
         int revision = AcdStore.revision();
-        AcdStore.setCapacity(30);
+        AcdStore.setCapacity(50);
         check(AcdStore.revision() == revision, "повторная установка той же ёмкости не двигает ревизию");
 
         revision = AcdStore.revision();
@@ -527,9 +530,10 @@ public final class AcdHarness {
         resetStore(100);
         AcdStore.clear();
         AcdStore.beginSession("json.example");
-        AcdStore.record(event(1712345678000L, 1L, AcdCategory.ANTI_CHEAT_WARNING, AcdSeverity.WARNING,
-                AcdConfidence.CONFIRMED, "packet:system", "bad packets", "источник подтвердил", "компонент",
-                AcdStore.sessionId()));
+        // [!] Match 10-arg event(...) helper signature (timeMs, category, severity, confidence, source, raw, message, detail, component, sessionId).
+        AcdStore.record(event(1712345678000L, AcdCategory.ANTI_CHEAT_WARNING, AcdSeverity.WARNING,
+                AcdConfidence.CONFIRMED, "packet:system", "bad packets", "bad packets",
+                "источник подтвердил", "компонент", AcdStore.sessionId()));
         AcdReport report = AcdStore.snapshot();
         String json = AcdFormatter.render(report, AcdFormatter.Options.FULL_DETAIL, true);
         JsonElement parsed = JsonParser.parseString(json);
@@ -540,10 +544,13 @@ public final class AcdHarness {
         check(json.contains("\"raw\":\"bad packets\"") || json.contains("\"raw\": \"bad packets\""),
                 "исходный текст в JSON есть при включённом флаге");
         check(json.contains("\"classification\""), "классификация подписана отдельным полем");
+        check(json.contains("\"sessionId\""), "при включённом флаге сессии у записи есть sessionId");
         String off = AcdFormatter.render(report, new AcdFormatter.Options(false, false, false), true);
         check(!off.contains("\"raw\""), "флаг исходного текста реально влияет на JSON");
         check(!off.contains("\"source\""), "флаг источника реально влияет на JSON");
-        check(off.contains("\"sessionId\""), "сессию не прячут: она нужна для сопоставления");
+        // [!] Options(false, false, false) disables per-entry sessionId while keeping the top-level "session" block.
+        check(!off.contains("\"sessionId\"") && off.contains("\"session\""),
+                "флаг сессии убирает поле у записи, но шапку сессии не прячет");
         check(!off.contains("playerName") && !off.contains("inventory") && !off.contains("token"),
                 "в выгрузке нет полей с личными данными");
         check(!AcdFormatter.render(AcdStore.snapshot(), AcdFormatter.Options.FULL_DETAIL, true)
@@ -669,7 +676,8 @@ public final class AcdHarness {
 
     private static AcdEvent event(long timeMs, AcdCategory category, AcdSeverity severity,
                                   AcdConfidence confidence, String source, String raw, String message) {
-        return event(timeMs, category, severity, confidence, source, raw, message, "", 0);
+        // [!] Propagate current AcdStore.sessionId() for store() helper calls within an active session.
+        return event(timeMs, category, severity, confidence, source, raw, message, "", AcdStore.sessionId());
     }
 
     private static AcdEvent event(long timeMs, AcdCategory category, AcdSeverity severity,

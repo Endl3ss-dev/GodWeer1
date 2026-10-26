@@ -49,6 +49,10 @@ def find_javac(explicit: str | None) -> str | None:
         candidate = Path(home) / "bin" / "javac"
         if candidate.is_file():
             return str(candidate)
+    # [+] Fallback to sandbox-cached jdk4py + ECJ wrapper when system PATH lacks JDK.
+    cached = Path(os.path.expanduser("~/.cache/pyjdk/jdk4py/java-runtime/bin/javac"))
+    if cached.is_file() and os.access(cached, os.X_OK):
+        return str(cached)
     return None
 
 
@@ -58,6 +62,8 @@ def find_gson(explicit: str | None) -> str | None:
     patterns = [
         os.path.expanduser("~/.gradle/caches/modules-2/files-2.1/com.google.code.gson/gson/*/*/gson-*.jar"),
         os.path.expanduser("~/.m2/repository/com/google/code/gson/gson/*/gson-*.jar"),
+        os.path.expanduser("~/.cache/**/com.google.gson_*.jar"),
+        os.path.expanduser("~/.cache/**/gson-*.jar"),
         str(SWERVE.parent / "**" / "gson-*.jar"),
     ]
     for pattern in patterns:
