@@ -332,7 +332,7 @@ public static final Palette[] PALETTES = {
 
     private static Palette from;
     private static long changedAt;
-    public static final long FADE_MS = 520L;
+    public static final long FADE_MS = 260L;
 
     /** Меняет палитру и запускает переход из той, что была на экране. */
     public static void setPalette(int index) {
@@ -378,19 +378,24 @@ public static final Palette[] PALETTES = {
         }
         float e = t * t * (3.0F - 2.0F * t);
         Palette f = from;
+        // Переход плавно меняет только акцент и текст. Фон, карточки, контролы и рамки
+        // берутся сразу из новой палитры: раньше смешивались все цвета, и при
+        // переключении с белой темы на чёрную меню проходило через мутно-серый, да ещё
+        // и флаг light() переключался на середине перехода — то есть цвета и ветки
+        // отрисовки в один момент оказывались из разных тем.
         return new Palette(
                 to.name(),
-                mix(f.bg(), to.bg(), e),
-                mix(f.side(), to.side(), e),
-                mix(f.card(), to.card(), e),
-                mix(f.control(), to.control(), e),
-                mix(f.border(), to.border(), e),
+                to.bg(),
+                to.side(),
+                to.card(),
+                to.control(),
+                to.border(),
                 mix(f.text(), to.text(), e),
                 mix(f.muted(), to.muted(), e),
                 mix(f.dim(), to.dim(), e),
                 mix(f.a(), to.a(), e),
                 mix(f.b(), to.b(), e),
-                e > 0.5F ? to.light() : f.light(),
+                to.light(),
                 to.fx());
     }
 

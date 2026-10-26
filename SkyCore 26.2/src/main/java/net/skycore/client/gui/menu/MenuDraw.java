@@ -101,8 +101,17 @@ public final class MenuDraw {
     }
 
     /** Обводка скруглённого прямоугольника толщиной 1. */
+    /**
+     * Толщина обводки по умолчанию.
+     *
+     * <p>0.8, а не 1.0: весь остальной клиент рисует рамки в диапазоне 0.5–0.8
+     * ({@code MouseClickedHelper}, {@code TextDescriptionLayout}), и на 1.0 обводка
+     * карточек выглядела заметно толще, чем в остальном интерфейсе.
+     */
+    public static final float BORDER = 0.8F;
+
     public static void outline(float x, float y, float w, float h, float radius, int color) {
-        outline(x, y, w, h, radius, 1.0F, color);
+        outline(x, y, w, h, radius, BORDER, color);
     }
 
     /** Обводка скруглённого прямоугольника заданной толщины. */
@@ -252,20 +261,39 @@ public final class MenuDraw {
         drawIcon(glyph, x, y, size, color, InterBoldHelper.clickGuiIcons());
     }
 
-    /** Иконка, отцентрованная в боксе. */
+    /**
+     * Иконка, отцентрованная по точке.
+     *
+     * <p>Текст рисуется так, что базовая линия лежит в {@code y + ascender(size)}, а
+     * сам значок занимает примерно ±0.5em вокруг середины высоты строки. Поэтому
+     * верх квада для визуального центра {@code cy} считается как
+     * {@code cy + size/2 - ascender(size)}. Центрирование по {@code lineHeight}
+     * ошибочно: у clickgui-icons он равен 2em, из-за чего иконки уезжали вверх.
+     */
+    public static void iconCs(String glyph, float cx, float cy, float size, int color) {
+        iconCentered(glyph, cx, cy, size, color, InterBoldHelper.csGuiIcons());
+    }
+
+    /** Буквенная иконка по центру точки; см. {@link #iconCs}. */
+    public static void iconLetters(String glyph, float cx, float cy, float size, int color) {
+        iconCentered(glyph, cx, cy, size, color, InterBoldHelper.clickGuiIcons());
+    }
+
+    private static void iconCentered(String glyph, float cx, float cy, float size, int color, TextHeightHelper font) {
+        drawIcon(glyph, cx - font.getWidth(glyph, size) * 0.5F, cy + size * 0.5F - font.ascender(size),
+                size, color, font);
+    }
+
+    /** Иконка, отцентрованная в боксе (обёртка над {@link #iconCs}). */
     public static void iconCsCentered(String glyph, float boxX, float boxY, float boxW, float boxH, float size,
                                       int color) {
-        TextHeightHelper font = InterBoldHelper.csGuiIcons();
-        float width = font.getWidth(glyph, size);
-        drawIcon(glyph, boxX + (boxW - width) * 0.5F, boxY + (boxH - font.lineHeight(size)) * 0.5F, size, color, font);
+        iconCs(glyph, boxX + boxW * 0.5F, boxY + boxH * 0.5F, size, color);
     }
 
     /** Буквенная иконка, отцентрованная в боксе. */
     public static void iconLettersCentered(String glyph, float boxX, float boxY, float boxW, float boxH, float size,
                                            int color) {
-        TextHeightHelper font = InterBoldHelper.clickGuiIcons();
-        float width = font.getWidth(glyph, size);
-        drawIcon(glyph, boxX + (boxW - width) * 0.5F, boxY + (boxH - font.lineHeight(size)) * 0.5F, size, color, font);
+        iconLetters(glyph, boxX + boxW * 0.5F, boxY + boxH * 0.5F, size, color);
     }
 
     private static void drawIcon(String glyph, float x, float y, float size, int color, TextHeightHelper font) {

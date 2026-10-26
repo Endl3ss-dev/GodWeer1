@@ -549,10 +549,19 @@ public final class MenuScreen extends Screen {
 
         float keep = MenuDraw.fade;
 
-        // затемнение мира
-        if (MenuPrefs.dim > 0.0F) {
-            MenuDraw.rect(0.0F, 0.0F, screenWidth, screenHeight,
-                    MenuDraw.a(0x05040A, (int) (255.0F * MenuPrefs.dim / 100.0F * open)));
+        // фон: затемнение и размытие того, что за меню
+        int dimAlpha = (int) (255.0F * MenuPrefs.dim / 100.0F * open);
+        if (MenuPrefs.blur) {
+            // размытие работает как подложка: полупрозрачная заливка + blur по кадру
+            BeginFrameHelper.rect(0.0F, 0.0F, screenWidth, screenHeight)
+                    // минимальная заливка нужна, иначе полупрозрачный прямоугольник
+                    // не рисуется и размытие пропадает даже при dim = 0
+                    .color(MenuDraw.a(0x05040A, Math.max(dimAlpha, (int) (24.0F * open))))
+                    .blur(S(18), Math.min(1.0F, open))
+                    .hudGlow(false)
+                    .draw();
+        } else if (dimAlpha > 0) {
+            MenuDraw.rect(0.0F, 0.0F, screenWidth, screenHeight, MenuDraw.a(0x05040A, dimAlpha));
         }
 
         MenuDraw.fade = keep * Math.min(1.0F, open * 1.3F);
@@ -599,17 +608,18 @@ public final class MenuScreen extends Screen {
 
         MenuDraw.shadow(plateX, plateY + S(4), plateW, plateH, radius, S(14),
                 MenuDraw.a(0, light() ? 30 : 90));
-        MenuDraw.round(plateX, plateY, plateW, plateH, radius, light() ? 0xF2FFFFFF : 0xF00C0D12);
-        MenuDraw.outline(plateX, plateY, plateW, plateH, radius, light() ? MenuDraw.a(MenuPalette.text(), 24) : 0x1CFFFFFF);
+        MenuDraw.round(plateX, plateY, plateW, plateH, radius,
+                light() ? MenuDraw.a(0xFFFFFF, 242) : MenuDraw.a(MenuPalette.bg(), 240));
+        MenuDraw.outline(plateX, plateY, plateW, plateH, radius, MenuDraw.a(MenuPalette.text(), light() ? 24 : 26));
         gradHairline(plateX + radius, plateY, plateW - radius, radius);
         MenuDraw.iconCsCentered(IconGlyphs.COSMETICA, x - S(4), plateY, logoSize + S(8), plateH, logoSize,
                 MenuDraw.a(MenuPalette.accent(), light() ? 220 : 255));
 
         float textY = plateY + (plateH - MenuText.lineHeight(Weight.BOLD, fontSize)) * 0.5F;
         MenuDraw.text(first, x + logoSize + gap, textY, Weight.BOLD, fontSize,
-                light() ? 0xFF15151A : 0xFFF4F6FA);
+                MenuPalette.text());
         MenuDraw.text(second, x + logoSize + gap + firstW, textY, Weight.MEDIUM, fontSize,
-                light() ? 0xFF696978 : 0xFF8F97A4);
+                MenuPalette.muted());
 
         MenuDraw.fade = keep;
     }
@@ -626,13 +636,14 @@ public final class MenuScreen extends Screen {
         if (MenuPrefs.blur) {
             BeginFrameHelper.rect(x, y, this.pw, this.ph)
                     .radius(radius)
-                    .color((light ? 0xF8F8F7FA : (MenuPalette.bg() & 0xFFFFFF) | 0xF2000000))
+                    // альфа ниже 0xF0, иначе размытие под панелью не видно
+                    .color(light ? 0xE6F8F7FA : MenuDraw.a(MenuPalette.bg(), 214))
                     .blur(S(30), MenuDraw.fade)
                     .hudGlow(false)
                     .draw();
         } else {
             MenuDraw.round(x, y, this.pw, this.ph, radius,
-                    light ? 0xF8F8F7FA : (MenuPalette.bg() & 0xFFFFFF) | 0xF2000000);
+                    light ? 0xF8F8F7FA : MenuDraw.a(MenuPalette.bg(), 242));
         }
         MenuDraw.outline(x, y, this.pw, this.ph, radius, MenuDraw.a(MenuPalette.text(), light ? 28 : 20));
         gradHairline(x, y, this.pw, radius);
@@ -712,11 +723,11 @@ public final class MenuScreen extends Screen {
                     MenuDraw.mix(lt(MenuPalette.muted(), 0xFFB0B8C4), MenuPalette.text(), hoverAmount * 0.6F),
                     MenuPalette.text(), activeAmount);
             if (page == Page.MODULES) {
-                MenuDraw.iconCs(IconGlyphs.category(TABS[i]), this.tabX[i] + iconPad, plateY + (plateH - iconSize) * 0.5F
-                                - S(1), iconSize, MenuDraw.mix(colour, accText(), activeAmount * 0.9F));
+                MenuDraw.iconCs(IconGlyphs.category(TABS[i]), this.tabX[i] + iconPad + iconSize * 0.5F,
+                        plateY + plateH * 0.5F, iconSize, MenuDraw.mix(colour, accText(), activeAmount * 0.9F));
             } else {
-                MenuDraw.iconCs(IconGlyphs.CONFIGS, this.tabX[i] + iconPad, plateY + (plateH - iconSize) * 0.5F - S(1),
-                        iconSize, MenuDraw.mix(colour, accText(), activeAmount * 0.9F));
+                MenuDraw.iconCs(IconGlyphs.CONFIGS, this.tabX[i] + iconPad + iconSize * 0.5F,
+                        plateY + plateH * 0.5F, iconSize, MenuDraw.mix(colour, accText(), activeAmount * 0.9F));
             }
             MenuDraw.text(labels[i], this.tabX[i] + iconPad + iconSize + iconGap,
                     plateY + (plateH - MenuText.lineHeight(Weight.SEMIBOLD, fontSize)) * 0.5F,
@@ -752,8 +763,8 @@ public final class MenuScreen extends Screen {
                         ? (int) (16 + 10 * hoverAmount)
                         : (int) (12 + 8 * hoverAmount)), acc(), focus));
 
-        float iconSize = S(12);
-        MenuDraw.iconCs(IconGlyphs.SEARCH, x + S(11), y + (h - iconSize) * 0.5F - S(1), iconSize,
+        float iconSize = S(13);
+        MenuDraw.iconCs(IconGlyphs.SEARCH, x + S(11) + iconSize * 0.5F, y + h * 0.5F, iconSize,
                 MenuDraw.mix(MenuPalette.dim(), accText(), focus));
 
         boolean empty = this.search.isEmpty();
@@ -771,7 +782,8 @@ public final class MenuScreen extends Screen {
 
         if (!empty) {
             boolean clearHover = !blocked() && hover(x + w - S(26), y, S(26), h);
-            MenuDraw.iconLetters(LegacyIconGlyphs.TRASH, x + w - S(20), y + (h - S(11)) * 0.5F - S(1), S(11),
+            float clearSize = S(12);
+            MenuDraw.iconLetters(LegacyIconGlyphs.TRASH, x + w - S(20) + clearSize * 0.5F, y + h * 0.5F, clearSize,
                     clearHover ? MenuPalette.text() : MenuPalette.muted());
             if (!blocked()) {
                 region(x + w - S(26), y, S(26), h, ACT_SEARCH_CLEAR, 0);
@@ -981,8 +993,8 @@ public final class MenuScreen extends Screen {
                 MenuDraw.mix(plate(), light() ? 0xFFFFFFFF
                         : MenuDraw.mix(MenuPalette.bg() | 0xFF000000, 0xFFFFFFFF, 0.055F), hoverAmount));
         MenuDraw.outline(x, y + offsetY, w, h, radius,
-                MenuDraw.mix(light() ? MenuDraw.a(MenuPalette.text(), 22) : 0x18FFFFFF,
-                        MenuDraw.a(MenuPalette.accent(), 200), selected));
+                MenuDraw.mix(MenuDraw.a(MenuPalette.text(), light() ? 14 : 16),
+                        MenuDraw.a(MenuPalette.accent(), 130), selected));
 
         // справа: тумблер, клавиша, кнопка раскрытия
         float toggleSize = Math.round(S(30));
@@ -1034,7 +1046,7 @@ public final class MenuScreen extends Screen {
             float activeAmount = Math.max(gearAmount, selected);
             if (activeAmount > 0.01F) {
                 MenuDraw.round(gearX, keyY, gearSize, keyHeight, keyHeight * 0.5F,
-                        MenuDraw.a(light() ? 0x1B1530 : 0xFFFFFF, (int) (12 * gearAmount + 6 * selected)));
+                        MenuDraw.a(MenuPalette.text(), (int) (12 * gearAmount + 6 * selected)));
             }
             MenuDraw.outline(gearX, keyY, gearSize, keyHeight, keyHeight * 0.5F,
                     MenuDraw.mix(light() ? MenuDraw.a(MenuPalette.text(), 26) : 0x18FFFFFF,
@@ -1068,7 +1080,7 @@ public final class MenuScreen extends Screen {
         float pulse = (float) (Math.sin(this.now / 220.0) * 0.5 + 0.5) * waitAmount;
 
         int background = MenuDraw.mix(
-                MenuDraw.a(light() ? 0x1B1530 : 0xFFFFFF, hovered ? 12 : 0),
+                MenuDraw.a(MenuPalette.text(), hovered ? 12 : 0),
                 MenuDraw.a(MenuPalette.accent(), (int) ((light() ? 26 : 38) + 22 * pulse)),
                 waitAmount);
         if ((background >>> 24) != 0) {
@@ -1352,7 +1364,7 @@ public final class MenuScreen extends Screen {
             float knobX = x + knobRadius + (w - knobRadius * 2.0F) * shown;
 
             MenuDraw.round(x, trackY, w, trackHeight, trackHeight * 0.5F,
-                    light() ? 0xFFDEDDE6 : MenuDraw.a(0xFFFFFF, 24));
+                    MenuDraw.a(MenuPalette.text(), light() ? 26 : 24));
             if (MenuPrefs.gradient) {
                 MenuDraw.roundGrad(x, trackY, Math.max(trackHeight, knobX - x), trackHeight, trackHeight * 0.5F,
                         acc(), acc2());
@@ -1555,7 +1567,7 @@ public final class MenuScreen extends Screen {
                     lt(MenuPalette.dim(), 0xFF5A616C));
 
             MenuDraw.round(x, trackY, w, trackHeight, trackHeight * 0.5F,
-                    light() ? 0xFFDEDDE6 : MenuDraw.a(0xFFFFFF, 24));
+                    MenuDraw.a(MenuPalette.text(), light() ? 26 : 24));
             if (MenuPrefs.gradient) {
                 MenuDraw.roundGrad(x, trackY, Math.max(trackHeight, knobX - x), trackHeight, trackHeight * 0.5F,
                         acc(), acc2());
@@ -1942,18 +1954,27 @@ public final class MenuScreen extends Screen {
 
     private void dock(float centreX, float edge, float slide) {
         String[] labels = {"Модули", "Настройки"};
-        float buttonSize = S(38);
-        float gap = S(6);
-        float pad = S(5);
+        float buttonSize = S(44);
+        float gap = S(8);
+        float pad = S(6);
         int count = labels.length;
         float width = count * buttonSize + (count - 1) * gap + pad * 2.0F;
         float height = buttonSize + pad * 2.0F;
         float x = centreX - width * 0.5F;
-        float y = edge + slide - height * 0.5F - S(6);
+        float y = edge + slide - height * 0.5F;
 
         MenuDraw.shadow(x, y + S(3), width, height, height * 0.5F, S(14), MenuDraw.a(0, light() ? 30 : 90));
-        MenuDraw.round(x, y, width, height, height * 0.5F,
-                light() ? 0xFFFFFFFF : MenuDraw.mix(MenuPalette.bg() | 0xFF000000, 0xFFFFFFFF, 0.025F));
+        if (MenuPrefs.blur) {
+            BeginFrameHelper.rect(x, y, width, height)
+                    .radius(height * 0.5F)
+                    .color(light() ? 0xE6FFFFFF : MenuDraw.a(MenuPalette.bg(), 214))
+                    .blur(S(18), MenuDraw.fade)
+                    .hudGlow(false)
+                    .draw();
+        } else {
+            MenuDraw.round(x, y, width, height, height * 0.5F,
+                    light() ? 0xFFFFFFFF : MenuDraw.mix(MenuPalette.bg() | 0xFF000000, 0xFFFFFFFF, 0.025F));
+        }
         MenuDraw.outline(x, y, width, height, height * 0.5F,
                 MenuDraw.a(MenuPalette.text(), light() ? 30 : 22));
 
@@ -1976,13 +1997,22 @@ public final class MenuScreen extends Screen {
                         MenuDraw.a(MenuPalette.text(), (int) (12 * hoverAmount * (1.0F - lit))));
             }
             int iconColour = MenuDraw.mix(
-                    MenuDraw.mix(lt(0xFF8E89A0, 0xFF857E98), MenuPalette.text(), hoverAmount),
+                    MenuDraw.mix(MenuDraw.mix(MenuPalette.muted(), MenuPalette.dim(), 0.5F), MenuPalette.text(),
+                            hoverAmount),
                     0xFFFFFFFF, lit);
             if (i == activeIndex) {
                 iconColour = onCircle;
             }
-            MenuDraw.iconCsCentered(i == 0 ? IconGlyphs.CONFIGS : IconGlyphs.STAR,
-                    buttonX, y + pad, buttonSize, buttonSize, S(15), iconColour);
+            // «Модули» — иконка списка модулей, «Настройки» — ползунки.
+            // Раньше здесь стояли CONFIGS (иконка конфигов) и STAR (избранное).
+            float iconSize = S(20);
+            if (i == 0) {
+                MenuDraw.iconCsCentered(IconGlyphs.MISC, buttonX, y + pad, buttonSize, buttonSize, iconSize,
+                        iconColour);
+            } else {
+                MenuDraw.iconLettersCentered(LegacyIconGlyphs.FILTERS, buttonX, y + pad, buttonSize, buttonSize,
+                        iconSize, iconColour);
+            }
 
             if (hoverAmount > 0.02F) {
                 String label = labels[i];
@@ -2106,8 +2136,16 @@ public final class MenuScreen extends Screen {
         int action = this.regionAction[index];
         int alt = this.regionAlt[index];
         int payload = this.regionPayload[index];
-        if (button == 1 && alt != ACT_NONE) {
+        if (button == 1) {
+            // правая кнопка — только альтернативное действие (например, открыть
+            // настройки модуля); если его нет, клик не должен ничего переключать
+            if (alt == ACT_NONE) {
+                return true;
+            }
             action = alt;
+        } else if (button != 0) {
+            // средняя и остальные кнопки в меню ничего не включают
+            return true;
         }
         // Непрерывные контролы: нажатие взводит перетаскивание, иначе ползунок
         // двигался бы только по одиночным кликам.

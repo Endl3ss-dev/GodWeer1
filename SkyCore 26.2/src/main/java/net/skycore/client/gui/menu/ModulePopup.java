@@ -49,11 +49,11 @@ final class ModulePopup {
         boolean live = this.menu.popMod != null && this.menu.pop == null && appear > 0.5F;
         int moduleIndex = this.menu.moduleIndex(module);
 
-        float width = this.menu.S(280);
-        float pad = this.menu.S(14);
-        float headHeight = this.menu.S(58);
-        float keyHeight = this.menu.S(34);
-        float inset = this.menu.S(6);
+        float width = this.menu.S(300);
+        float pad = this.menu.S(18);
+        float headHeight = this.menu.S(66);
+        float keyHeight = this.menu.S(38);
+        float inset = this.menu.S(8);
 
         // ---- вертикальный размер: по числу видимых настроек, но не больше экрана
         float rowsHeight = 0.0F;
@@ -65,7 +65,10 @@ final class ModulePopup {
         }
 
         float minHeight = headHeight + keyHeight + inset * 2.0F;
-        float maxHeight = Math.max(minHeight, this.menu.screenHeight() - this.menu.S(24));
+        // потолок — и экран, и сама панель: иначе короткий список настроек
+        // растягивался на всю высоту экрана
+        float maxHeight = Math.max(minHeight,
+                Math.min(this.menu.ph, this.menu.screenHeight() - this.menu.S(24)));
         float height = Math.min(maxHeight, minHeight + rowsHeight + this.menu.S(8));
 
         // ---- горизонтальное положение: сбоку от панели, если есть место
@@ -89,8 +92,10 @@ final class ModulePopup {
         }
         x = Math.max(this.menu.S(6), Math.min(this.menu.screenWidth() - width - this.menu.S(6), x));
 
-        float y = Math.max(this.menu.S(8),
-                Math.min(this.menu.screenHeight() - height - this.menu.S(8), this.menu.ancY - this.menu.S(4)));
+        float y = Math.max(
+                Math.max(this.menu.S(12), this.menu.py),
+                Math.min(Math.min(this.menu.screenHeight() - this.menu.S(12), this.menu.py + this.menu.ph) - height,
+                        this.menu.ancY - this.menu.S(6)));
 
         this.menu.pmX = x;
         this.menu.pmY = y;
@@ -100,16 +105,18 @@ final class ModulePopup {
         float keep = MenuDraw.fade;
         MenuDraw.fade = keep * Math.min(1.0F, appear * 1.4F);
 
-        float slide = (1.0F - alpha) * this.menu.S(12) * (outside ? 1.0F : 0.5F);
-        float drawX = x + (outside && x > this.menu.px ? -slide : slide);
+        // окно выезжает от панели: правое — влево, левое — вправо
+        boolean onRight = x > this.menu.px + this.menu.pw * 0.5F;
+        float slide = (1.0F - alpha) * this.menu.S(14);
+        float drawX = x + (onRight ? -slide : slide);
         float radius = this.menu.S(11);
 
         MenuDraw.shadow(drawX, y + this.menu.S(5), width, height, radius, this.menu.S(16),
                 MenuDraw.a(0, this.menu.light() ? 30 : 80));
         MenuDraw.round(drawX, y, width, height, radius,
-                this.menu.light() ? 0xFFFFFFFF : 0xF40C0D12);
+                this.menu.light() ? MenuDraw.a(0xFFFFFF, 250) : MenuDraw.a(MenuPalette.bg(), 246));
         MenuDraw.outline(drawX, y, width, height, radius,
-                this.menu.light() ? MenuDraw.a(MenuPalette.text(), 26) : 0x18FFFFFF);
+                MenuDraw.a(MenuPalette.text(), this.menu.light() ? 22 : 24));
         this.menu.gradHairline(drawX, y, width, radius);
 
         // тонкая связь с карточкой, к которой окно относится
@@ -193,11 +200,12 @@ final class ModulePopup {
         float keyRowY = y + height - keyHeight - this.menu.S(2);
         MenuDraw.rect(contentX, keyRowY, contentW, Math.max(1.0F, this.menu.S(1)),
                 this.menu.light() ? MenuDraw.a(MenuPalette.text(), 16) : 0x10FFFFFF);
-        float labelY = keyRowY + this.menu.S(6);
-        MenuDraw.text("Клавиша", contentX, labelY + (this.menu.S(22) - MenuText.lineHeight(Weight.MEDIUM,
-                        this.menu.S(11))) * 0.5F, Weight.MEDIUM, this.menu.S(11), MenuPalette.muted());
-        MenuDraw.iconCs(IconGlyphs.BIND, contentX, keyRowY + this.menu.S(2), this.menu.S(12),
-                MenuDraw.a(accTextSafe(), 150));
+        float bindSize = this.menu.S(16);
+        float labelX = contentX + bindSize + this.menu.S(8);
+        MenuDraw.iconCs(IconGlyphs.BIND, contentX + bindSize * 0.5F, keyRowY + keyHeight * 0.5F, bindSize,
+                MenuDraw.a(accTextSafe(), 190));
+        MenuDraw.text("Клавиша", labelX, keyRowY + (keyHeight - MenuText.lineHeight(Weight.MEDIUM,
+                        this.menu.S(12))) * 0.5F, Weight.MEDIUM, this.menu.S(12), MenuPalette.muted());
 
         boolean waiting = this.menu.binding == module;
         String keyLabel = waiting ? "Нажми клавишу"
