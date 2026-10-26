@@ -13,6 +13,8 @@ import net.skycore.client.config.MacroManager;
 import net.skycore.client.config.NameList;
 import net.skycore.client.event.ClientTickEvent;
 import net.skycore.client.event.EventBus;
+import net.skycore.client.gui.menu.MenuPrefs;
+import net.skycore.client.gui.menu.MenuScreen;
 import net.skycore.client.hud.HudRenderer;
 import net.skycore.client.integration.DiscordStatus;
 import net.skycore.client.module.BindManager;
@@ -84,13 +86,20 @@ public final class SkycoreClient implements ClientModInitializer {
       SelectAndSaveHelper.initialize(Path.of("skycore/beta-language.json"));
       AccountManager.INSTANCE.initialize(Path.of("skycore/beta-alts.json"));
       config = new ConfigManager(MODULES, THEMES, Path.of("skycore/beta-local.json"));
+      // Оформление перенесённого меню живёт отдельным файлом: общий конфиг описывает
+      // модули, их настройки и темы, и менять его формат ради меню не нужно.
+      MenuPrefs.load();
       commands = new CommandManager();
       interfaceRenderer = new HudRenderer(MODULES, config);
       Minecraft instance = Minecraft.getInstance();
       ClickGUIModule clickGUIModule = MODULES.get(ClickGUIModule.class).orElseThrow();
       clickGUIModule.setOpenAction(() -> {
-         RenderGuiHelper renderGuiHelper = new RenderGuiHelper(MODULES, THEMES, config, clickGUIModule);
-         instance.setScreenAndShow(renderGuiHelper);
+         if (clickGUIModule.menuStyle().is("Skycore")) {
+            RenderGuiHelper renderGuiHelper = new RenderGuiHelper(MODULES, THEMES, config, clickGUIModule);
+            instance.setScreenAndShow(renderGuiHelper);
+         } else {
+            instance.setScreenAndShow(new MenuScreen(MODULES, config));
+         }
       });
       ClientTickEvents.END_CLIENT_TICK.register(this::onEndTick);
       var targetEspRenderer = MODULES.get(net.skycore.client.module.render.TargetESPModule.class).orElseThrow();
