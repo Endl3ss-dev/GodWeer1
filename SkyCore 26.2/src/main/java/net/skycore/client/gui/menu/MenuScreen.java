@@ -840,11 +840,22 @@ public final class MenuScreen extends Screen {
                     continue;
                 }
             } else if (!containsIgnoreCase(module.getName(), query)
-                    && !containsIgnoreCase(module.getDescription(), query)) {
+                    && !containsIgnoreCase(module.getDescription(), query)
+                    && !containsIgnoreCase(categoryTitle(module.getCategory()), query)) {
                 continue;
             }
             this.visible[this.visibleCount++] = module;
         }
+    }
+
+    /** Returns the localized ClickGUI tab title for a module category. */
+    private static String categoryTitle(ModuleCategory moduleCategory) {
+        for (int i = 0; i < TABS.length; i++) {
+            if (TABS[i] == moduleCategory) {
+                return TAB_TITLES[i];
+            }
+        }
+        return moduleCategory.displayName();
     }
 
     private static boolean containsIgnoreCase(String text, String query) {
