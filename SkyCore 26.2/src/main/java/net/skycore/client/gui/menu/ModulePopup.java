@@ -142,7 +142,7 @@ final class ModulePopup {
 
         float moduleToggleX = drawX + width - pad - toggleW;
         float moduleOn = this.menu.tw(MenuAnim.MODULE_BASE + moduleIndex * MenuAnim.MOD_STRIDE + MenuAnim.MOD_ON,
-                module.isEnabled() ? 1.0F : 0.0F, 180.0F);
+                module.isEnabled() ? 1.0F : 0.0F, 180);
         boolean toggleHover = live && this.menu.hover(moduleToggleX, y + this.menu.S(10), toggleW,
                 this.menu.S(26));
         if (toggleHover) {

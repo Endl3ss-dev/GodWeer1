@@ -216,8 +216,8 @@ public final class MenuScreen extends Screen {
     private static ModuleCategory category = ModuleCategory.COMBAT;
 
     private float u = 1.0F;
-    private double mx;
-    private double my;
+    private float mx;
+    private float my;
     private long now = System.currentTimeMillis();
     private final long openedAt = System.currentTimeMillis();
     private long contentAt = System.currentTimeMillis();
@@ -412,7 +412,7 @@ public final class MenuScreen extends Screen {
         region(x, y, w, h, action, ACT_NONE, payload);
     }
 
-    private void region(float x, float y, float w, float h, int action, int alt, int payload) {
+    void region(float x, float y, float w, float h, int action, int alt, int payload) {
         if (this.regionCount >= MAX_REGIONS || w <= 0.0F || h <= 0.0F) {
             return;
         }
@@ -973,9 +973,9 @@ public final class MenuScreen extends Screen {
         float hoverAmount = an(MenuAnim.MODULE_BASE + mi * MenuAnim.MOD_STRIDE + MenuAnim.MOD_HOVER,
                 hovered ? 1.0F : 0.0F, 18.0F);
         float on = tw(MenuAnim.MODULE_BASE + mi * MenuAnim.MOD_STRIDE + MenuAnim.MOD_ON,
-                module.isEnabled() ? 1.0F : 0.0F, 180.0F);
+                module.isEnabled() ? 1.0F : 0.0F, 180);
         float selected = tw(MenuAnim.MODULE_BASE + mi * MenuAnim.MOD_STRIDE + MenuAnim.MOD_SELECTED,
-                this.popMod == module ? 1.0F : 0.0F, 200.0F);
+                this.popMod == module ? 1.0F : 0.0F, 200);
 
         MenuDraw.round(x, y + offsetY, w, h, radius,
                 MenuDraw.mix(plate(), light() ? 0xFFFFFFFF
@@ -1374,7 +1374,7 @@ public final class MenuScreen extends Screen {
         } else {
             MenuDraw.textMid(label, x, y - scrollAmount, h, Weight.MEDIUM, fontSize, MenuPalette.text());
             boolean value = prefBool(pref);
-            float on = tw(MenuAnim.PREFS_BASE + pref * 4 + MenuAnim.SET_BOOL, value ? 1.0F : 0.0F, 200.0F);
+            float on = tw(MenuAnim.PREFS_BASE + pref * 4 + MenuAnim.SET_BOOL, value ? 1.0F : 0.0F, 200);
             this.toggle(x + w - S(40), y - scrollAmount, S(40), h, on, hoverAmount);
             if (live) {
                 clipped(x, y, w, h, scrollAmount, listTop, listBottom, ACT_PREF_BOOL, pref);
@@ -1526,7 +1526,7 @@ public final class MenuScreen extends Screen {
 
         if (setting instanceof BooleanSetting booleanSetting) {
             MenuDraw.textMid(name, x, boxY, h, Weight.MEDIUM, fontSize, labelColour);
-            float on = tw(animBase + MenuAnim.SET_BOOL, booleanSetting.get() ? 1.0F : 0.0F, 200.0F);
+            float on = tw(animBase + MenuAnim.SET_BOOL, booleanSetting.get() ? 1.0F : 0.0F, 200);
             this.toggle(x + w - S(38), boxY, S(38), h, on, hoverAmount);
             if (live) {
                 clipped(x, y, w, h, scrollAmount, listTop, listBottom, ACT_BOOL, global);
@@ -1634,7 +1634,7 @@ public final class MenuScreen extends Screen {
                 MenuDraw.text(MenuDraw.ellipsize(value, Weight.MEDIUM, valueFont, valueWidth - S(22)), valueX + S(8),
                         valueY + (valueHeight - MenuText.lineHeight(Weight.MEDIUM, valueFont)) * 0.5F,
                         Weight.MEDIUM, valueFont, MenuPalette.text());
-                float turn = tw(animBase + MenuAnim.SET_DROPDOWN, open ? 1.0F : 0.0F, 200.0F);
+                float turn = tw(animBase + MenuAnim.SET_DROPDOWN, open ? 1.0F : 0.0F, 200);
                 MenuDraw.iconLettersCentered(LegacyIconGlyphs.CHEVRON, valueX + valueWidth - S(16), valueY, S(12),
                         valueHeight, S(9), MenuDraw.mix(lt(MenuPalette.muted(), 0xFF757D8A), accText(), turn));
                 if (live) {
@@ -2053,8 +2053,8 @@ public final class MenuScreen extends Screen {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
-        this.mx = event.x();
-        this.my = event.y();
+        this.mx = (float) event.x();
+        this.my = (float) event.y();
         int button = event.button();
 
         // назначение клавиши перехватывает любой клик мышью
@@ -2139,8 +2139,8 @@ public final class MenuScreen extends Screen {
         if (!this.dragging) {
             return super.mouseDragged(event, dragX, dragY);
         }
-        this.mx = event.x();
-        this.my = event.y();
+        this.mx = (float) event.x();
+        this.my = (float) event.y();
         this.runAction(this.dragAction, this.dragPayload);
         return true;
     }
