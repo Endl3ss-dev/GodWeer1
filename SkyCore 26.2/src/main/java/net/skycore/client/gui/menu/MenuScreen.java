@@ -539,13 +539,14 @@ public final class MenuScreen extends Screen {
         float screenWidth = this.width;
         float screenHeight = this.height;
 
-        this.u = Math.max(0.35F,
-                Math.min(1.7F, Math.min(screenWidth / 1080.0F, screenHeight / 830.0F) * MenuPrefs.menuScale()));
+        this.u = Math.max(0.45F, Math.min(2.2F,
+                Math.min(screenHeight / 1080.0F, screenWidth / 1060.0F)
+                        * MenuPrefs.menuScale() * 0.86F));
 
-        this.pw = Math.min(S(1000), screenWidth - S(70));
-        this.ph = Math.min(S(640), screenHeight - S(170));
+        this.pw = Math.min(S(1010), screenWidth - S(80));
+        this.ph = Math.min(S(640), screenHeight - S(210));
         this.px = (screenWidth - this.pw) * 0.5F;
-        this.py = (screenHeight - this.ph) * 0.5F + S(18);
+        this.py = (screenHeight - this.ph - S(28) + S(78)) * 0.5F;
 
         float keep = MenuDraw.fade;
 
@@ -565,7 +566,7 @@ public final class MenuScreen extends Screen {
         }
 
         MenuDraw.fade = keep * Math.min(1.0F, open * 1.3F);
-        this.brand(screenWidth * 0.5F, this.py - S(46));
+        this.brand(screenWidth * 0.5F, this.py - S(58));
 
         float slide = (1.0F - e) * S(16);
         this.panel(slide);
@@ -585,14 +586,15 @@ public final class MenuScreen extends Screen {
     private void brand(float centerX, float y) {
         float t = (this.now - this.openedAt) / 1000.0F;
         float alpha = ease(t / 0.35F);
-        float logoSize = S(24);
-        float fontSize = S(19);
-        float gap = S(9);
+        float logoSize = S(28);
+        float fontSize = S(21);
+        float secondFontSize = S(21);
+        float gap = S(10);
 
         String first = "Skycore";
         String second = " Menu";
         float firstW = MenuDraw.textWidth(first, Weight.BOLD, fontSize);
-        float secondW = MenuDraw.textWidth(second, Weight.MEDIUM, fontSize);
+        float secondW = MenuDraw.textWidth(second, Weight.MEDIUM, secondFontSize);
         float total = logoSize + gap + firstW + secondW;
         float x = centerX - total * 0.5F;
 
@@ -618,7 +620,7 @@ public final class MenuScreen extends Screen {
         float textY = plateY + (plateH - MenuText.lineHeight(Weight.BOLD, fontSize)) * 0.5F;
         MenuDraw.text(first, x + logoSize + gap, textY, Weight.BOLD, fontSize,
                 MenuPalette.text());
-        MenuDraw.text(second, x + logoSize + gap + firstW, textY, Weight.MEDIUM, fontSize,
+        MenuDraw.text(second, x + logoSize + gap + firstW, textY, Weight.MEDIUM, secondFontSize,
                 MenuPalette.muted());
 
         MenuDraw.fade = keep;
@@ -648,17 +650,17 @@ public final class MenuScreen extends Screen {
         MenuDraw.outline(x, y, this.pw, this.ph, radius, MenuDraw.a(MenuPalette.text(), light ? 28 : 20));
         gradHairline(x, y, this.pw, radius);
 
-        float pad = S(26);
-        float headerY = y + S(20);
-        float headerH = S(36);
+        float pad = S(36);
+        float headerY = y + S(26);
+        float headerH = S(40);
         this.cx0 = x + pad;
         this.cw0 = this.pw - pad * 2.0F;
         this.header(this.cx0, headerY, this.cw0, headerH);
 
-        float lineY = headerY + headerH + S(14);
+        float lineY = headerY + headerH + S(18);
         MenuDraw.rect(this.cx0, lineY, this.cw0, Math.max(1.0F, S(1)), this.hair());
-        this.top = lineY + S(14);
-        this.bottom = y + this.ph - S(34);
+        this.top = lineY + S(18);
+        this.bottom = y + this.ph - S(44);
 
         if (page == Page.MODULES) {
             this.rows();
