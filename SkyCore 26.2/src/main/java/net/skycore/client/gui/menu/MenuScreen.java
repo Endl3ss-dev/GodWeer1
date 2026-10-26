@@ -602,16 +602,18 @@ public final class MenuScreen extends Screen {
         MenuDraw.fade = keep * alpha;
 
         float dy = (1.0F - alpha) * S(6);
-        float plateX = x - S(16);
-        float plateY = y + dy - S(9);
-        float plateW = total + S(34);
-        float plateH = logoSize + S(18);
+        float plateX = x - S(18);
+        float plateY = y + dy - S(10);
+        float plateW = total + S(38);
+        float plateH = logoSize + S(20);
         float radius = plateH * 0.5F;
 
         MenuDraw.shadow(plateX, plateY + S(4), plateW, plateH, radius, S(14),
                 MenuDraw.a(0, light() ? 30 : 90));
         MenuDraw.round(plateX, plateY, plateW, plateH, radius,
                 light() ? MenuDraw.a(0xFFFFFF, 242) : MenuDraw.a(MenuPalette.bg(), 240));
+        MenuDraw.glow(x - S(8), plateY + S(2), logoSize + S(16), plateH - S(4), radius,
+                MenuDraw.a(MenuPalette.accent(), light() ? 50 : 90));
         MenuDraw.outline(plateX, plateY, plateW, plateH, radius, MenuDraw.a(MenuPalette.text(), light() ? 24 : 26));
         gradHairline(plateX + radius, plateY, plateW - radius, radius);
         MenuDraw.iconCsCentered(IconGlyphs.STAR, x - S(4), plateY, logoSize + S(8), plateH, logoSize,
