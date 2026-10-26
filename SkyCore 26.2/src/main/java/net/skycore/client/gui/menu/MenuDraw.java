@@ -251,16 +251,6 @@ public final class MenuDraw {
 
     // ---- иконки
 
-    /** Глиф именованного иконочного шрифта ({@code csgui-icons}). */
-    public static void iconCs(String glyph, float x, float y, float size, int color) {
-        drawIcon(glyph, x, y, size, color, InterBoldHelper.csGuiIcons());
-    }
-
-    /** Глиф буквенного иконочного шрифта ({@code clickgui-icons}). */
-    public static void iconLetters(String glyph, float x, float y, float size, int color) {
-        drawIcon(glyph, x, y, size, color, InterBoldHelper.clickGuiIcons());
-    }
-
     /**
      * Иконка, отцентрованная по точке.
      *
