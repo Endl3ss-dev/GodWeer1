@@ -1063,10 +1063,10 @@ public final class FakeplayerCommand extends ClientCommand {
             this.addEffect(new MobEffectInstance(MobEffects.FIRE_RESISTANCE, 40, cfg.fireResistance() - 1, false, false, false));
          }
          if (cfg.resistance() > 0) {
-            this.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, 40, cfg.resistance() - 1, false, false, false));
+            this.addEffect(new MobEffectInstance(MobEffects.RESISTANCE, 40, cfg.resistance() - 1, false, false, false));
          }
          if (cfg.speedBoost() > 0) {
-            this.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 40, cfg.speedBoost() - 1, false, false, false));
+            this.addEffect(new MobEffectInstance(MobEffects.SPEED, 40, cfg.speedBoost() - 1, false, false, false));
          }
          if (cfg.glowing()) {
             this.addEffect(new MobEffectInstance(MobEffects.GLOWING, 40, 0, false, false, false));
@@ -1094,7 +1094,7 @@ public final class FakeplayerCommand extends ClientCommand {
          this.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 100, 1, false, false, false));
          this.addEffect(new MobEffectInstance(MobEffects.ABSORPTION, 2400, 3, false, false, false));
          this.swing(InteractionHand.OFF_HAND);
-         this.playSound(SoundEvents.GENERIC_EAT, 0.8F, 1.0F);
+         this.playSound(SoundEvents.GENERIC_EAT.value(), 0.8F, 1.0F);
       }
 
       // ── поведение: движение, прыжок, атака ─────────────────────────────

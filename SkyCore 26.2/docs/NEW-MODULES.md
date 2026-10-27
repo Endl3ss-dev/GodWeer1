@@ -214,15 +214,19 @@ src/main/java/net/skycore/client/mixin/AbstractClientPlayerSkinOverrideMixin.jav
 | Порядок статических полей: `INSTANCE` объявлен после всех `static final`-констант (иначе `<clinit>` создаёт модуль раньше констант, `ModeSetting` получает `null`-массив и падает с `Mode list cannot be empty`) | исправлено во всех пяти модулях, проверено скриптом по AST |
 | Все 29 настроек, которые нужны болванке, доведены до неё: 29 полей в `FakePlayerConfig` = 29 сеттеров = 29 геттеров, лишних/забытых нет | да (сверено скриптом) |
 | 33 настройки в модуле с уникальными именами (по имени идёт сохранение в конфиг) | дублей нет |
-| Имена методов, которые вызывает новый код болванки (`getAttribute`, `setInvisible`, `jumpFromGround`, `playSound`, `damageSources().playerAttack`, `Level.players`, `AttributeInstance.setBaseValue`, `DamageTypeTags.IS_FIRE/IS_EXPLOSION`, `MobEffects.DAMAGE_RESISTANCE/MOVEMENT_SPEED/GLOWING`, `Items.*`, `Enchantments.PROTECTION/UNBREAKING/MENDING`) | сверены с маппингами Minecraft 1.21.4 (единственный jar в песочнице): все найдены |
+| Имена методов, которые вызывает новый код болванки (`getAttribute`, `setInvisible`, `jumpFromGround`, `playSound`, `damageSources().playerAttack`, `Level.players`, `AttributeInstance.setBaseValue`, `DamageTypeTags.IS_FIRE/IS_EXPLOSION`, `MobEffects.*`, `Items.*`, `Enchantments.PROTECTION/UNBREAKING/MENDING`) | первая компиляция у пользователя нашла 3 неверных имени — исправлено (см. ниже) |
+| Имена эффектов и звуков именно 26.2 | в 26.2 эффекты называются по-старому: `MobEffects.RESISTANCE` и `MobEffects.SPEED` (а не `DAMAGE_RESISTANCE` / `MOVEMENT_SPEED`, как в 1.21.4); `SoundEvents.GENERIC_EAT` — это `Holder.Reference<SoundEvent>`, поэтому для `Entity.playSound` нужен `.value()` |
 | Компиляция `./gradlew build` | **не выполнялась**: в среде нет JDK |
 | Запуск в игре | не выполнялся |
 
-Отдельно не проверено компилятором и в игре (используется в проекте впервые):
-`LivingEntity.startUsingItem(InteractionHand)` и `stopUsingItem()` для щита болванки,
-`LivingEntity.jumpFromGround()`, `Entity.playSound(...)` на клиентской болванке,
-`Level.players()` в клиентском мире, а также фактическое применение миксина подмены
-скина — метод `getSkin()` в 26.2.
+Компилятором проверено (первый `./gradlew compileJava` у пользователя): весь новый код
+`FakePlayerConfig`, модуля и болванки собирается, кроме трёх имён, которые уже исправлены —
+`MobEffects.RESISTANCE`, `MobEffects.SPEED`, `SoundEvents.GENERIC_EAT.value()`.
+
+Не проверено в игре: `LivingEntity.startUsingItem(InteractionHand)` и `stopUsingItem()` для
+щита болванки, `LivingEntity.jumpFromGround()`, `Entity.playSound(...)` на клиентской
+болванке, `Level.players()` в клиентском мире, а также фактическое применение миксина
+подмены скина — метод `getSkin()` в 26.2.
 
 Что стоит проверить в игре первым делом:
 
