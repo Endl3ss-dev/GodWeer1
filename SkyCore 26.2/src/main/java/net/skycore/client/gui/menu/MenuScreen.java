@@ -1025,6 +1025,9 @@ public final class MenuScreen extends Screen {
                 keyTarget, 220);
         float keyX = toggleX - S(8) - keyWidth;
         float keyY = y + offsetY + (h - keyHeight) * 0.5F;
+        // Позиция покоя строки клавиши для регионов: как в Arcanic, clipped()
+        // принимает нескролленные координаты без слайда появления.
+        float keyRestY = unscrolledY + (h - keyHeight) * 0.5F;
 
         boolean hasSettings = !module.getSettings().isEmpty();
         float gearSize = Math.round(keyHeight * 1.15F);
@@ -1079,12 +1082,12 @@ public final class MenuScreen extends Screen {
         clipped(x, unscrolledY, (hasSettings ? gearX : keyX) - S(4) - x, h, scrollAmount, this.top, this.bottom,
                 ACT_MODULE_TOGGLE, hasSettings ? ACT_MODULE_OPEN : ACT_NONE, mi);
         if (hasSettings) {
-            clipped(gearX - S(3), keyY - S(3), gearSize + S(6), keyHeight + S(6), scrollAmount, this.top,
+            clipped(gearX - S(3), keyRestY - S(3), gearSize + S(6), keyHeight + S(6), scrollAmount, this.top,
                     this.bottom, ACT_MODULE_OPEN, ACT_MODULE_OPEN, mi);
         }
         clipped(toggleX - S(4), unscrolledY, x + w - toggleX + S(4), h, scrollAmount, this.top, this.bottom,
                 ACT_MODULE_TOGGLE, ACT_NONE, mi);
-        clipped(keyX - S(3), keyY - S(3), keyWidth + S(6), keyHeight + S(6), scrollAmount, this.top, this.bottom,
+        clipped(keyX - S(3), keyRestY - S(3), keyWidth + S(6), keyHeight + S(6), scrollAmount, this.top, this.bottom,
                 ACT_MODULE_KEY, ACT_MODULE_KEY_RESET, mi);
     }
 
@@ -1217,7 +1220,9 @@ public final class MenuScreen extends Screen {
                 }
                 float keep = MenuDraw.fade;
                 MenuDraw.fade = keep * appear;
-                this.prefGroup(i, groupX[i], groupY[i] - scrollAmount, columnWidth, groupH[i],
+                // Как в rows() и ModulePopup: группа получает нескролленный Y,
+                // скролл вычитается внутри при отрисовке (boxY), регионы — через clipped().
+                this.prefGroup(i, groupX[i], groupY[i], columnWidth, groupH[i],
                         scrollAmount, this.top, this.bottom, appear > 0.3F);
                 MenuDraw.fade = keep;
             }
@@ -1249,23 +1254,25 @@ public final class MenuScreen extends Screen {
                            float listTop, float listBottom, boolean live) {
         float pad = S(14);
         float radius = S(10);
-        MenuDraw.round(x, y, w, h, radius, plate());
-        MenuDraw.outline(x, y, w, h, radius, light() ? MenuDraw.a(MenuPalette.text(), 22) : 0x18FFFFFF);
+        // y нескролленный: рисуем со сдвигом, строкам отдаём нескролленный для clipped().
+        float boxY = y - scrollAmount;
+        MenuDraw.round(x, boxY, w, h, radius, plate());
+        MenuDraw.outline(x, boxY, w, h, radius, light() ? MenuDraw.a(MenuPalette.text(), 22) : 0x18FFFFFF);
 
         float iconBox = S(28);
-        accentWash(x + pad, y + S(12), iconBox, iconBox, S(8), light() ? 22 : 34);
+        accentWash(x + pad, boxY + S(12), iconBox, iconBox, S(8), light() ? 22 : 34);
         MenuDraw.iconCsCentered(group == PREFS_PALETTE ? IconGlyphs.COSMETICA
                         : group == PREFS_SOUND ? IconGlyphs.BIND
                         : group == PREFS_VIEW ? IconGlyphs.RENDER
                         : IconGlyphs.CONFIGS,
-                x + pad, y + S(12), iconBox, iconBox, S(13), accText());
+                x + pad, boxY + S(12), iconBox, iconBox, S(13), accText());
 
-        MenuDraw.text(PREFS[group].title(), x + pad + iconBox + S(10), y + S(12), Weight.SEMIBOLD, S(13),
+        MenuDraw.text(PREFS[group].title(), x + pad + iconBox + S(10), boxY + S(12), Weight.SEMIBOLD, S(13),
                 MenuPalette.text());
-        MenuDraw.text(PREFS[group].subtitle(), x + pad + iconBox + S(10), y + S(30), Weight.MEDIUM, S(10),
+        MenuDraw.text(PREFS[group].subtitle(), x + pad + iconBox + S(10), boxY + S(30), Weight.MEDIUM, S(10),
                 lt(MenuPalette.dim(), 0xFF757D8A));
 
-        MenuDraw.rect(x + pad, y + S(54), Math.max(1.0F, w - pad * 2.0F), Math.max(1.0F, S(1)),
+        MenuDraw.rect(x + pad, boxY + S(54), Math.max(1.0F, w - pad * 2.0F), Math.max(1.0F, S(1)),
                 light() ? MenuDraw.a(MenuPalette.text(), 18) : 0x12FFFFFF);
 
         float rowY = y + S(56);
@@ -1307,27 +1314,28 @@ public final class MenuScreen extends Screen {
             int row = i / perRow;
             float cellX = x + column * (cell + gap);
             float cellY = y + row * (cell + gap);
-            if (cellY + cell > listBottom + S(20)) {
+            float drawY = cellY - scrollAmount;
+            if (drawY + cell < listTop - S(20) || drawY > listBottom + S(20)) {
                 continue;
             }
             MenuPalette.Palette palette = MenuPalette.PALETTES[i];
             boolean selected = MenuPalette.palette == i;
-            boolean hovered = live && hover(cellX, cellY, cell, cell);
+            boolean hovered = live && hover(cellX, drawY, cell, cell);
             if (hovered) {
                 hot(HOT_PALETTE + i);
             }
-            MenuDraw.round(cellX, cellY, cell, cell, S(8), palette.bg() | 0xFF000000);
+            MenuDraw.round(cellX, drawY, cell, cell, S(8), palette.bg() | 0xFF000000);
             if (MenuPrefs.gradient) {
-                MenuDraw.roundGrad(cellX + S(5), cellY + cell - S(11), cell - S(10), S(6), S(3),
+                MenuDraw.roundGrad(cellX + S(5), drawY + cell - S(11), cell - S(10), S(6), S(3),
                         palette.a() | 0xFF000000, palette.b() | 0xFF000000);
             } else {
-                MenuDraw.round(cellX + S(5), cellY + cell - S(11), cell - S(10), S(6), S(3),
+                MenuDraw.round(cellX + S(5), drawY + cell - S(11), cell - S(10), S(6), S(3),
                         palette.a() | 0xFF000000);
             }
-            MenuDraw.outline(cellX, cellY, cell, cell, S(8),
+            MenuDraw.outline(cellX, drawY, cell, cell, S(8),
                     selected ? MenuDraw.a(MenuPalette.accent(), 220) : palette.border());
             if (selected) {
-                MenuDraw.outline(cellX - S(2), cellY - S(2), cell + S(4), cell + S(4), S(10),
+                MenuDraw.outline(cellX - S(2), drawY - S(2), cell + S(4), cell + S(4), S(10),
                         MenuDraw.a(MenuPalette.accent(), 120));
             }
             if (live) {
@@ -1338,8 +1346,10 @@ public final class MenuScreen extends Screen {
 
     private void prefRow(int pref, float x, float y, float w, float h, float scrollAmount,
                          float listTop, float listBottom, boolean live) {
+        // y нескролленный: boxY — экранная позиция для отрисовки и наведения.
+        float boxY = y - scrollAmount;
         boolean hovered = live && this.my >= listTop && this.my < listBottom
-                && hover(x, y - scrollAmount, w, h);
+                && hover(x, boxY, w, h);
         if (hovered) {
             hot(HOT_PREF + pref);
         }
@@ -1361,7 +1371,7 @@ public final class MenuScreen extends Screen {
         };
 
         if (PREF_STEP[pref] > 0.0F) {
-            float labelY = y - scrollAmount + S(8);
+            float labelY = boxY + S(8);
             MenuDraw.text(label, x, labelY, Weight.MEDIUM, fontSize, MenuPalette.text());
             float value = prefValue(pref);
             String valueText = pref == PREF_VOLUME ? Math.round(value) + "%"
@@ -1370,7 +1380,7 @@ public final class MenuScreen extends Screen {
             MenuDraw.textRight(valueText, x + w, labelY, Weight.SEMIBOLD, S(11),
                     MenuDraw.mix(accText(), lt(MenuPalette.text(), 0xFFFFFFFF), hoverAmount > 0.5F ? 1.0F : 0.0F));
 
-            float trackY = y - scrollAmount + S(30);
+            float trackY = boxY + S(30);
             float trackHeight = Math.max(2.0F, S(3));
             float knobRadius = S(5);
             float ratio = (value - PREF_MIN[pref]) / Math.max(0.0001F, PREF_MAX[pref] - PREF_MIN[pref]);
@@ -1399,10 +1409,10 @@ public final class MenuScreen extends Screen {
                 }
             }
         } else {
-            MenuDraw.textMid(label, x, y - scrollAmount, h, Weight.MEDIUM, fontSize, MenuPalette.text());
+            MenuDraw.textMid(label, x, boxY, h, Weight.MEDIUM, fontSize, MenuPalette.text());
             boolean value = prefBool(pref);
             float on = tw(MenuAnim.PREFS_BASE + pref * 4 + MenuAnim.SET_BOOL, value ? 1.0F : 0.0F, 200);
-            this.toggle(x + w - S(40), y - scrollAmount, S(40), h, on, hoverAmount);
+            this.toggle(x + w - S(40), boxY, S(40), h, on, hoverAmount);
             if (live) {
                 clipped(x, y, w, h, scrollAmount, listTop, listBottom, ACT_PREF_BOOL, pref);
             }
@@ -1635,8 +1645,9 @@ public final class MenuScreen extends Screen {
                             proximity > 0.5F ? Weight.SEMIBOLD : Weight.MEDIUM, S(10),
                             MenuDraw.mix(segHovered ? MenuPalette.text() : MenuPalette.muted(), onThumb, proximity));
                     if (live && selectedIndex != i) {
-                        clipped(start, segmentY, end - start, segmentHeight, scrollAmount, listTop, listBottom,
-                                ACT_MODE_ITEM, global * ITEM_STRIDE + i);
+                        // segmentY уже со скроллом (для отрисовки); clipped ждёт нескролленный Y.
+                        clipped(start, segmentY + scrollAmount, end - start, segmentHeight, scrollAmount,
+                                listTop, listBottom, ACT_MODE_ITEM, global * ITEM_STRIDE + i);
                     }
                 }
             } else {
@@ -1697,8 +1708,9 @@ public final class MenuScreen extends Screen {
                 MenuDraw.textCenterMid(option, offsetX + chipWidth * 0.5F, offsetY, chipHeight, Weight.MEDIUM,
                         chipFont, selected ? accText() : MenuPalette.text());
                 if (live) {
-                    clipped(offsetX, offsetY, chipWidth, chipHeight, scrollAmount, listTop, listBottom,
-                            ACT_LIST_ITEM, global * ITEM_STRIDE + i);
+                    // offsetY уже со скроллом (для отрисовки); clipped ждёт нескролленный Y.
+                    clipped(offsetX, offsetY + scrollAmount, chipWidth, chipHeight, scrollAmount, listTop,
+                            listBottom, ACT_LIST_ITEM, global * ITEM_STRIDE + i);
                 }
                 offsetX += chipWidth + S(6);
             }
@@ -2118,6 +2130,8 @@ public final class MenuScreen extends Screen {
             this.pop = null;
             this.popOverGlobal = -1;
             MenuSound.play(MenuSound.DROP, 1.0F, 0.6F);
+            // Как в Arcanic: клик, закрывший дропдаун, дальше не проходит.
+            return true;
         }
 
         if (this.colorSetting != null) {
@@ -2138,12 +2152,20 @@ public final class MenuScreen extends Screen {
             this.colorSetting = null;
             this.pickerHexFocused = false;
             MenuSound.play(MenuSound.RESET, 1.0F, 0.4F);
+            // Клик, закрывший пикер, дальше не проходит: иначе он долетал бы
+            // до строк меню под пикером и переключал их.
+            return true;
         }
 
         int index = this.findRegion(event.x(), event.y());
         if (index < 0) {
             this.searchFocused = false;
             this.commitStringEdit();
+            // Как в Arcanic: клик мимо всего закрывает окно настроек модуля.
+            if (this.popMod != null) {
+                this.popMod = null;
+                MenuSound.play(MenuSound.POP, 0.8F, 0.6F);
+            }
             return false;
         }
 
