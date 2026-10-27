@@ -20,7 +20,9 @@ import net.minecraft.core.BlockPos.MutableBlockPos;
 import net.minecraft.core.Holder.Reference;
 import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.core.registries.Registries;
+import net.minecraft.resources.ResourceKey;
 import net.minecraft.sounds.SoundEvents;
+import net.minecraft.tags.DamageTypeTags;
 import net.minecraft.tags.ItemTags;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
@@ -36,6 +38,7 @@ import net.minecraft.world.entity.ai.attributes.Attributes;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.entity.projectile.FireworkRocketEntity;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.enchantment.Enchantment;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.item.enchantment.Enchantments;
 import net.minecraft.world.level.ClipContext;
@@ -47,6 +50,8 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.HitResult.Type;
 import net.skycore.client.SkycoreClient;
+import net.skycore.client.combat.FakePlayerConfig;
+import net.skycore.client.combat.FakePlayerSettings;
 import net.skycore.client.event.ClientTickEvent;
 import net.skycore.client.util.WorldPlayerArgument;
 
@@ -59,6 +64,12 @@ public final class FakeplayerCommand extends ClientCommand {
    private static final Minecraft mc = Minecraft.getInstance();
    private Vec3 lastCrystalBoomPos;
    private static final float CRYSTAL_EXPLOSION_POWER = 6.0F;
+   /** Смещение для ближайшего спавна (FakePlayerModule: своя дистанция и угол). */
+   private Vec3 spawnOffset;
+   /** Не писать в чат «Spawned …» — модуль спавнит болванок молча. */
+   private boolean quietSpawn;
+   /** Текущий спавн делает FakePlayerModule (болванка получает настройки модуля). */
+   private boolean managedSpawn;
 
    /**
     * Спавн болванки для {@code FakePlayerModule}.
@@ -68,16 +79,47 @@ public final class FakeplayerCommand extends ClientCommand {
     * тем же путём, что и {@code /fakeplayer remove}.
     */
    public Player spawn(String text) {
+      return this.spawn(text, 2.5, 0.0F, false);
+   }
+
+   /**
+    * Спавн болванки на заданном расстоянии и угле от игрока.
+    *
+    * @param distance    дистанция в блоках (модуль: настройка «Дистанция спавна»)
+    * @param angleOffset добавка к углу «за спиной» — так несколько болванок не
+    *                    появляются в одной точке
+    * @param quiet       не писать сообщение в чат (модуль спавнит молча)
+    */
+   public Player spawn(String text, double distance, float angleOffset, boolean quiet) {
       if (mc.level == null || mc.player == null) {
          return null;
       }
       this.removeFakePlayer(text, true);
       int before = this.fakePlayers.size();
-      int spawned = this.addFakePlayer(text, FakeplayerCommand.FakeMode.NORMAL);
+      int spawned;
+      this.spawnOffset = this.offsetBehindPlayer(distance, angleOffset);
+      this.quietSpawn = quiet;
+      this.managedSpawn = true;
+      try {
+         spawned = this.addFakePlayer(text, FakeplayerCommand.FakeMode.NORMAL);
+      } finally {
+         this.spawnOffset = null;
+         this.quietSpawn = false;
+         this.managedSpawn = false;
+      }
       if (spawned == 0 || this.fakePlayers.size() <= before) {
          return null;
       }
       return this.fakePlayers.get(this.fakePlayers.size() - 1);
+   }
+
+   /** Точка «за спиной» игрока: yaw + 180°, со сдвигом на {@code angleOffset}. */
+   private Vec3 offsetBehindPlayer(double distance, float angleOffset) {
+      if (mc.player == null) {
+         return Vec3.ZERO;
+      }
+      double yaw = Math.toRadians(mc.player.getYRot() + 180.0 + angleOffset);
+      return new Vec3(-Math.sin(yaw) * distance, 0.0, Math.cos(yaw) * distance);
    }
 
    /** Убирает конкретную болванку (для {@code FakePlayerModule}). */
@@ -104,6 +146,9 @@ public final class FakeplayerCommand extends ClientCommand {
          }
 
          FakeplayerCommand.FakePlayer fakePlayer = new FakeplayerCommand.FakePlayer(level, new GameProfile(UUID.randomUUID(), text2), fakeMode);
+         if (this.managedSpawn) {
+            fakePlayer.markManaged();
+         }
          Vec3 position = this.resolveSpawnPos(fakeMode);
          fakePlayer.setPos(position.x, position.y, position.z);
          fakePlayer.setYRot(mc.player.getYRot());
@@ -138,7 +183,7 @@ public final class FakeplayerCommand extends ClientCommand {
                   + " z: "
                   + this.format(fakePlayer.getZ())
             );
-         } else {
+         } else if (!this.quietSpawn) {
             ChatMessages.displayInfo(
                "Spawned " + text2 + " x: " + this.format(fakePlayer.getX()) + " y: " + this.format(fakePlayer.getY()) + " z: " + this.format(fakePlayer.getZ())
             );
@@ -210,6 +255,10 @@ public final class FakeplayerCommand extends ClientCommand {
    }
 
    private Vec3 resolveSpawnPos(FakeplayerCommand.FakeMode fakeMode) {
+      if (fakeMode == FakeplayerCommand.FakeMode.NORMAL && this.spawnOffset != null) {
+         return mc.player.position().add(this.spawnOffset);
+      }
+
       if (fakeMode == FakeplayerCommand.FakeMode.ELYTRA_TARGET) {
          if (mc.player != null) {
             double x = mc.player.getX();
@@ -251,7 +300,9 @@ public final class FakeplayerCommand extends ClientCommand {
                player.setYRot(player.getYRot() + yRot2);
                player.setXRot(player.getXRot() + xRot);
                player.setYHeadRot(player.getYRot());
-               if (!(player instanceof FakeplayerCommand.FakePlayer fakePlayer3 && fakePlayer3.isCrystalAura())) {
+               boolean crawler = player instanceof FakeplayerCommand.FakePlayer fakePlayer3
+                       && (fakePlayer3.isCrystalAura() || fakePlayer3.isManaged());
+               if (!crawler) {
                   player.setSwimming(true);
                }
             }
@@ -284,39 +335,102 @@ public final class FakeplayerCommand extends ClientCommand {
     * щит, вместо тотема в левую руку кладётся щит, иначе болванка не смогла бы
     * блокировать.
     */
+   /**
+    * Экипировка болванки по текущему {@link FakePlayerConfig}.
+    *
+    * <p>Если включено «Копировать инвентарь» — броня и обе руки копируются у
+    * локального игрока (копии, а не те же стеки). Иначе броня выдаётся по
+    * «Типу брони», поверх кладётся Protection, в правую руку — «Предмет в руке»,
+    * в левую — щит (если включён) либо тотем.
+    */
    private void equipArmor(Player player) {
-      if (net.skycore.client.combat.FakePlayerSettings.copyInventory() && mc.player != null) {
-         net.minecraft.client.player.LocalPlayer self = mc.player;
-         player.setItemSlot(EquipmentSlot.HEAD, self.getItemBySlot(EquipmentSlot.HEAD).copy());
-         player.setItemSlot(EquipmentSlot.CHEST, self.getItemBySlot(EquipmentSlot.CHEST).copy());
-         player.setItemSlot(EquipmentSlot.LEGS, self.getItemBySlot(EquipmentSlot.LEGS).copy());
-         player.setItemSlot(EquipmentSlot.FEET, self.getItemBySlot(EquipmentSlot.FEET).copy());
-         player.setItemSlot(EquipmentSlot.MAINHAND, self.getItemBySlot(EquipmentSlot.MAINHAND).copy());
-         player.setItemSlot(EquipmentSlot.OFFHAND, self.getItemBySlot(EquipmentSlot.OFFHAND).copy());
+      boolean managed = player instanceof FakeplayerCommand.FakePlayer fake && fake.isManaged();
+      if (!managed) {
+         this.equipDefaultKit(player);
          return;
       }
-      if (mc.level != null) {
-         Reference orThrow = mc.level.registryAccess().lookupOrThrow(Registries.ENCHANTMENT).getOrThrow(Enchantments.MENDING);
-         ItemStack itemStack = new ItemStack(Items.NETHERITE_HELMET);
-         ItemStack itemStack2 = new ItemStack(Items.NETHERITE_CHESTPLATE);
-         ItemStack itemStack3 = new ItemStack(Items.NETHERITE_LEGGINGS);
-         ItemStack itemStack4 = new ItemStack(Items.NETHERITE_BOOTS);
-         itemStack.enchant(orThrow, 1);
-         itemStack2.enchant(orThrow, 1);
-         itemStack3.enchant(orThrow, 1);
-         itemStack4.enchant(orThrow, 1);
-         player.setItemSlot(EquipmentSlot.HEAD, itemStack);
-         player.setItemSlot(EquipmentSlot.CHEST, itemStack2);
-         player.setItemSlot(EquipmentSlot.LEGS, itemStack3);
-         player.setItemSlot(EquipmentSlot.FEET, itemStack4);
-         ItemStack itemStack5 = net.skycore.client.combat.FakePlayerSettings.useShield()
-                 ? new ItemStack(Items.SHIELD)
-                 : new ItemStack(Items.TOTEM_OF_UNDYING);
-         if (!net.skycore.client.combat.FakePlayerSettings.useShield()) {
-            itemStack5.enchant(orThrow, 1);
+      FakePlayerConfig cfg = FakePlayerSettings.current();
+      if (cfg.copyInventory() && mc.player != null) {
+         for (EquipmentSlot slot : new EquipmentSlot[]{EquipmentSlot.HEAD, EquipmentSlot.CHEST,
+                 EquipmentSlot.LEGS, EquipmentSlot.FEET, EquipmentSlot.MAINHAND, EquipmentSlot.OFFHAND}) {
+            player.setItemSlot(slot, mc.player.getItemBySlot(slot).copy());
          }
-         player.setItemSlot(EquipmentSlot.OFFHAND, itemStack5);
+         return;
       }
+      if (mc.level == null) {
+         return;
+      }
+
+      ItemStack[] armor = this.armorSet(cfg.armorType());
+      if (armor != null) {
+         EquipmentSlot[] slots = {EquipmentSlot.FEET, EquipmentSlot.LEGS, EquipmentSlot.CHEST, EquipmentSlot.HEAD};
+         for (int i = 0; i < slots.length; i++) {
+            ItemStack piece = this.enchant(armor[i], Enchantments.PROTECTION, cfg.protection());
+            player.setItemSlot(slots[i], piece);
+         }
+      }
+
+      player.setItemSlot(EquipmentSlot.MAINHAND, this.heldItem(cfg.heldItem()));
+
+      ItemStack offhand;
+      if (cfg.useShield()) {
+         offhand = this.enchant(new ItemStack(Items.SHIELD), Enchantments.UNBREAKING, 3);
+      } else if (cfg.useTotem()) {
+         offhand = this.enchant(new ItemStack(Items.TOTEM_OF_UNDYING), Enchantments.MENDING, 1);
+      } else {
+         offhand = ItemStack.EMPTY;
+      }
+      player.setItemSlot(EquipmentSlot.OFFHAND, offhand);
+   }
+
+   /** Прежний комплект для болванок из {@code /fakeplayer add}: незерит с починкой и тотем. */
+   private void equipDefaultKit(Player player) {
+      if (mc.level == null) {
+         return;
+      }
+      ItemStack[] set = this.armorSet(FakePlayerConfig.ARMOR_NETHERITE);
+      EquipmentSlot[] slots = {EquipmentSlot.FEET, EquipmentSlot.LEGS, EquipmentSlot.CHEST, EquipmentSlot.HEAD};
+      for (int i = 0; i < slots.length; i++) {
+         player.setItemSlot(slots[i], this.enchant(set[i], Enchantments.MENDING, 1));
+      }
+      player.setItemSlot(EquipmentSlot.OFFHAND, this.enchant(new ItemStack(Items.TOTEM_OF_UNDYING), Enchantments.MENDING, 1));
+   }
+
+   /** Комплект брони по индексу из {@link FakePlayerConfig} (порядок: ботинки→шлем). */
+   private ItemStack[] armorSet(int type) {
+      return switch (type) {
+         case FakePlayerConfig.ARMOR_IRON -> new ItemStack[]{new ItemStack(Items.IRON_BOOTS),
+                 new ItemStack(Items.IRON_LEGGINGS), new ItemStack(Items.IRON_CHESTPLATE),
+                 new ItemStack(Items.IRON_HELMET)};
+         case FakePlayerConfig.ARMOR_DIAMOND -> new ItemStack[]{new ItemStack(Items.DIAMOND_BOOTS),
+                 new ItemStack(Items.DIAMOND_LEGGINGS), new ItemStack(Items.DIAMOND_CHESTPLATE),
+                 new ItemStack(Items.DIAMOND_HELMET)};
+         case FakePlayerConfig.ARMOR_NETHERITE -> new ItemStack[]{new ItemStack(Items.NETHERITE_BOOTS),
+                 new ItemStack(Items.NETHERITE_LEGGINGS), new ItemStack(Items.NETHERITE_CHESTPLATE),
+                 new ItemStack(Items.NETHERITE_HELMET)};
+         default -> null;
+      };
+   }
+
+   /** Предмет в правую руку по индексу из {@link FakePlayerConfig}. */
+   private ItemStack heldItem(int type) {
+      return switch (type) {
+         case FakePlayerConfig.HELD_SWORD -> new ItemStack(Items.NETHERITE_SWORD);
+         case FakePlayerConfig.HELD_AXE -> new ItemStack(Items.NETHERITE_AXE);
+         case FakePlayerConfig.HELD_CRYSTAL -> new ItemStack(Items.END_CRYSTAL);
+         case FakePlayerConfig.HELD_BOW -> new ItemStack(Items.BOW);
+         default -> ItemStack.EMPTY;
+      };
+   }
+
+   /** Кладёт зачарование на предмет через реестр зачарований мира (26.2). */
+   private ItemStack enchant(ItemStack stack, ResourceKey<Enchantment> key, int level) {
+      if (stack.isEmpty() || level <= 0 || mc.level == null) {
+         return stack;
+      }
+      Reference<Enchantment> holder = mc.level.registryAccess().lookupOrThrow(Registries.ENCHANTMENT).getOrThrow(key);
+      stack.enchant(holder, level);
+      return stack;
    }
 
    private String format(double value) {
@@ -467,7 +581,27 @@ public final class FakeplayerCommand extends ClientCommand {
       private FireworkRocketEntity flightRocket;
       private int flightTicks;
       /** Сколько тотемов осталось у этой болванки (см. «Кол-во тотемов»). */
-      private int totemsLeft = net.skycore.client.combat.FakePlayerSettings.totemCount();
+      private int totemsLeft = FakePlayerSettings.totemCount();
+      /** Болванка создана FakePlayerModule (у неё своё поведение). */
+      private boolean managed;
+      private int regenTicker;
+      private int eatCooldown;
+      private int attackCooldown;
+      private int jumpCooldown;
+      /** Подпись выданного снаряжения: при смене настроек переодеваем. */
+      private String equipSignature = "";
+      /** Позиции игрока для имитации пинга (index 0 — самая старая). */
+      private final List<Vec3> playerTrace = new ArrayList<>();
+      private int tracedPingTicks = -1;
+
+      /** Помечает болванку как созданную модулем. */
+      public void markManaged() {
+         this.managed = true;
+      }
+
+      public boolean isManaged() {
+         return this.managed;
+      }
 
       public boolean isCrystalAura() {
          return this.mode == FakeplayerCommand.FakeMode.CRYSTAL_AURA;
@@ -644,16 +778,21 @@ public final class FakeplayerCommand extends ClientCommand {
          }
       }
 
+      /**
+       * Левая рука.
+       *
+       * <p>Раньше здесь всегда возвращался тотем — из-за этого щит в левой руке не
+       * рисовался и не блокировал (tickShield не видел {@link Items#SHIELD}), а
+       * скопированный предмет из инвентаря пропадал. Теперь тотем подставляется
+       * только если рука действительно пуста и тотем включён в настройках.
+       */
       @Override
       public ItemStack getItemInHand(InteractionHand interactionHand) {
-         ItemStack itemStack;
-         if (interactionHand == InteractionHand.OFF_HAND) {
-            itemStack = new ItemStack(Items.TOTEM_OF_UNDYING);
-         } else {
-            itemStack = super.getItemInHand(interactionHand);
+         ItemStack held = super.getItemInHand(interactionHand);
+         if (interactionHand == InteractionHand.OFF_HAND && held.isEmpty() && FakePlayerSettings.useTotem()) {
+            return new ItemStack(Items.TOTEM_OF_UNDYING);
          }
-
-         return itemStack;
+         return held;
       }
 
       /**
@@ -678,7 +817,7 @@ public final class FakeplayerCommand extends ClientCommand {
             }
             return;
          }
-         boolean wanted = net.skycore.client.combat.FakePlayerSettings.shieldWanted(this);
+         boolean wanted = FakePlayerSettings.shieldWanted(this);
          if (wanted && !this.isUsingItem()) {
             this.startUsingItem(InteractionHand.OFF_HAND);
          } else if (!wanted && this.isUsingItem()) {
@@ -687,10 +826,10 @@ public final class FakeplayerCommand extends ClientCommand {
       }
 
       private boolean useTotem() {
-         if (!net.skycore.client.combat.FakePlayerSettings.useTotem()) {
+         if (!FakePlayerSettings.useTotem()) {
             return false;
          }
-         if (!net.skycore.client.combat.FakePlayerSettings.infiniteTotems()) {
+         if (!FakePlayerSettings.infiniteTotems()) {
             if (this.totemsLeft <= 0) {
                return false;
             }
@@ -852,6 +991,7 @@ public final class FakeplayerCommand extends ClientCommand {
             this.crystalHurtCooldown--;
          }
          this.tickShield();
+         FakePlayerConfig cfg = FakePlayerSettings.current();
 
          if (this.isElytraTarget()) {
             this.tickElytraFlight();
@@ -862,11 +1002,255 @@ public final class FakeplayerCommand extends ClientCommand {
                super.tick();
                this.baseTick();
                this.aiStep();
+               // настройки модуля касаются только его болванок: /fakeplayer add
+               // должен вести себя как раньше
+               if (this.managed) {
+                  this.tickStats(cfg);
+                  this.tickBehaviour(cfg);
+               }
             }
          }
       }
 
+      // ── настройки модуля: внешний вид, эффекты, регенерация, еда ────────
+
+      private void tickStats(FakePlayerConfig cfg) {
+         this.tickAppearance(cfg);
+         this.tickEffects(cfg);
+
+         if (!cfg.regeneration()) {
+            this.regenTicker = 0;
+         } else if (++this.regenTicker >= cfg.regenInterval()) {
+            this.regenTicker = 0;
+            if (this.getHealth() < this.getMaxHealth()) {
+               this.heal(1.0F);
+            }
+         }
+
+         this.tickEating(cfg);
+      }
+
+      /** Невидимость, своё максимальное HP и переодевание при смене настроек. */
+      private void tickAppearance(FakePlayerConfig cfg) {
+         if (this.tickCount % 20 != 0) {
+            return;
+         }
+         this.setInvisible(cfg.invisible());
+
+         var attribute = this.getAttribute(Attributes.MAX_HEALTH);
+         if (attribute != null) {
+            float wanted = (float) cfg.maxHealth();
+            if (Math.abs(attribute.getBaseValue() - wanted) > 0.001F) {
+               attribute.setBaseValue(wanted);
+               this.setHealth(wanted);
+            }
+         }
+
+         String signature = cfg.copyInventory() + "/" + cfg.armorType() + "/" + cfg.protection() + "/"
+                 + cfg.heldItem() + "/" + cfg.useTotem() + "/" + cfg.useShield();
+         if (!signature.equals(this.equipSignature)) {
+            this.equipSignature = signature;
+            FakeplayerCommand.INSTANCE.equipArmor(this);
+         }
+      }
+
+      /** Постоянные эффекты: огнестойкость, сопротивление, скорость, свечение. */
+      private void tickEffects(FakePlayerConfig cfg) {
+         if (this.tickCount % 20 != 0) {
+            return;
+         }
+         if (cfg.fireResistance() > 0) {
+            this.addEffect(new MobEffectInstance(MobEffects.FIRE_RESISTANCE, 40, cfg.fireResistance() - 1, false, false, false));
+         }
+         if (cfg.resistance() > 0) {
+            this.addEffect(new MobEffectInstance(MobEffects.DAMAGE_RESISTANCE, 40, cfg.resistance() - 1, false, false, false));
+         }
+         if (cfg.speedBoost() > 0) {
+            this.addEffect(new MobEffectInstance(MobEffects.MOVEMENT_SPEED, 40, cfg.speedBoost() - 1, false, false, false));
+         }
+         if (cfg.glowing()) {
+            this.addEffect(new MobEffectInstance(MobEffects.GLOWING, 40, 0, false, false, false));
+         }
+      }
+
+      /**
+       * «Есть при HP &lt; N»: болванка съедает золотое яблоко.
+       *
+       * <p>Предмет не тратится (его и нет в инвентаре), но эффект тот же, что даёт
+       * обычное золотое яблоко: регенерация, поглощение и лечение. Кулдаун — 32 тика,
+       * чтобы болванка не «ела» каждый тик.
+       */
+      private void tickEating(FakePlayerConfig cfg) {
+         if (cfg.eatAtHealth() <= 0.0 || this.getHealth() > cfg.eatAtHealth()) {
+            this.eatCooldown = 0;
+            return;
+         }
+         if (this.eatCooldown > 0) {
+            this.eatCooldown--;
+            return;
+         }
+         this.eatCooldown = 32;
+         this.heal(4.0F);
+         this.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 100, 1, false, false, false));
+         this.addEffect(new MobEffectInstance(MobEffects.ABSORPTION, 2400, 3, false, false, false));
+         this.swing(InteractionHand.OFF_HAND);
+         this.playSound(SoundEvents.GENERIC_EAT, 0.8F, 1.0F);
+      }
+
+      // ── поведение: движение, прыжок, атака ─────────────────────────────
+
+      /**
+       * Следование, стрейф, прыжок и атака.
+       *
+       * <p>Движение считается по позиции игрока, задержанной на {@code cfg.simulatedPing()}
+       * миллисекунд — так «Пинг (мс)» действительно влияет на реакцию болванки.
+       */
+      private void tickBehaviour(FakePlayerConfig cfg) {
+         if (this.jumpCooldown > 0) {
+            this.jumpCooldown--;
+         }
+         this.tickAttack(cfg);
+
+         Vec3 anchor = this.delayedPlayerPos(FakeplayerCommand.mc.player, cfg.pingTicks());
+         Vec3 velocity = Vec3.ZERO;
+         if (anchor != null) {
+            Vec3 toAnchor = anchor.subtract(this.position());
+            double distance = Math.sqrt(toAnchor.x * toAnchor.x + toAnchor.z * toAnchor.z);
+            if (cfg.followPlayer() && distance > 2.2) {
+               double speed = Math.min(0.30 * cfg.followSpeed() * cfg.speedMultiplier(), distance * 0.5);
+               velocity = horizontal(toAnchor, distance).scale(speed);
+            } else if (cfg.strafe()) {
+               Vec3 radial = distance < 1.0E-4 ? new Vec3(1.0, 0.0, 0.0) : horizontal(toAnchor, distance);
+               Vec3 tangent = new Vec3(-radial.z, 0.0, radial.x);
+               velocity = tangent.scale(0.28 * cfg.strafeSpeed() * cfg.speedMultiplier());
+               if (distance > 3.5) {
+                  velocity = velocity.add(radial.scale(0.06));
+               } else if (distance < 2.0) {
+                  velocity = velocity.subtract(radial.scale(0.06));
+               }
+            }
+         }
+
+         if (cfg.jump() && this.onGround() && this.jumpCooldown <= 0) {
+            this.jumpFromGround();
+            this.jumpCooldown = 20;
+         }
+
+         if (velocity.x * velocity.x + velocity.z * velocity.z > 1.0E-6) {
+            this.setDeltaMovement(velocity.x, this.getDeltaMovement().y, velocity.z);
+            this.move(MoverType.SELF, new Vec3(velocity.x, 0.0, velocity.z));
+            this.walkAnimation.setSpeed((float) (velocity.horizontalDistance() * 30.0));
+            if (!cfg.attackTarget()) {
+               this.faceDirection(velocity);
+            }
+         }
+      }
+
+      /**
+       * Атака ближайшей цели.
+       *
+       * <p>По фейк-игрокам урон настоящий (они целиком клиентские). По реальному
+       * игроку — только замах, поворот и звук: здоровье считает сервер, клиент
+       * изменить его не может, поэтому честно показываем именно визуальную часть.
+       */
+      private void tickAttack(FakePlayerConfig cfg) {
+         if (!cfg.attackTarget()) {
+            this.attackCooldown = 0;
+            return;
+         }
+         if (this.attackCooldown > 0) {
+            this.attackCooldown--;
+            return;
+         }
+         Player target = this.findAttackTarget();
+         if (target == null) {
+            return;
+         }
+         this.attackCooldown = 12;
+         this.swing(InteractionHand.MAIN_HAND);
+         this.faceEntity(target);
+
+         if (target instanceof FakeplayerCommand.FakePlayer other) {
+            other.applyLocalDamage((float) cfg.attackDamage(), this.damageSources().playerAttack(this), false);
+            Vec3 push = other.position().subtract(this.position());
+            double length = Math.sqrt(push.x * push.x + push.z * push.z);
+            if (length > 1.0E-4) {
+               other.setDeltaMovement(other.getDeltaMovement()
+                       .add(push.x / length * 0.35, 0.25, push.z / length * 0.35));
+            }
+         } else {
+            this.playSound(SoundEvents.PLAYER_ATTACK_STRONG, 0.8F, 1.0F);
+         }
+      }
+
+      private Player findAttackTarget() {
+         Player best = null;
+         double bestDistance = 3.5 * 3.5;
+         for (Player player : this.level().players()) {
+            if (player == this || player.isRemoved() || player.isSpectator()) {
+               continue;
+            }
+            double distance = this.distanceToSqr(player);
+            if (distance < bestDistance) {
+               bestDistance = distance;
+               best = player;
+            }
+         }
+         return best;
+      }
+
+      /** Позиция игрока, задержанная на {@code ticks} тиков (имитация пинга). */
+      private Vec3 delayedPlayerPos(Player player, int ticks) {
+         if (player == null) {
+            return null;
+         }
+         if (ticks != this.tracedPingTicks) {
+            this.tracedPingTicks = ticks;
+            this.playerTrace.clear();
+         }
+         this.playerTrace.add(player.position());
+         while (this.playerTrace.size() > ticks + 1) {
+            this.playerTrace.remove(0);
+         }
+         return this.playerTrace.get(0);
+      }
+
+      private static Vec3 horizontal(Vec3 vector, double length) {
+         return new Vec3(vector.x / length, 0.0, vector.z / length);
+      }
+
+      private void faceDirection(Vec3 velocity) {
+         float yaw = (float) (Math.toDegrees(Math.atan2(velocity.z, velocity.x)) - 90.0);
+         this.setYRot(yaw);
+         this.setYHeadRot(yaw);
+         this.yBodyRot = yaw;
+      }
+
+      private void faceEntity(Entity target) {
+         Vec3 direction = target.getEyePosition().subtract(this.getEyePosition());
+         double length = direction.length();
+         if (length < 1.0E-4) {
+            return;
+         }
+         float yaw = (float) (Math.toDegrees(Math.atan2(direction.z, direction.x)) - 90.0);
+         float pitch = (float) (-Math.toDegrees(Math.asin(Mth.clamp(direction.y / length, -1.0, 1.0))));
+         this.setYRot(yaw);
+         this.setXRot(pitch);
+         this.setYHeadRot(yaw);
+         this.yBodyRot = yaw;
+      }
+
       private void applyLocalDamage(float value, DamageSource damageSource, boolean condition) {
+         FakePlayerConfig cfg = FakePlayerSettings.current();
+         if (cfg.immuneToFire() && damageSource.is(DamageTypeTags.IS_FIRE)) {
+            return;
+         }
+         if (cfg.immuneToExplosions() && damageSource.is(DamageTypeTags.IS_EXPLOSION)) {
+            return;
+         }
+         // «Сопротивление»: 20 % за уровень, но не больше 80 % — как у ванильного эффекта
+         value *= cfg.damageMultiplier();
+
          float health = this.getHealth();
          float computedValue = health - value;
          this.hurtDuration = 10;
@@ -885,7 +1269,7 @@ public final class FakeplayerCommand extends ClientCommand {
             } else {
                this.setHealth(computedValue);
             }
-         } else if (computedValue <= net.skycore.client.combat.FakePlayerSettings.totemThreshold()) {
+         } else if (computedValue <= FakePlayerSettings.totemThreshold()) {
             if (!this.useTotem()) {
                this.setHealth(0.0F);
                this.remove(RemovalReason.KILLED);
