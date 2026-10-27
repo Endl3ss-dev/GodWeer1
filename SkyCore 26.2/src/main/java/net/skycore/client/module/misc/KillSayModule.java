@@ -35,8 +35,6 @@ import net.skycore.client.setting.StringSetting;
  */
 public final class KillSayModule extends ClientModule {
 
-    public static final KillSayModule INSTANCE = new KillSayModule();
-
     /** Маркеры серверных сообщений об убийстве (русские и английские серверы). */
     private static final String[] KILL_MARKERS = {
             "вы убили",
@@ -49,6 +47,7 @@ public final class KillSayModule extends ClientModule {
 
     private static final long DUPLICATE_WINDOW_MS = 1500L;
 
+    public static final KillSayModule INSTANCE = new KillSayModule();
     private final StringSetting message = this.add(
             new StringSetting("Сообщение", "{name} ez", 100));
 

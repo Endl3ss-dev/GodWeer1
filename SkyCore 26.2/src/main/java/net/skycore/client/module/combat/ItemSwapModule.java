@@ -40,12 +40,11 @@ import net.skycore.client.command.ChatMessages;
  */
 public final class ItemSwapModule extends ClientModule {
 
-    public static final ItemSwapModule INSTANCE = new ItemSwapModule();
-
     private static final int NOT_FOUND = -1;
     private static final int OFFHAND_SWAP_BUTTON = 40;
     private static final String[] SWAP_ITEMS = {"Чарка", "Тотем", "Щит", "Арбалет"};
 
+    public static final ItemSwapModule INSTANCE = new ItemSwapModule();
     private final ModeSetting firstItem = this.add(new ModeSetting("Предмет 1", "Чарка", SWAP_ITEMS));
     private final ModeSetting secondItem = this.add(new ModeSetting("Предмет 2", "Тотем", SWAP_ITEMS));
     private final KeyBindSetting swapBind = this.add(new KeyBindSetting("Бинд свапа", -1));

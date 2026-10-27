@@ -34,11 +34,10 @@ import net.skycore.client.command.ChatMessages;
  */
 public final class FakePlayerModule extends ClientModule {
 
-    public static final FakePlayerModule INSTANCE = new FakePlayerModule();
-
     private static final String BOT_NAME = "FakePlayer";
     private static final String[] MODES = {"Legit", "Normal", "Hard", "Extra"};
 
+    public static final FakePlayerModule INSTANCE = new FakePlayerModule();
     private final BooleanSetting copyInventory = this.add(
             new BooleanSetting("Копировать инвентарь", false));
     private final BooleanSetting useTotem = this.add(new BooleanSetting("Использовать тотем", true));

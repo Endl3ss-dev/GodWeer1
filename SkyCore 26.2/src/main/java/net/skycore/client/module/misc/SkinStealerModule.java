@@ -49,8 +49,6 @@ import net.skycore.client.command.ChatMessages;
  */
 public final class SkinStealerModule extends ClientModule {
 
-    public static final SkinStealerModule INSTANCE = new SkinStealerModule();
-
     private static final long TIMEOUT_MS = 12000L;
     private static final int HISTORY_LIMIT = 50;
     private static final Path HISTORY_FILE = Path.of("skycore", "skin-history.txt");
@@ -62,6 +60,7 @@ public final class SkinStealerModule extends ClientModule {
     private static volatile PlayerSkin override;
     private static volatile String overrideNick = "";
 
+    public static final SkinStealerModule INSTANCE = new SkinStealerModule();
     private final StringSetting target = this.add(new StringSetting("Ник цели", "", 16));
     private final BooleanSetting apply = this.add(new BooleanSetting("Применить скин", true));
     private final BooleanSetting history = this.add(new BooleanSetting("История ников", true));

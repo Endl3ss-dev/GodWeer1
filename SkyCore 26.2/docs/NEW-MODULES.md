@@ -151,6 +151,7 @@ src/main/java/net/skycore/client/mixin/AbstractClientPlayerSkinOverrideMixin.jav
 | `skycore.mixins.json` разбирается как JSON, новый миксин в списке `client` | да |
 | Каждый внешний метод, который вызывают новые модули, встречается в остальном коде SkyCore (`handleContainerInput`, `ContainerInput.SWAP`, `broadcastChanges`, `selectHotbarSlot`, `getItemBySlot`, `broadcastChanges`, `sendChat`, `swing`, `Items.*`, `PlayerSkin.insecure`, `ClientAsset.DownloadedTexture`, `PropertyMap.values`) | да |
 | Уникальность имён модулей (регистрация падает на дубликатах) | конфликтов нет |
+| Порядок статических полей: `INSTANCE` объявлен после всех `static final`-констант (иначе `<clinit>` создаёт модуль раньше констант, `ModeSetting` получает `null`-массив и падает с `Mode list cannot be empty`) | исправлено во всех пяти модулях, проверено скриптом по AST |
 | Компиляция `./gradlew build` | **не выполнялась**: в среде нет JDK |
 | Запуск в игре | не выполнялся |
 

@@ -43,11 +43,10 @@ import net.skycore.client.util.InventoryHelper;
  */
 public final class DrinkUseModule extends ClientModule {
 
-    public static final DrinkUseModule INSTANCE = new DrinkUseModule();
-
     private static final int NO_SLOT = -1;
     private static final int OFFHAND_SWAP_BUTTON = 40;
 
+    public static final DrinkUseModule INSTANCE = new DrinkUseModule();
     private final ModeSetting drink = this.add(
             new ModeSetting("Напиток", "Абсент", "Абсент", "Медовуха", "Грог"));
     private final ModeSetting mode = this.add(
