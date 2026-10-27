@@ -332,7 +332,13 @@ public static final Palette[] PALETTES = {
 
     private static Palette from;
     private static long changedAt;
-    public static final long FADE_MS = 260L;
+    /**
+     * Длительность перехода между палитрами.
+     *
+     * <p>260 мс ощущались резко: фон и крупные поверхности успевали смениться, а текст
+     * и акценты ещё догоняли их. 340 мс дают спокойный, но не «залипающий» кроссфейд.
+     */
+    public static final long FADE_MS = 340L;
 
     /** Меняет палитру и запускает переход из той, что была на экране. */
     public static void setPalette(int index) {
@@ -378,18 +384,19 @@ public static final Palette[] PALETTES = {
         }
         float e = t * t * (3.0F - 2.0F * t);
         Palette f = from;
-        // Переход плавно меняет только акцент и текст. Фон, карточки, контролы и рамки
-        // берутся сразу из новой палитры: раньше смешивались все цвета, и при
-        // переключении с белой темы на чёрную меню проходило через мутно-серый, да ещё
-        // и флаг light() переключался на середине перехода — то есть цвета и ветки
-        // отрисовки в один момент оказывались из разных тем.
+        // Кроссфейд затрагивает ВСЕ токены, включая фон, боковые панели, карточки,
+        // контролы и рамки: раньше они переключались мгновенно, и смена темы выглядела
+        // резким "щелчком" подложки, пока текст и акценты ещё плавно перетекали.
+        // Флаг light() в record остаётся целевым (на нём завязаны ветки отрисовки),
+        // а непрерывную долю светлоты для плавного смешения жёстких светлых/тёмных
+        // цветов отдаёт отдельный метод lightAmount().
         return new Palette(
                 to.name(),
-                to.bg(),
-                to.side(),
-                to.card(),
-                to.control(),
-                to.border(),
+                mix(f.bg(), to.bg(), e),
+                mix(f.side(), to.side(), e),
+                mix(f.card(), to.card(), e),
+                mix(f.control(), to.control(), e),
+                mix(f.border(), to.border(), e),
                 mix(f.text(), to.text(), e),
                 mix(f.muted(), to.muted(), e),
                 mix(f.dim(), to.dim(), e),
@@ -397,6 +404,29 @@ public static final Palette[] PALETTES = {
                 mix(f.b(), to.b(), e),
                 to.light(),
                 to.fx());
+    }
+
+    /**
+     * Непрерывная доля светлой темы: 0 — тёмная, 1 — светлая.
+     *
+     * <p>В покое равна 0 или 1, поэтому {@code MenuDraw.mix(тёмный, светлый,
+     * lightAmount())} вне перехода даёт ровно прежний цвет, а во время перехода
+     * плавно ведёт крупные поверхности между жёстко зашитыми светлым и тёмным
+     * вариантами без мгновенного щелчка флага {@code light()}.
+     */
+    public static float lightAmount() {
+        Palette to = base();
+        float target = to.light() ? 1.0F : 0.0F;
+        if (from == null) {
+            return target;
+        }
+        float t = transition();
+        if (t >= 1.0F) {
+            return target;
+        }
+        float e = t * t * (3.0F - 2.0F * t);
+        float source = from.light() ? 1.0F : 0.0F;
+        return source + (target - source) * e;
     }
 
     /** Линейное смешение двух ARGB-цветов (включая альфу). */

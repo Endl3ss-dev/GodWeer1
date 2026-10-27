@@ -41,6 +41,13 @@ public final class MenuPrefs {
     // ---- вид
     /** Размытие мира под меню. */
     public static boolean blur = true;
+    /**
+     * Сила размытия, 0 - 100 (в процентах).
+     *
+     * <p>Значение по умолчанию 60 даёт множитель радиуса ровно 1.0
+     * ({@link #blurFactor()}), то есть совпадает с прежним жёстко заданным радиусом.
+     */
+    public static float blurStrength = 60.0F;
     /** Затемнение мира, 0 - 90. */
     public static float dim = 40.0F;
     /** Градиенты в элементах меню: тумблеры, ползунки, плашки — во всех палитрах. */
@@ -67,6 +74,18 @@ public final class MenuPrefs {
     /** Масштаб меню в долях: 1.0 — как в оригинале. */
     public static float menuScale() {
         return scale / 100.0F;
+    }
+
+    /**
+     * Множитель радиуса фонового размытия.
+     *
+     * <p>60% силы (значение по умолчанию) дают 1.0 — прежнее поведение. Диапазон
+     * множителя 0.25..1.5: на нуле размытие остаётся лёгким, а не пропадает совсем
+     * (полностью отключается отдельным переключателем {@link #blur}).
+     */
+    public static float blurFactor() {
+        float normalized = Math.max(0.0F, Math.min(100.0F, blurStrength)) / 100.0F;
+        return 0.25F + normalized * 1.25F;
     }
 
     /** Применяет настройки к анимациям (порт {@code MenuPrefs.sync}). */
@@ -98,6 +117,7 @@ public final class MenuPrefs {
             hoverSounds = bool(json, "hoverSounds", hoverSounds);
             sliderSounds = bool(json, "sliderSounds", sliderSounds);
             blur = bool(json, "blur", blur);
+            blurStrength = clamp(number(json, "blurStrength", blurStrength), 0.0F, 100.0F);
             dim = clamp(number(json, "dim", dim), 0.0F, 90.0F);
             gradient = bool(json, "gradient", gradient);
             animations = bool(json, "animations", animations);
@@ -120,6 +140,7 @@ public final class MenuPrefs {
         json.addProperty("hoverSounds", hoverSounds);
         json.addProperty("sliderSounds", sliderSounds);
         json.addProperty("blur", blur);
+        json.addProperty("blurStrength", blurStrength);
         json.addProperty("dim", dim);
         json.addProperty("gradient", gradient);
         json.addProperty("animations", animations);

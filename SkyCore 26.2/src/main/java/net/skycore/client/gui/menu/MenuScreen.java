@@ -158,15 +158,17 @@ public final class MenuScreen extends Screen {
     private static final int PREF_ANIM_SPEED = 7;
     private static final int PREF_SCALE = 8;
     private static final int PREF_GRADIENT = 9;
-    private static final int PREFS_COUNT = 10;
+    private static final int PREF_BLUR_STRENGTH = 10;
+    private static final int PREFS_COUNT = 11;
 
     private static final int PREFS_PALETTE = 0;
     private static final int PREFS_SOUND = 1;
     private static final int PREFS_VIEW = 2;
+    private static final int PREFS_BEHAVIOR = 3;
 
-    private static final float[] PREF_MIN = {0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.5F, 70.0F, 0.0F};
-    private static final float[] PREF_MAX = {0.0F, 100.0F, 0.0F, 0.0F, 0.0F, 90.0F, 0.0F, 2.0F, 130.0F, 0.0F};
-    private static final float[] PREF_STEP = {0.0F, 5.0F, 0.0F, 0.0F, 0.0F, 5.0F, 0.0F, 0.1F, 5.0F, 0.0F};
+    private static final float[] PREF_MIN = {0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.0F, 0.5F, 70.0F, 0.0F, 0.0F};
+    private static final float[] PREF_MAX = {0.0F, 100.0F, 0.0F, 0.0F, 0.0F, 90.0F, 0.0F, 2.0F, 130.0F, 0.0F, 100.0F};
+    private static final float[] PREF_STEP = {0.0F, 5.0F, 0.0F, 0.0F, 0.0F, 5.0F, 0.0F, 0.1F, 5.0F, 0.0F, 5.0F};
 
     private record PrefGroup(String title, String subtitle, int[] rows) {
     }
@@ -175,7 +177,8 @@ public final class MenuScreen extends Screen {
             new PrefGroup("Палитра", "Цветовые схемы меню", new int[0]),
             new PrefGroup("Звук", "Щелчки и отклик меню",
                     new int[]{PREF_SOUNDS, PREF_VOLUME, PREF_HOVER_SOUNDS, PREF_SLIDER_SOUNDS}),
-            new PrefGroup("Вид", "Фон и затемнение мира", new int[]{PREF_BLUR, PREF_DIM}),
+            new PrefGroup("Вид", "Фон, размытие и затемнение мира",
+                    new int[]{PREF_BLUR, PREF_BLUR_STRENGTH, PREF_DIM}),
             new PrefGroup("Поведение", "Анимации и размер меню",
                     new int[]{PREF_ANIMATIONS, PREF_ANIM_SPEED, PREF_SCALE}),
     };
@@ -278,6 +281,12 @@ public final class MenuScreen extends Screen {
     private int dragPayload;
     private boolean configDirty;
 
+    // Сглаживание перетаскивания ползунков: target — позиция от мыши, current —
+    // текущая подтягиваемая к ней. На захвате значение прыгает точно под курсор,
+    // при движении плавно догоняет цель, без рывков на каждый пиксель мыши.
+    private int smoothDragPayload = -1;
+    private float smoothDragRatio;
+
     private final ModulePopup popup = new ModulePopup(this);
 
     public MenuScreen(ModuleManager modules, ConfigManager config) {
@@ -330,6 +339,17 @@ public final class MenuScreen extends Screen {
 
     int lt(int lightColor, int darkColor) {
         return light() ? lightColor : darkColor;
+    }
+
+    /**
+     * Плавное смешение жёстко заданных тёмного и светлого вариантов поверхности.
+     *
+     * <p>Вне перехода между темами доля светлоты равна 0 или 1, поэтому результат
+     * совпадает с прежним тернарным оператором; во время перехода крупные подложки
+     * перетекают между темами вместо мгновенной смены флага {@link #light()}.
+     */
+    static int surface(int darkColor, int lightColor) {
+        return MenuDraw.mix(darkColor, lightColor, MenuPalette.lightAmount());
     }
 
     float an(int key, float target, float speed) {
@@ -388,7 +408,7 @@ public final class MenuScreen extends Screen {
     }
 
     int plate() {
-        return light() ? 0xFFFFFFFF : MenuDraw.mix(MenuPalette.bg() | 0xFF000000, 0xFFFFFFFF, 0.025F);
+        return surface(MenuDraw.mix(MenuPalette.bg() | 0xFF000000, 0xFFFFFFFF, 0.025F), 0xFFFFFFFF);
     }
 
     int inset(boolean hovered) {
@@ -403,7 +423,7 @@ public final class MenuScreen extends Screen {
     }
 
     int baseColour() {
-        return light() ? 0xFFF8F8F7 : (MenuPalette.bg() | 0xFF000000);
+        return surface(MenuPalette.bg() | 0xFF000000, 0xFFF8F8F7);
     }
 
     // ---- регионы кликов
@@ -558,7 +578,9 @@ public final class MenuScreen extends Screen {
                     // минимальная заливка нужна, иначе полупрозрачный прямоугольник
                     // не рисуется и размытие пропадает даже при dim = 0
                     .color(MenuDraw.a(0x05040A, Math.max(dimAlpha, (int) (24.0F * open))))
-                    .blur(S(18), Math.min(1.0F, open))
+                    // радиус управляется настройкой "Сила размытия"; множитель 1.0
+                    // соответствует прежнему жёстко заданному значению S(18)
+                    .blur(S(18) * MenuPrefs.blurFactor(), Math.min(1.0F, open))
                     .hudGlow(false)
                     .draw();
         } else if (dimAlpha > 0) {
@@ -611,7 +633,7 @@ public final class MenuScreen extends Screen {
         MenuDraw.shadow(plateX, plateY + S(4), plateW, plateH, radius, S(14),
                 MenuDraw.a(0, light() ? 30 : 90));
         MenuDraw.round(plateX, plateY, plateW, plateH, radius,
-                light() ? MenuDraw.a(0xFFFFFF, 242) : MenuDraw.a(MenuPalette.bg(), 240));
+                surface(MenuDraw.a(MenuPalette.bg(), 240), MenuDraw.a(0xFFFFFF, 242)));
         MenuDraw.glow(x - S(8), plateY + S(2), logoSize + S(16), plateH - S(4), radius,
                 MenuDraw.a(MenuPalette.accent(), light() ? 50 : 90));
         MenuDraw.outline(plateX, plateY, plateW, plateH, radius, MenuDraw.a(MenuPalette.text(), light() ? 24 : 26));
@@ -641,13 +663,14 @@ public final class MenuScreen extends Screen {
             BeginFrameHelper.rect(x, y, this.pw, this.ph)
                     .radius(radius)
                     // альфа ниже 0xF0, иначе размытие под панелью не видно
-                    .color(light ? 0xE6F8F7FA : MenuDraw.a(MenuPalette.bg(), 214))
-                    .blur(S(30), MenuDraw.fade)
+                    .color(surface(MenuDraw.a(MenuPalette.bg(), 214), 0xE6F8F7FA))
+                    // радиус размытия панели масштабируется настройкой силы размытия
+                    .blur(S(30) * MenuPrefs.blurFactor(), MenuDraw.fade)
                     .hudGlow(false)
                     .draw();
         } else {
             MenuDraw.round(x, y, this.pw, this.ph, radius,
-                    light ? 0xF8F8F7FA : MenuDraw.a(MenuPalette.bg(), 242));
+                    surface(MenuDraw.a(MenuPalette.bg(), 242), 0xF8F8F7FA));
         }
         MenuDraw.outline(x, y, this.pw, this.ph, radius, MenuDraw.a(MenuPalette.text(), light ? 28 : 20));
         gradHairline(x, y, this.pw, radius);
@@ -730,7 +753,9 @@ public final class MenuScreen extends Screen {
                 MenuDraw.iconCs(IconGlyphs.category(TABS[i]), this.tabX[i] + iconPad + iconSize * 0.5F,
                         plateY + plateH * 0.5F, iconSize, MenuDraw.mix(colour, accText(), activeAmount * 0.9F));
             } else {
-                MenuDraw.iconCs(IconGlyphs.CONFIGS, this.tabX[i] + iconPad + iconSize * 0.5F,
+                // Вкладка "Настройки" — иконка ползунков (шрифт clickgui-icons),
+                // а не CONFIGS (банка из косметического набора csgui-icons).
+                MenuDraw.iconLetters(LegacyIconGlyphs.THEMES, this.tabX[i] + iconPad + iconSize * 0.5F,
                         plateY + plateH * 0.5F, iconSize, MenuDraw.mix(colour, accText(), activeAmount * 0.9F));
             }
             MenuDraw.text(labels[i], this.tabX[i] + iconPad + iconSize + iconGap,
@@ -817,7 +842,9 @@ public final class MenuScreen extends Screen {
 
         float iconSize = S(13);
         int colour = MenuDraw.mix(MenuPalette.muted(), MenuPalette.text(), hoverAmount);
-        MenuDraw.iconLettersCentered(LegacyIconGlyphs.THEMES, x, y, size, size, iconSize, colour);
+        // Кнопка смены темы — звезда (маркер оформления), а не ползунки: глиф
+        // THEMES("h") перешёл к кнопке настроек, где его смысл уместнее.
+        MenuDraw.iconCsCentered(IconGlyphs.FILLED_STAR, x, y, size, size, iconSize, colour);
 
         // подсказка о текущем режиме: точка-индикатор светлой палитры
         if (lightKey > 0.02F) {
@@ -1217,7 +1244,11 @@ public final class MenuScreen extends Screen {
                 }
                 float keep = MenuDraw.fade;
                 MenuDraw.fade = keep * appear;
-                this.prefGroup(i, groupX[i], groupY[i] - scrollAmount, columnWidth, groupH[i],
+                // Передаём НЕсдвинутую координату: внутренние строки и так вычитают
+                // scrollAmount сами (как в окне настроек модуля). Раньше тут вычитался
+                // скролл ещё раз, из-за чего рамки, ползунки и разделители ехали друг
+                // относительно друга при прокрутке.
+                this.prefGroup(i, groupX[i], groupY[i], columnWidth, groupH[i],
                         scrollAmount, this.top, this.bottom, appear > 0.3F);
                 MenuDraw.fade = keep;
             }
@@ -1247,25 +1278,38 @@ public final class MenuScreen extends Screen {
 
     private void prefGroup(int group, float x, float y, float w, float h, float scrollAmount,
                            float listTop, float listBottom, boolean live) {
+        // y — НЕсдвинутая координата контента. Рамка, заголовок и разделитель рисуются
+        // со сдвигом на скролл (dy), а база строк rowY остаётся несдвинутой: prefRow и
+        // paletteStrip вычитают scrollAmount самостоятельно. Раньше сюда приходил уже
+        // сдвинутый y и внутренние строки вычитали скролл второй раз.
+        float dy = y - scrollAmount;
         float pad = S(14);
         float radius = S(10);
-        MenuDraw.round(x, y, w, h, radius, plate());
-        MenuDraw.outline(x, y, w, h, radius, light() ? MenuDraw.a(MenuPalette.text(), 22) : 0x18FFFFFF);
+        MenuDraw.round(x, dy, w, h, radius, plate());
+        MenuDraw.outline(x, dy, w, h, radius, light() ? MenuDraw.a(MenuPalette.text(), 22) : 0x18FFFFFF);
 
         float iconBox = S(28);
-        accentWash(x + pad, y + S(12), iconBox, iconBox, S(8), light() ? 22 : 34);
-        MenuDraw.iconCsCentered(group == PREFS_PALETTE ? IconGlyphs.COSMETICA
-                        : group == PREFS_SOUND ? IconGlyphs.BIND
-                        : group == PREFS_VIEW ? IconGlyphs.RENDER
-                        : IconGlyphs.CONFIGS,
-                x + pad, y + S(12), iconBox, iconBox, S(13), accText());
+        accentWash(x + pad, dy + S(12), iconBox, iconBox, S(8), light() ? 22 : 34);
+        // Иконки групп подобраны по смыслу из двух доступных MSDF-шрифтов клиента.
+        // Полноценных UI-глифов (динамик, глаз, палитра) в них нет, поэтому для звука
+        // оставлен ближайший нейтральный BIND; см. отчёт об ограничениях.
+        boolean letterGlyph = group == PREFS_BEHAVIOR;
+        String groupIcon = group == PREFS_PALETTE ? IconGlyphs.STAR
+                : group == PREFS_SOUND ? IconGlyphs.BIND
+                : group == PREFS_VIEW ? IconGlyphs.SEARCH
+                : LegacyIconGlyphs.THEMES;
+        if (letterGlyph) {
+            MenuDraw.iconLettersCentered(groupIcon, x + pad, dy + S(12), iconBox, iconBox, S(13), accText());
+        } else {
+            MenuDraw.iconCsCentered(groupIcon, x + pad, dy + S(12), iconBox, iconBox, S(13), accText());
+        }
 
-        MenuDraw.text(PREFS[group].title(), x + pad + iconBox + S(10), y + S(12), Weight.SEMIBOLD, S(13),
+        MenuDraw.text(PREFS[group].title(), x + pad + iconBox + S(10), dy + S(12), Weight.SEMIBOLD, S(13),
                 MenuPalette.text());
-        MenuDraw.text(PREFS[group].subtitle(), x + pad + iconBox + S(10), y + S(30), Weight.MEDIUM, S(10),
+        MenuDraw.text(PREFS[group].subtitle(), x + pad + iconBox + S(10), dy + S(30), Weight.MEDIUM, S(10),
                 lt(MenuPalette.dim(), 0xFF757D8A));
 
-        MenuDraw.rect(x + pad, y + S(54), Math.max(1.0F, w - pad * 2.0F), Math.max(1.0F, S(1)),
+        MenuDraw.rect(x + pad, dy + S(54), Math.max(1.0F, w - pad * 2.0F), Math.max(1.0F, S(1)),
                 light() ? MenuDraw.a(MenuPalette.text(), 18) : 0x12FFFFFF);
 
         float rowY = y + S(56);
@@ -1306,28 +1350,31 @@ public final class MenuScreen extends Screen {
             int column = i % perRow;
             int row = i / perRow;
             float cellX = x + column * (cell + gap);
+            // cellY — несдвинутая координата (для clipped, который сам вычтет скролл),
+            // drawY — экранная координата для отрисовки, наведения и отсечения.
             float cellY = y + row * (cell + gap);
-            if (cellY + cell > listBottom + S(20)) {
+            float drawY = cellY - scrollAmount;
+            if (drawY + cell < listTop - S(20) || drawY > listBottom + S(20)) {
                 continue;
             }
             MenuPalette.Palette palette = MenuPalette.PALETTES[i];
             boolean selected = MenuPalette.palette == i;
-            boolean hovered = live && hover(cellX, cellY, cell, cell);
+            boolean hovered = live && hover(cellX, drawY, cell, cell);
             if (hovered) {
                 hot(HOT_PALETTE + i);
             }
-            MenuDraw.round(cellX, cellY, cell, cell, S(8), palette.bg() | 0xFF000000);
+            MenuDraw.round(cellX, drawY, cell, cell, S(8), palette.bg() | 0xFF000000);
             if (MenuPrefs.gradient) {
-                MenuDraw.roundGrad(cellX + S(5), cellY + cell - S(11), cell - S(10), S(6), S(3),
+                MenuDraw.roundGrad(cellX + S(5), drawY + cell - S(11), cell - S(10), S(6), S(3),
                         palette.a() | 0xFF000000, palette.b() | 0xFF000000);
             } else {
-                MenuDraw.round(cellX + S(5), cellY + cell - S(11), cell - S(10), S(6), S(3),
+                MenuDraw.round(cellX + S(5), drawY + cell - S(11), cell - S(10), S(6), S(3),
                         palette.a() | 0xFF000000);
             }
-            MenuDraw.outline(cellX, cellY, cell, cell, S(8),
+            MenuDraw.outline(cellX, drawY, cell, cell, S(8),
                     selected ? MenuDraw.a(MenuPalette.accent(), 220) : palette.border());
             if (selected) {
-                MenuDraw.outline(cellX - S(2), cellY - S(2), cell + S(4), cell + S(4), S(10),
+                MenuDraw.outline(cellX - S(2), drawY - S(2), cell + S(4), cell + S(4), S(10),
                         MenuDraw.a(MenuPalette.accent(), 120));
             }
             if (live) {
@@ -1352,6 +1399,7 @@ public final class MenuScreen extends Screen {
             case PREF_HOVER_SOUNDS -> "Звук наведения";
             case PREF_SLIDER_SOUNDS -> "Щелчки ползунков";
             case PREF_BLUR -> "Размытие фона";
+            case PREF_BLUR_STRENGTH -> "Сила размытия";
             case PREF_DIM -> "Затемнение мира";
             case PREF_ANIMATIONS -> "Анимации";
             case PREF_ANIM_SPEED -> "Скорость анимаций";
@@ -1364,7 +1412,7 @@ public final class MenuScreen extends Screen {
             float labelY = y - scrollAmount + S(8);
             MenuDraw.text(label, x, labelY, Weight.MEDIUM, fontSize, MenuPalette.text());
             float value = prefValue(pref);
-            String valueText = pref == PREF_VOLUME ? Math.round(value) + "%"
+            String valueText = pref == PREF_VOLUME || pref == PREF_BLUR_STRENGTH ? Math.round(value) + "%"
                     : pref == PREF_SCALE ? Math.round(value) + "%"
                     : String.format(Locale.ROOT, "%.1f", value) + "x";
             MenuDraw.textRight(valueText, x + w, labelY, Weight.SEMIBOLD, S(11),
@@ -1425,6 +1473,7 @@ public final class MenuScreen extends Screen {
         return switch (pref) {
             case PREF_VOLUME -> MenuPrefs.volume;
             case PREF_DIM -> MenuPrefs.dim;
+            case PREF_BLUR_STRENGTH -> MenuPrefs.blurStrength;
             case PREF_ANIM_SPEED -> MenuPrefs.animSpeed;
             case PREF_SCALE -> MenuPrefs.scale;
             default -> 0.0F;
@@ -1440,6 +1489,7 @@ public final class MenuScreen extends Screen {
         switch (pref) {
             case PREF_VOLUME -> MenuPrefs.volume = clamped;
             case PREF_DIM -> MenuPrefs.dim = clamped;
+            case PREF_BLUR_STRENGTH -> MenuPrefs.blurStrength = clamped;
             case PREF_ANIM_SPEED -> {
                 MenuPrefs.animSpeed = clamped;
                 MenuPrefs.sync();
@@ -1820,7 +1870,7 @@ public final class MenuScreen extends Screen {
         float keep = MenuDraw.fade;
         MenuDraw.fade = keep * Math.min(1.0F, appear * 1.4F);
         MenuDraw.shadow(x, y + S(4), width, height, radius, S(12), MenuDraw.a(0, 80));
-        MenuDraw.round(x, y, width, height, radius, light() ? 0xFFFFFFFF : 0xF4171A22);
+        MenuDraw.round(x, y, width, height, radius, surface(0xF4171A22, 0xFFFFFFFF));
         MenuDraw.outline(x, y, width, height, radius, light() ? MenuDraw.a(MenuPalette.text(), 24) : 0x1CFFFFFF);
 
         String selected = mode.get();
@@ -1884,7 +1934,7 @@ public final class MenuScreen extends Screen {
         int value = this.pickerColor();
 
         MenuDraw.shadow(x, y + S(4), width, height, radius, S(16), MenuDraw.a(0, 90));
-        MenuDraw.round(x, y, width, height, radius, light() ? 0xFFFFFFFF : 0xF4171A22);
+        MenuDraw.round(x, y, width, height, radius, surface(0xF4171A22, 0xFFFFFFFF));
         MenuDraw.outline(x, y, width, height, radius, light() ? MenuDraw.a(MenuPalette.text(), 24) : 0x1CFFFFFF);
 
         // насыщенность/яркость
@@ -1982,13 +2032,13 @@ public final class MenuScreen extends Screen {
         if (MenuPrefs.blur) {
             BeginFrameHelper.rect(x, y, width, height)
                     .radius(height * 0.5F)
-                    .color(light() ? 0xE6FFFFFF : MenuDraw.a(MenuPalette.bg(), 214))
-                    .blur(S(18), MenuDraw.fade)
+                    .color(surface(MenuDraw.a(MenuPalette.bg(), 214), 0xE6FFFFFF))
+                    .blur(S(18) * MenuPrefs.blurFactor(), MenuDraw.fade)
                     .hudGlow(false)
                     .draw();
         } else {
             MenuDraw.round(x, y, width, height, height * 0.5F,
-                    light() ? 0xFFFFFFFF : MenuDraw.mix(MenuPalette.bg() | 0xFF000000, 0xFFFFFFFF, 0.025F));
+                    surface(MenuDraw.mix(MenuPalette.bg() | 0xFF000000, 0xFFFFFFFF, 0.025F), 0xFFFFFFFF));
         }
         MenuDraw.outline(x, y, width, height, height * 0.5F,
                 MenuDraw.a(MenuPalette.text(), light() ? 30 : 22));
@@ -2019,13 +2069,14 @@ public final class MenuScreen extends Screen {
                 iconColour = onCircle;
             }
             // «Модули» — иконка списка модулей, «Настройки» — ползунки.
-            // Раньше здесь стояли CONFIGS (иконка конфигов) и STAR (избранное).
+            // Раньше для настроек стоял FILTERS (ракета/кисть) — семантически чужой
+            // глиф; THEMES("h") в этом шрифте как раз и есть иконка регулировок.
             float iconSize = S(20);
             if (i == 0) {
                 MenuDraw.iconCsCentered(IconGlyphs.MISC, buttonX, y + pad, buttonSize, buttonSize, iconSize,
                         iconColour);
             } else {
-                MenuDraw.iconLettersCentered(LegacyIconGlyphs.FILTERS, buttonX, y + pad, buttonSize, buttonSize,
+                MenuDraw.iconLettersCentered(LegacyIconGlyphs.THEMES, buttonX, y + pad, buttonSize, buttonSize,
                         iconSize, iconColour);
             }
 
@@ -2168,6 +2219,8 @@ public final class MenuScreen extends Screen {
             this.dragAction = action;
             this.dragPayload = payload;
             this.dragging = true;
+            // сброс сглаживания: первый же runAction должен точно встать под курсор
+            this.smoothDragPayload = -1;
             MenuSound.play(MenuSound.GRAB);
         }
         this.runAction(action, payload);
@@ -2177,9 +2230,21 @@ public final class MenuScreen extends Screen {
     @Override
     public boolean mouseReleased(MouseButtonEvent event) {
         boolean wasDragging = this.dragging;
+        int releasedAction = this.dragAction;
+        int releasedPayload = this.dragPayload;
         this.dragging = false;
         this.dragAction = ACT_NONE;
+        this.smoothDragPayload = -1;
         if (wasDragging) {
+            // Финальная точная установка под позицию отпускания, чтобы сглаженный
+            // ползунок не останавливался чуть раньше точки, где отпустили кнопку.
+            this.mx = (float) event.x();
+            this.my = (float) event.y();
+            this.runAction(releasedAction, releasedPayload);
+            if (releasedAction == ACT_PREF_SLIDER) {
+                // Настройки меню пишем на диск один раз за перетаскивание.
+                MenuPrefs.save();
+            }
             this.markDirty();
             MenuSound.play(MenuSound.DROP, 1.0F, 0.5F);
             return true;
@@ -2681,6 +2746,26 @@ public final class MenuScreen extends Screen {
         return Math.max(0.0F, Math.min(1.0F, value));
     }
 
+    /**
+     * Сглаженная позиция ползунка 0..1 для текущего перетаскивания.
+     *
+     * <p>Первый вызов после захвата (или клик по дорожке) ставит значение точно под
+     * курсор; последующие события движения плавно подтягивают его к цели экспонентой
+     * по реальному dt кадра, поэтому поведение не зависит от частоты опроса мыши и
+     * FPS, а ползунок больше не «прыгает» по ступеням пикселей.
+     */
+    private float easedDragRatio(int payload, float target) {
+        float clamped = clamp01(target);
+        if (this.smoothDragPayload != payload) {
+            this.smoothDragPayload = payload;
+            this.smoothDragRatio = clamped;
+            return clamped;
+        }
+        float factor = 1.0F - (float) Math.exp(-this.anim.frameDt() * 22.0F);
+        this.smoothDragRatio += (clamped - this.smoothDragRatio) * Math.max(0.0F, Math.min(1.0F, factor));
+        return this.smoothDragRatio;
+    }
+
     private void togglePref(int pref) {
         switch (pref) {
             case PREF_SOUNDS -> MenuPrefs.sounds = !MenuPrefs.sounds;
@@ -2706,7 +2791,8 @@ public final class MenuScreen extends Screen {
         }
         float start = this.sliderX[global];
         float width = Math.max(1.0F, this.sliderW[global]);
-        number.setRatio((float) ((at - start) / width));
+        float target = (float) ((at - start) / width);
+        number.setRatio(this.easedDragRatio(global, target));
         MenuSound.play(MenuSound.TICK);
         this.markDirty();
     }
@@ -2719,10 +2805,13 @@ public final class MenuScreen extends Screen {
         if (rowWidth <= 0.0F) {
             return;
         }
-        float ratio = (float) ((at - startX) / rowWidth);
-        this.applyPref(pref, PREF_MIN[pref] + clamp01(ratio) * (PREF_MAX[pref] - PREF_MIN[pref]));
+        float target = (float) ((at - startX) / rowWidth);
+        float ratio = this.easedDragRatio(pref, target);
+        this.applyPref(pref, PREF_MIN[pref] + ratio * (PREF_MAX[pref] - PREF_MIN[pref]));
         MenuSound.play(MenuSound.TICK);
-        MenuPrefs.save();
+        // Без вызова MenuPrefs.save() на каждое событие: файл пишется один раз при
+        // отпускании кнопки в mouseReleased, иначе при драге был ввод-вывод десятки
+        // раз в секунду и подвисания ползунка.
     }
 
     private final float[] prefSliderX = new float[PREFS_COUNT];

@@ -88,6 +88,11 @@ public final class MenuAnim {
         last = now;
     }
 
+    /** Длительность последнего кадра в секундах — для FPS-независимых сглаживаний. */
+    public float frameDt() {
+        return this.dt;
+    }
+
     /** Пружина: значение подтягивается к цели экспоненциально, скорость задаёт вызывающий. */
     public float to(int key, float target, float speed) {
         float value = spring[key];

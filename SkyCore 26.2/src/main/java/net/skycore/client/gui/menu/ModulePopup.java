@@ -114,7 +114,7 @@ final class ModulePopup {
         MenuDraw.shadow(drawX, y + this.menu.S(5), width, height, radius, this.menu.S(16),
                 MenuDraw.a(0, this.menu.light() ? 30 : 80));
         MenuDraw.round(drawX, y, width, height, radius,
-                this.menu.light() ? MenuDraw.a(0xFFFFFF, 250) : MenuDraw.a(MenuPalette.bg(), 246));
+                MenuScreen.surface(MenuDraw.a(MenuPalette.bg(), 246), MenuDraw.a(0xFFFFFF, 250)));
         MenuDraw.outline(drawX, y, width, height, radius,
                 MenuDraw.a(MenuPalette.text(), this.menu.light() ? 22 : 24));
         this.menu.gradHairline(drawX, y, width, radius);
@@ -187,7 +187,7 @@ final class ModulePopup {
             }
             if (rowsHeight > viewBottom - viewTop) {
                 this.menu.edges(drawX + this.menu.S(1), width - this.menu.S(2), viewTop, viewBottom, scrollAmount,
-                        this.menu.light() ? 0xFFFFFFFF : 0xF40C0D12);
+                        MenuScreen.surface(0xF40C0D12, 0xFFFFFFFF));
                 this.menu.scrollbar(drawX + width - this.menu.S(6), viewTop, viewBottom, rowsHeight, scrollAmount,
                         MenuAnim.POPUP_SCROLL);
             }
