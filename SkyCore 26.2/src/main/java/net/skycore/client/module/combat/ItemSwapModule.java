@@ -145,7 +145,7 @@ public final class ItemSwapModule extends ClientModule {
         if (player == null || minecraft.gameMode == null || itemName == null || !this.canSwap(player, itemName)) {
             return false;
         }
-        int delayMilliseconds = Math.round(this.delay.get());
+        int delayMilliseconds = (int) Math.round(this.delay.get());
         if (delayMilliseconds <= 0) {
             return this.swapNow(minecraft, player, itemName);
         }
