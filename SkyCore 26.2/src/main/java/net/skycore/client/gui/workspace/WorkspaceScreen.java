@@ -556,9 +556,9 @@ public final class WorkspaceScreen extends Screen {
         drawHighlightedName(name, x + pad, y + pad - this.layout.s(1.0F), nameWidth, nameFont,
                 MenuDraw.mix(this.theme.muted, this.theme.text, Math.max(on, Math.max(hover, selectedAnim))));
 
-        MenuDraw.text(x + pad, y + pad + this.layout.s(13.0F), Weight.MEDIUM, this.layout.s(8.5F),
-                MenuDraw.ellipsize(safe(SelectAndSaveHelper.text(module.getDescription())), Weight.MEDIUM,
-                        this.layout.s(8.5F), nameWidth), this.theme.dim);
+        MenuDraw.text(MenuDraw.ellipsize(safe(SelectAndSaveHelper.text(module.getDescription())),
+                        Weight.MEDIUM, this.layout.s(8.5F), nameWidth),
+                x + pad, y + pad + this.layout.s(13.0F), Weight.MEDIUM, this.layout.s(8.5F), this.theme.dim);
 
         WorkspaceDraw.toggle(this.layout, this.theme, toggleX, toggleY, toggleW, toggleH, on,
                 hovered ? 1.0F : 0.0F);
@@ -654,10 +654,10 @@ public final class WorkspaceScreen extends Screen {
         String description = safe(SelectAndSaveHelper.text(module.getDescription()));
         MenuDraw.text(MenuDraw.ellipsize(description, Weight.MEDIUM, descFont, width - pad * 2.0F),
                 x + pad, y + l.s(32.0F), Weight.MEDIUM, descFont, this.theme.dim);
-        MenuDraw.text(x + pad, y + l.s(44.0F), Weight.MEDIUM, descFont,
-                MenuDraw.ellipsize(L("Клик колесом по карточке — назначить клавишу",
+        MenuDraw.text(MenuDraw.ellipsize(L("Клик колесом по карточке — назначить клавишу",
                         "Middle click a card to bind a key"), Weight.MEDIUM, descFont,
-                        width - pad * 2.0F), MenuDraw.a(this.theme.dim, 150));
+                        width - pad * 2.0F),
+                x + pad, y + l.s(44.0F), Weight.MEDIUM, descFont, MenuDraw.a(this.theme.dim, 150));
 
         // тумблер модуля
         float toggleW = l.s(32.0F);
