@@ -51,6 +51,7 @@
     "PlayerNoWaterPushMixin",
     "EntityIgnoreCobwebSlowdownMixin",
     "AbstractClientPlayerCapeSimulateMixin",
+    "AbstractClientPlayerSkinOverrideMixin",
     "LocalPlayerPreUpdateMixin",
     "LocalPlayerElytraMotionMixin",
     "LocalPlayerQueueInventoryCloseMixin",

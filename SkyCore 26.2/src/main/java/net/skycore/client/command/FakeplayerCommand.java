@@ -60,6 +60,38 @@ public final class FakeplayerCommand extends ClientCommand {
    private Vec3 lastCrystalBoomPos;
    private static final float CRYSTAL_EXPLOSION_POWER = 6.0F;
 
+   /**
+    * Спавн болванки для {@code FakePlayerModule}.
+    *
+    * <p>Возвращает созданного игрока или {@code null}, если мир ещё не загружен.
+    * Имя фиксированное, поэтому повторный вызов не плодит копии — старый убирается
+    * тем же путём, что и {@code /fakeplayer remove}.
+    */
+   public Player spawn(String text) {
+      if (mc.level == null || mc.player == null) {
+         return null;
+      }
+      this.removeFakePlayer(text, true);
+      int before = this.fakePlayers.size();
+      int spawned = this.addFakePlayer(text, FakeplayerCommand.FakeMode.NORMAL);
+      if (spawned == 0 || this.fakePlayers.size() <= before) {
+         return null;
+      }
+      return this.fakePlayers.get(this.fakePlayers.size() - 1);
+   }
+
+   /** Убирает конкретную болванку (для {@code FakePlayerModule}). */
+   public void despawn(Player player) {
+      if (player == null) {
+         return;
+      }
+      this.fakePlayers.remove(player);
+      if (mc.level != null) {
+         mc.level.removeEntity(player.getId(), RemovalReason.KILLED);
+      }
+      player.remove(RemovalReason.DISCARDED);
+   }
+
    private int addFakePlayer(String text, FakeplayerCommand.FakeMode fakeMode) {
       if (mc.level instanceof ClientLevel level && mc.player != null) {
          String text2 = text != null ? text : (fakeMode == FakeplayerCommand.FakeMode.CRYSTAL_AURA ? "CrystalAura" : "FakePlayer" + (this.fakePlayers.size() + 1));
@@ -243,7 +275,26 @@ public final class FakeplayerCommand extends ClientCommand {
       }
    }
 
+   /**
+    * Экипировка болванки.
+    *
+    * <p>Если в модуле включено «Копировать инвентарь», броня и обе руки копируются
+    * у локального игрока (с настройками предметов, но без привязки к его стеку).
+    * Иначе — прежний незерит с починкой и тотем в левой руке; когда в модуле включён
+    * щит, вместо тотема в левую руку кладётся щит, иначе болванка не смогла бы
+    * блокировать.
+    */
    private void equipArmor(Player player) {
+      if (net.skycore.client.combat.FakePlayerSettings.copyInventory() && mc.player != null) {
+         net.minecraft.client.player.LocalPlayer self = mc.player;
+         player.setItemSlot(EquipmentSlot.HEAD, self.getItemBySlot(EquipmentSlot.HEAD).copy());
+         player.setItemSlot(EquipmentSlot.CHEST, self.getItemBySlot(EquipmentSlot.CHEST).copy());
+         player.setItemSlot(EquipmentSlot.LEGS, self.getItemBySlot(EquipmentSlot.LEGS).copy());
+         player.setItemSlot(EquipmentSlot.FEET, self.getItemBySlot(EquipmentSlot.FEET).copy());
+         player.setItemSlot(EquipmentSlot.MAINHAND, self.getItemBySlot(EquipmentSlot.MAINHAND).copy());
+         player.setItemSlot(EquipmentSlot.OFFHAND, self.getItemBySlot(EquipmentSlot.OFFHAND).copy());
+         return;
+      }
       if (mc.level != null) {
          Reference orThrow = mc.level.registryAccess().lookupOrThrow(Registries.ENCHANTMENT).getOrThrow(Enchantments.MENDING);
          ItemStack itemStack = new ItemStack(Items.NETHERITE_HELMET);
@@ -258,8 +309,12 @@ public final class FakeplayerCommand extends ClientCommand {
          player.setItemSlot(EquipmentSlot.CHEST, itemStack2);
          player.setItemSlot(EquipmentSlot.LEGS, itemStack3);
          player.setItemSlot(EquipmentSlot.FEET, itemStack4);
-         ItemStack itemStack5 = new ItemStack(Items.TOTEM_OF_UNDYING);
-         itemStack5.enchant(orThrow, 1);
+         ItemStack itemStack5 = net.skycore.client.combat.FakePlayerSettings.useShield()
+                 ? new ItemStack(Items.SHIELD)
+                 : new ItemStack(Items.TOTEM_OF_UNDYING);
+         if (!net.skycore.client.combat.FakePlayerSettings.useShield()) {
+            itemStack5.enchant(orThrow, 1);
+         }
          player.setItemSlot(EquipmentSlot.OFFHAND, itemStack5);
       }
    }
@@ -411,6 +466,8 @@ public final class FakeplayerCommand extends ClientCommand {
       private int crystalHurtCooldown;
       private FireworkRocketEntity flightRocket;
       private int flightTicks;
+      /** Сколько тотемов осталось у этой болванки (см. «Кол-во тотемов»). */
+      private int totemsLeft = net.skycore.client.combat.FakePlayerSettings.totemCount();
 
       public boolean isCrystalAura() {
          return this.mode == FakeplayerCommand.FakeMode.CRYSTAL_AURA;
@@ -599,7 +656,46 @@ public final class FakeplayerCommand extends ClientCommand {
          return itemStack;
       }
 
+      /**
+       * Тратит тотем.
+       *
+       * <p>Возвращает {@code false}, если тотемы выключены в модуле или закончились —
+       * тогда вызывающий код убивает болванку. Счётчик живёт на самой болванке:
+       * при пересоздании он снова равен «Кол-ву тотемов» из настроек, а
+       * «Бесконечные тотемы» его не уменьшают.
+       */
+      /**
+       * Щит: поднимаем, когда этого хочет режим, и опускаем, когда не хочет.
+       *
+       * <p>Блокировка — обычное ванильное использование левой руки, поэтому щит
+       * рисуется и работает как у любого игрока. Если щита в левой руке нет (или
+       * модуль выключил щит), метод ничего не делает.
+       */
+      private void tickShield() {
+         if (!this.getOffhandItem().is(Items.SHIELD)) {
+            if (this.isUsingItem()) {
+               this.stopUsingItem();
+            }
+            return;
+         }
+         boolean wanted = net.skycore.client.combat.FakePlayerSettings.shieldWanted(this);
+         if (wanted && !this.isUsingItem()) {
+            this.startUsingItem(InteractionHand.OFF_HAND);
+         } else if (!wanted && this.isUsingItem()) {
+            this.stopUsingItem();
+         }
+      }
+
       private boolean useTotem() {
+         if (!net.skycore.client.combat.FakePlayerSettings.useTotem()) {
+            return false;
+         }
+         if (!net.skycore.client.combat.FakePlayerSettings.infiniteTotems()) {
+            if (this.totemsLeft <= 0) {
+               return false;
+            }
+            this.totemsLeft--;
+         }
          this.setHealth(5.0F);
          this.removeAllEffects();
          this.addEffect(new MobEffectInstance(MobEffects.REGENERATION, 600, 4));
@@ -755,6 +851,7 @@ public final class FakeplayerCommand extends ClientCommand {
          if (this.crystalHurtCooldown > 0) {
             this.crystalHurtCooldown--;
          }
+         this.tickShield();
 
          if (this.isElytraTarget()) {
             this.tickElytraFlight();
@@ -788,7 +885,7 @@ public final class FakeplayerCommand extends ClientCommand {
             } else {
                this.setHealth(computedValue);
             }
-         } else if (computedValue <= 0.0F) {
+         } else if (computedValue <= net.skycore.client.combat.FakePlayerSettings.totemThreshold()) {
             if (!this.useTotem()) {
                this.setHealth(0.0F);
                this.remove(RemovalReason.KILLED);

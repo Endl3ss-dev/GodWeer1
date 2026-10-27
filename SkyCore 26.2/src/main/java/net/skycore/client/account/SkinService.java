@@ -133,6 +133,20 @@ public final class SkinService {
       return null;
    }
 
+   /**
+    * Текстура, если она уже загружена, иначе {@code null}.
+    *
+    * <p>Нужен там, где нельзя подставлять заглушку Стива: SkinStealer должен
+    * отличить «скин готов» от «ещё качается», а {@link #skin(String)} возвращает
+    * {@link #FALLBACK} в обоих случаях.
+    */
+   public static Identifier skinIfReady(String text) {
+      if (text == null || text.isBlank()) {
+         return null;
+      }
+      return SKINS.get(text.trim().toLowerCase(Locale.ROOT));
+   }
+
    public static Identifier skin(String text) {
       if (text != null) {
          if (!text.isBlank()) {
