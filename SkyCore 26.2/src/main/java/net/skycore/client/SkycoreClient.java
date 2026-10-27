@@ -15,6 +15,7 @@ import net.skycore.client.event.ClientTickEvent;
 import net.skycore.client.event.EventBus;
 import net.skycore.client.gui.menu.MenuPrefs;
 import net.skycore.client.gui.menu.MenuScreen;
+import net.skycore.client.gui.workspace.WorkspaceScreen;
 import net.skycore.client.hud.HudRenderer;
 import net.skycore.client.integration.DiscordStatus;
 import net.skycore.client.module.BindManager;
@@ -97,6 +98,8 @@ public final class SkycoreClient implements ClientModInitializer {
          if (clickGUIModule.menuStyle().is("Skycore")) {
             RenderGuiHelper renderGuiHelper = new RenderGuiHelper(MODULES, THEMES, config, clickGUIModule);
             instance.setScreenAndShow(renderGuiHelper);
+         } else if (clickGUIModule.menuStyle().is("Workspace")) {
+            instance.setScreenAndShow(new WorkspaceScreen(MODULES, config));
          } else {
             instance.setScreenAndShow(new MenuScreen(MODULES, config));
          }
