@@ -95,13 +95,14 @@ public final class SkycoreClient implements ClientModInitializer {
       Minecraft instance = Minecraft.getInstance();
       ClickGUIModule clickGUIModule = MODULES.get(ClickGUIModule.class).orElseThrow();
       clickGUIModule.setOpenAction(() -> {
+         // Workspace — основное меню: ветка по умолчанию (и всё, что не названо явно
+         // внутри него) открывает его, а не старый экран.
          if (clickGUIModule.menuStyle().is("Skycore")) {
-            RenderGuiHelper renderGuiHelper = new RenderGuiHelper(MODULES, THEMES, config, clickGUIModule);
-            instance.setScreenAndShow(renderGuiHelper);
-         } else if (clickGUIModule.menuStyle().is("Workspace")) {
-            instance.setScreenAndShow(new WorkspaceScreen(MODULES, config));
-         } else {
+            instance.setScreenAndShow(new RenderGuiHelper(MODULES, THEMES, config, clickGUIModule));
+         } else if (clickGUIModule.menuStyle().is("Swerve")) {
             instance.setScreenAndShow(new MenuScreen(MODULES, config));
+         } else {
+            openWorkspace(instance);
          }
       });
       ClientTickEvents.END_CLIENT_TICK.register(this::onEndTick);
@@ -148,6 +149,26 @@ public final class SkycoreClient implements ClientModInitializer {
          ElytraTargetModule.INSTANCE.renderPredictCube();
       });
       config.load();
+   }
+
+   /**
+    * Открывает основное меню — Workspace.
+    *
+    * <p>Вынесено отдельным методом ради одной страховки: если экран не удалось
+    * построить (например, из-за несовместимого состояния настроек), клиент не должен
+    * оставаться без интерфейса вообще — тогда открывается старый экран, который умеет
+    * всё остальное. Исключение при этом логируется, а не глотается молча.
+    */
+   private void openWorkspace(Minecraft instance) {
+      try {
+         instance.setScreenAndShow(new WorkspaceScreen(MODULES, config));
+      } catch (RuntimeException failure) {
+         LOGGER.error("Workspace menu failed to open, falling back to the legacy screen", failure);
+         ClickGUIModule clickGui = MODULES.get(ClickGUIModule.class).orElse(null);
+         instance.setScreenAndShow(clickGui == null
+                 ? new MenuScreen(MODULES, config)
+                 : new RenderGuiHelper(MODULES, THEMES, config, clickGui));
+      }
    }
 
    private void onEndTick(Minecraft minecraft) {
