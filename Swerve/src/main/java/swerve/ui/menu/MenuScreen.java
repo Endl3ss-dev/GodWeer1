@@ -5,6 +5,7 @@ import swerve.cosmetics.melee.MeleeState;
 import swerve.managers.ModuleManager;
 import swerve.modules.Module;
 import swerve.modules.ModuleCategory;
+import swerve.modules.api.setting.ActionSetting;
 import swerve.modules.api.setting.BindSetting;
 import swerve.modules.api.setting.BooleanSetting;
 import swerve.modules.api.setting.FloatSetting;
@@ -111,6 +112,8 @@ public final class MenuScreen extends Screen {
     static final int ACT_MELEE_SCALE = 28;
     static final int ACT_MELEE_SKIN = 29;
     static final int ACT_CAPE = 30;
+    // Кнопка в строке настройки (ActionSetting): нажатие = выполнить действие.
+    static final int ACT_ACTION = 31;
 
     // идентификаторы наведения (целые числа — без строк в кадре)
     private static final int HOT_THEME = 1;
@@ -1618,6 +1621,14 @@ public final class MenuScreen extends Screen {
             if (live) {
                 clipped(x, y, w, h, sc, t, b, ACT_BIND_SETTING, siGlobal);
             }
+        } else if (s instanceof ActionSetting action) {
+            // Действие, а не значение: рисуется той же «таблеткой», что бинд и текст,
+            // но по клику не открывает выбор, а вызывает обработчик настройки.
+            Px.text(g, name, x, y + (h - S(14)) / 2, Weight.MEDIUM, S(14), label);
+            valueBox(g, action.label(), x + w, y + (h - S(26)) / 2, hv, hv);
+            if (live) {
+                clipped(x, y, w, h, sc, t, b, ACT_ACTION, siGlobal);
+            }
         } else if (s instanceof TextSetting ts) {
             Px.text(g, name, x, y + (h - S(14)) / 2, Weight.MEDIUM, S(14), label);
             valueBox(g, ts.get(), x + w, y + (h - S(26)) / 2, false, hv);
@@ -1868,6 +1879,16 @@ public final class MenuScreen extends Screen {
                 if (s instanceof BooleanSetting bo) {
                     bo.setState(!bo.get());
                     MenuSound.play(bo.get() ? MenuSound.TOGGLE_ON : MenuSound.TOGGLE_OFF);
+                }
+            }
+            case ACT_ACTION -> {
+                Setting s = settingByGlobal(payload);
+                // Имя не «action»: метод вызывается как runAction(int action, …), и в
+                // Java pattern-переменная не имеет права перекрывать параметр объёмлющего
+                // метода — компилятор отвечает «variable action is already defined».
+                if (s instanceof ActionSetting pressed) {
+                    pressed.trigger();
+                    MenuSound.play(MenuSound.CLICK);
                 }
             }
             case ACT_SLIDER -> {

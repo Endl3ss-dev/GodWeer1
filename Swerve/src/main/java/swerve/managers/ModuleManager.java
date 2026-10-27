@@ -12,6 +12,7 @@ import swerve.modules.impl.combat.SexAura;
 import swerve.modules.impl.hud.ArrayListHud;
 import swerve.modules.impl.hud.Notifications;
 import swerve.modules.impl.hud.Watermark;
+import swerve.modules.impl.misc.AntiCheatDetector;
 import swerve.modules.impl.misc.PatPatModule;
 import swerve.modules.impl.misc.Scripts;
 import swerve.modules.impl.player.DrinkUse;
@@ -71,6 +72,8 @@ public final class ModuleManager {
         register(new NoWeb());
         register(new DrinkUse());
         register(new PatPatModule());
+        // AntiCheatDetector: диагностика событий, связанных с античитом (только чтение серверных).
+        register(new AntiCheatDetector());
         // Scripts: окно блочного редактора (Scratch-стиль) и пользовательские функции.
         register(new Scripts());
         register(new Trails());

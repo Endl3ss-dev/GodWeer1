@@ -7,7 +7,8 @@
   1. `encodeGui`/`applyGui` и `encodeMenu`/`applyMenu` пишут и читают один набор ключей.
   2. Все поля `MenuPrefs` (public static boolean/float) попадают в файл.
   3. Все настройки из `GuiConfig` попадают в файл.
-  4. Каждый класс из `modules/api/setting` обработан и в `SettingCodec.encode`, и в `decode`.
+  4. Каждый класс из `modules/api/setting` обработан и в `SettingCodec.encode`, и в `decode`
+     (кнопка `ActionSetting` — тоже: её ветка есть в обоих методах и возвращает «не сохранять»).
   5. Восстановление модулей идёт через `setEnabledQuiet`, а `markDirty` вызывается
      только для пользовательских тоглов (`if (notify)`), не для загрузки.
   6. Меню помечает конфиг изменённым во всех точках правки и сбрасывает его на закрытии.
@@ -34,6 +35,7 @@ import sys
 from pathlib import Path
 
 SETTING_CLASSES = (
+    "ActionSetting",
     "BooleanSetting",
     "FloatSetting",
     "ModeSetting",

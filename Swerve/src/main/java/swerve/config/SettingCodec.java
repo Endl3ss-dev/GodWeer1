@@ -1,5 +1,6 @@
 package swerve.config;
 
+import swerve.modules.api.setting.ActionSetting;
 import swerve.modules.api.setting.BindSetting;
 import swerve.modules.api.setting.BooleanSetting;
 import swerve.modules.api.setting.FloatSetting;
@@ -61,6 +62,10 @@ public final class SettingCodec {
         if (setting instanceof BindSetting bind) {
             return new JsonPrimitive(bind.getKey());
         }
+        // Кнопка значения не имеет: её нельзя «восстановить из файла», и в файл она не пишется.
+        if (setting instanceof ActionSetting ignored) {
+            return null;
+        }
         if (setting instanceof ListSetting list) {
             JsonObject options = new JsonObject();
             List<BooleanSetting> entries = list.getSettings();
@@ -107,6 +112,10 @@ public final class SettingCodec {
             if (isNumber(value)) {
                 bind.setKey(value.getAsInt());
             }
+            return;
+        }
+        // Ветки для кнопки нет намеренно: см. {@link #encode(Setting)}.
+        if (setting instanceof ActionSetting ignored) {
             return;
         }
         if (setting instanceof ListSetting list) {

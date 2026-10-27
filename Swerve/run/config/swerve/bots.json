@@ -1,0 +1,732 @@
+{
+  "format": 1,
+  "client": "Swerve",
+  "bots": [
+    {
+      "name": "бот",
+      "host": "mc.hypemc.pro",
+      "port": 25565,
+      "nickname": "Bot1",
+      "protocol": 769,
+      "autoReconnect": false,
+      "reconnectDelay": 5.0,
+      "stepDelay": 0.4,
+      "loopForever": false,
+      "password": "wdwdwdwd",
+      "steps": [
+        {
+          "type": "CONNECT",
+          "values": [],
+          "enabled": true
+        },
+        {
+          "type": "WAIT",
+          "values": [
+            "2"
+          ],
+          "enabled": true
+        },
+        {
+          "type": "LOGIN",
+          "values": [
+            "пароль"
+          ],
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "бот 2",
+      "host": "localhost",
+      "port": 25565,
+      "nickname": "wadwadwad",
+      "protocol": 769,
+      "autoReconnect": true,
+      "reconnectDelay": 5.0,
+      "stepDelay": 0.4,
+      "loopForever": true,
+      "password": "пароль",
+      "steps": [
+        {
+          "type": "CONNECT",
+          "values": [],
+          "enabled": true
+        },
+        {
+          "type": "WAIT",
+          "values": [
+            "2"
+          ],
+          "enabled": true
+        },
+        {
+          "type": "LOGIN",
+          "values": [
+            "пароль"
+          ],
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "бот 3",
+      "host": "localhost",
+      "port": 25565,
+      "nickname": "Bot3",
+      "protocol": 769,
+      "autoReconnect": true,
+      "reconnectDelay": 5.0,
+      "stepDelay": 0.4,
+      "loopForever": true,
+      "password": "пароль",
+      "steps": [
+        {
+          "type": "CONNECT",
+          "values": [],
+          "enabled": true
+        },
+        {
+          "type": "WAIT",
+          "values": [
+            "2"
+          ],
+          "enabled": true
+        },
+        {
+          "type": "LOGIN",
+          "values": [
+            "пароль"
+          ],
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "бот 4",
+      "host": "localhost",
+      "port": 25565,
+      "nickname": "Bot4",
+      "protocol": 769,
+      "autoReconnect": true,
+      "reconnectDelay": 5.0,
+      "stepDelay": 0.4,
+      "loopForever": true,
+      "password": "пароль",
+      "steps": [
+        {
+          "type": "CONNECT",
+          "values": [],
+          "enabled": true
+        },
+        {
+          "type": "WAIT",
+          "values": [
+            "2"
+          ],
+          "enabled": true
+        },
+        {
+          "type": "LOGIN",
+          "values": [
+            "пароль"
+          ],
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "бот копия",
+      "host": "mc.hypemc.pro",
+      "port": 25565,
+      "nickname": "Bot1",
+      "protocol": 769,
+      "autoReconnect": false,
+      "reconnectDelay": 5.0,
+      "stepDelay": 0.4,
+      "loopForever": false,
+      "password": "wdwdwdwd",
+      "steps": [
+        {
+          "type": "CONNECT",
+          "values": [],
+          "enabled": true
+        },
+        {
+          "type": "WAIT",
+          "values": [
+            "2"
+          ],
+          "enabled": true
+        },
+        {
+          "type": "LOGIN",
+          "values": [
+            "пароль"
+          ],
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "бот копия 2",
+      "host": "mc.hypemc.pro",
+      "port": 25565,
+      "nickname": "Bot1",
+      "protocol": 769,
+      "autoReconnect": false,
+      "reconnectDelay": 5.0,
+      "stepDelay": 0.4,
+      "loopForever": false,
+      "password": "wdwdwdwd",
+      "steps": [
+        {
+          "type": "CONNECT",
+          "values": [],
+          "enabled": true
+        },
+        {
+          "type": "WAIT",
+          "values": [
+            "2"
+          ],
+          "enabled": true
+        },
+        {
+          "type": "LOGIN",
+          "values": [
+            "пароль"
+          ],
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "бот копия 3",
+      "host": "mc.hypemc.pro",
+      "port": 25565,
+      "nickname": "Bot1",
+      "protocol": 769,
+      "autoReconnect": false,
+      "reconnectDelay": 5.0,
+      "stepDelay": 0.4,
+      "loopForever": false,
+      "password": "wdwdwdwd",
+      "steps": [
+        {
+          "type": "CONNECT",
+          "values": [],
+          "enabled": true
+        },
+        {
+          "type": "WAIT",
+          "values": [
+            "2"
+          ],
+          "enabled": true
+        },
+        {
+          "type": "LOGIN",
+          "values": [
+            "пароль"
+          ],
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "бот копия 4",
+      "host": "mc.hypemc.pro",
+      "port": 25565,
+      "nickname": "Bot1",
+      "protocol": 769,
+      "autoReconnect": false,
+      "reconnectDelay": 5.0,
+      "stepDelay": 0.4,
+      "loopForever": false,
+      "password": "wdwdwdwd",
+      "steps": [
+        {
+          "type": "CONNECT",
+          "values": [],
+          "enabled": true
+        },
+        {
+          "type": "WAIT",
+          "values": [
+            "2"
+          ],
+          "enabled": true
+        },
+        {
+          "type": "LOGIN",
+          "values": [
+            "пароль"
+          ],
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "бот копия 5",
+      "host": "mc.hypemc.pro",
+      "port": 25565,
+      "nickname": "Bot1",
+      "protocol": 769,
+      "autoReconnect": false,
+      "reconnectDelay": 5.0,
+      "stepDelay": 0.4,
+      "loopForever": false,
+      "password": "wdwdwdwd",
+      "steps": [
+        {
+          "type": "CONNECT",
+          "values": [],
+          "enabled": true
+        },
+        {
+          "type": "WAIT",
+          "values": [
+            "2"
+          ],
+          "enabled": true
+        },
+        {
+          "type": "LOGIN",
+          "values": [
+            "пароль"
+          ],
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "бот копия 6",
+      "host": "mc.hypemc.pro",
+      "port": 25565,
+      "nickname": "Bot1",
+      "protocol": 769,
+      "autoReconnect": false,
+      "reconnectDelay": 5.0,
+      "stepDelay": 0.4,
+      "loopForever": false,
+      "password": "wdwdwdwd",
+      "steps": [
+        {
+          "type": "CONNECT",
+          "values": [],
+          "enabled": true
+        },
+        {
+          "type": "WAIT",
+          "values": [
+            "2"
+          ],
+          "enabled": true
+        },
+        {
+          "type": "LOGIN",
+          "values": [
+            "пароль"
+          ],
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "бот копия 7",
+      "host": "mc.hypemc.pro",
+      "port": 25565,
+      "nickname": "Bot1",
+      "protocol": 769,
+      "autoReconnect": false,
+      "reconnectDelay": 5.0,
+      "stepDelay": 0.4,
+      "loopForever": false,
+      "password": "wdwdwdwd",
+      "steps": [
+        {
+          "type": "CONNECT",
+          "values": [],
+          "enabled": true
+        },
+        {
+          "type": "WAIT",
+          "values": [
+            "2"
+          ],
+          "enabled": true
+        },
+        {
+          "type": "LOGIN",
+          "values": [
+            "пароль"
+          ],
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "бот копия 8",
+      "host": "mc.hypemc.pro",
+      "port": 25565,
+      "nickname": "Bot1",
+      "protocol": 769,
+      "autoReconnect": false,
+      "reconnectDelay": 5.0,
+      "stepDelay": 0.4,
+      "loopForever": false,
+      "password": "wdwdwdwd",
+      "steps": [
+        {
+          "type": "CONNECT",
+          "values": [],
+          "enabled": true
+        },
+        {
+          "type": "WAIT",
+          "values": [
+            "2"
+          ],
+          "enabled": true
+        },
+        {
+          "type": "LOGIN",
+          "values": [
+            "пароль"
+          ],
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "бот копия 9",
+      "host": "mc.hypemc.pro",
+      "port": 25565,
+      "nickname": "Bot1",
+      "protocol": 769,
+      "autoReconnect": false,
+      "reconnectDelay": 5.0,
+      "stepDelay": 0.4,
+      "loopForever": false,
+      "password": "wdwdwdwd",
+      "steps": [
+        {
+          "type": "CONNECT",
+          "values": [],
+          "enabled": true
+        },
+        {
+          "type": "WAIT",
+          "values": [
+            "2"
+          ],
+          "enabled": true
+        },
+        {
+          "type": "LOGIN",
+          "values": [
+            "пароль"
+          ],
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "бот копия 10",
+      "host": "mc.hypemc.pro",
+      "port": 25565,
+      "nickname": "Bot1",
+      "protocol": 769,
+      "autoReconnect": false,
+      "reconnectDelay": 5.0,
+      "stepDelay": 0.4,
+      "loopForever": false,
+      "password": "wdwdwdwd",
+      "steps": [
+        {
+          "type": "CONNECT",
+          "values": [],
+          "enabled": true
+        },
+        {
+          "type": "WAIT",
+          "values": [
+            "2"
+          ],
+          "enabled": true
+        },
+        {
+          "type": "LOGIN",
+          "values": [
+            "пароль"
+          ],
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "бот копия 11",
+      "host": "mc.hypemc.pro",
+      "port": 25565,
+      "nickname": "Bot1",
+      "protocol": 769,
+      "autoReconnect": false,
+      "reconnectDelay": 5.0,
+      "stepDelay": 0.4,
+      "loopForever": false,
+      "password": "wdwdwdwd",
+      "steps": [
+        {
+          "type": "CONNECT",
+          "values": [],
+          "enabled": true
+        },
+        {
+          "type": "WAIT",
+          "values": [
+            "2"
+          ],
+          "enabled": true
+        },
+        {
+          "type": "LOGIN",
+          "values": [
+            "пароль"
+          ],
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "бот копия 12",
+      "host": "mc.hypemc.pro",
+      "port": 25565,
+      "nickname": "Bot1",
+      "protocol": 769,
+      "autoReconnect": false,
+      "reconnectDelay": 5.0,
+      "stepDelay": 0.4,
+      "loopForever": false,
+      "password": "wdwdwdwd",
+      "steps": [
+        {
+          "type": "CONNECT",
+          "values": [],
+          "enabled": true
+        },
+        {
+          "type": "WAIT",
+          "values": [
+            "2"
+          ],
+          "enabled": true
+        },
+        {
+          "type": "LOGIN",
+          "values": [
+            "пароль"
+          ],
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "бот копия 13",
+      "host": "mc.hypemc.pro",
+      "port": 25565,
+      "nickname": "Bot1",
+      "protocol": 769,
+      "autoReconnect": false,
+      "reconnectDelay": 5.0,
+      "stepDelay": 0.4,
+      "loopForever": false,
+      "password": "wdwdwdwd",
+      "steps": [
+        {
+          "type": "CONNECT",
+          "values": [],
+          "enabled": true
+        },
+        {
+          "type": "WAIT",
+          "values": [
+            "2"
+          ],
+          "enabled": true
+        },
+        {
+          "type": "LOGIN",
+          "values": [
+            "пароль"
+          ],
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "бот копия 14",
+      "host": "mc.hypemc.pro",
+      "port": 25565,
+      "nickname": "Bot1",
+      "protocol": 769,
+      "autoReconnect": false,
+      "reconnectDelay": 5.0,
+      "stepDelay": 0.4,
+      "loopForever": false,
+      "password": "wdwdwdwd",
+      "steps": [
+        {
+          "type": "CONNECT",
+          "values": [],
+          "enabled": true
+        },
+        {
+          "type": "WAIT",
+          "values": [
+            "2"
+          ],
+          "enabled": true
+        },
+        {
+          "type": "LOGIN",
+          "values": [
+            "пароль"
+          ],
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "бот копия 15",
+      "host": "mc.hypemc.pro",
+      "port": 25565,
+      "nickname": "Bot1",
+      "protocol": 769,
+      "autoReconnect": false,
+      "reconnectDelay": 5.0,
+      "stepDelay": 0.4,
+      "loopForever": false,
+      "password": "wdwdwdwd",
+      "steps": [
+        {
+          "type": "CONNECT",
+          "values": [],
+          "enabled": true
+        },
+        {
+          "type": "WAIT",
+          "values": [
+            "2"
+          ],
+          "enabled": true
+        },
+        {
+          "type": "LOGIN",
+          "values": [
+            "пароль"
+          ],
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "бот 5",
+      "host": "localhost",
+      "port": 25565,
+      "nickname": "Bot20",
+      "protocol": 769,
+      "autoReconnect": true,
+      "reconnectDelay": 5.0,
+      "stepDelay": 0.4,
+      "loopForever": true,
+      "password": "пароль",
+      "steps": [
+        {
+          "type": "CONNECT",
+          "values": [],
+          "enabled": true
+        },
+        {
+          "type": "WAIT",
+          "values": [
+            "2"
+          ],
+          "enabled": true
+        },
+        {
+          "type": "LOGIN",
+          "values": [
+            "пароль"
+          ],
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "бот 6",
+      "host": "localhost",
+      "port": 25565,
+      "nickname": "Bot21",
+      "protocol": 769,
+      "autoReconnect": true,
+      "reconnectDelay": 5.0,
+      "stepDelay": 0.4,
+      "loopForever": true,
+      "password": "пароль",
+      "steps": [
+        {
+          "type": "CONNECT",
+          "values": [],
+          "enabled": true
+        },
+        {
+          "type": "WAIT",
+          "values": [
+            "2"
+          ],
+          "enabled": true
+        },
+        {
+          "type": "LOGIN",
+          "values": [
+            "пароль"
+          ],
+          "enabled": true
+        }
+      ]
+    },
+    {
+      "name": "бот 7",
+      "host": "localhost",
+      "port": 25565,
+      "nickname": "Bot22",
+      "protocol": 769,
+      "autoReconnect": true,
+      "reconnectDelay": 5.0,
+      "stepDelay": 0.4,
+      "loopForever": true,
+      "password": "пароль",
+      "steps": [
+        {
+          "type": "CONNECT",
+          "values": [],
+          "enabled": true
+        },
+        {
+          "type": "WAIT",
+          "values": [
+            "2"
+          ],
+          "enabled": true
+        },
+        {
+          "type": "LOGIN",
+          "values": [
+            "пароль"
+          ],
+          "enabled": true
+        }
+      ]
+    }
+  ]
+}

@@ -4,8 +4,14 @@
 Run from any directory: python Swerve/tests/check_elytra_flight_parity.py
 Requires java + javac on PATH; alternatively pass --java PATH --ecj PATH_TO_ECJ_JAR.
 This is a math regression check, not an in-game or Mixin integration test.
+
+Exit codes: 0 = blocks match, 1 = mismatch or harness failure, 2 = no java/javac (or
+no --ecj jar) available, so parity could not be evaluated.
 """
 import argparse
+import os
+import shutil
+import sys
 from pathlib import Path
 import re
 import subprocess
@@ -142,6 +148,28 @@ def main():
     parser.add_argument("--javac", default="javac")
     parser.add_argument("--ecj", type=Path)
     args = parser.parse_args()
+
+    def missing(*tools):
+        # An unavailable tool is "not executed", not a parity failure: a distinct exit
+        # code keeps a full check run from looking like a regression (and from dying
+        # with a traceback before the harness is even generated).
+        for tool in tools:
+            if tool is None:
+                continue
+            if os.path.isabs(str(tool)):
+                if not Path(tool).is_file():
+                    return str(tool)
+            elif shutil.which(str(tool)) is None:
+                return str(tool)
+        return None
+
+    required = ([args.ecj] if args.ecj else [args.javac]) + [args.java]
+    absent = missing(*required)
+    if absent is not None:
+        print(f"ПРОПУЩЕНО: компилятор/среда недоступны: нет {absent}.", file=sys.stderr)
+        print("Нужен JDK 21 (javac + java в PATH) либо --ecj <путь к ecj.jar>.", file=sys.stderr)
+        raise SystemExit(2)
+
     build = SWERVE / "build/elytra-parity"
     build.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(dir=build) as directory:

@@ -19,7 +19,9 @@ import swerve.events.movement.MoveInputEvent;
  *
  * <p>Собственная копия {@code ElytraFlightRotation.fixMovement} не переиспользуется:
  * там нужен ровно один вентиль на весь мод, иначе elytra-полёт начнёт дёргаться
- * от чужого yaw.
+ * от чужого yaw. Обе копии теперь сравнивают углы одинаково — через
+ * {@code Mth.wrapDegrees}: оригинальный {@code MoveUtil} из Private брал разницу
+ * без оборачивания, и на переходе через ±180° выбирал худший кандидат.
  */
 public final class MoveUtil {
 
@@ -56,8 +58,14 @@ public final class MoveUtil {
                     continue;
                 }
                 double testAngle = Mth.wrapDegrees(Math.toDegrees(direction(bodyYaw, testForward, testStrafe)));
-                // В оригинале разница берётся без wrapDegrees — сохраняем как есть.
-                float difference = (float) Math.abs(angle - testAngle);
+                // [+] Разница оборачивается в (-180;180]. В оригинале её брали без
+                // wrapDegrees, и на переходе через ±180° «ближайшее» направление
+                // оказывалось самым далёким: при угле на цель 179.9° кандидат -179.9°
+                // (разница 0.2°) считался далёким на 359.8° и проигрывал диагонали в
+                // 44.9°. Итог — снос на 45° в сторону от курса. Разбор сетки
+                // yaw/ввода: расхождение с корректным выбором в 3.15 % состояний
+                // (см. Swerve/tests/check_pvp_utils.py).
+                float difference = Math.abs((float) Mth.wrapDegrees(angle - testAngle));
                 if (difference < smallestDifference) {
                     smallestDifference = difference;
                     bestForward = testForward;
@@ -98,8 +106,9 @@ public final class MoveUtil {
                     continue;
                 }
                 double testAngle = Mth.wrapDegrees(Math.toDegrees(direction(yaw, testForward, testStrafe)));
-                // В оригинале разница берётся без wrapDegrees — сохраняем как есть.
-                float difference = (float) Math.abs(angle - testAngle);
+                // Та же причина, что в fixMovement: разница оборачивается, иначе
+                // «Грубая» коррекция ломается на переходе через ±180°.
+                float difference = Math.abs((float) Mth.wrapDegrees(angle - testAngle));
                 if (difference < smallestDifference) {
                     smallestDifference = difference;
                     bestForward = testForward;
