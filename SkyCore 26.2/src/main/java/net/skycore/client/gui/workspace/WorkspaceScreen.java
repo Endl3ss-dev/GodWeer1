@@ -7,6 +7,10 @@ import net.minecraft.client.input.KeyEvent;
 import net.minecraft.client.input.MouseButtonEvent;
 import net.minecraft.network.chat.Component;
 import net.skycore.client.SkycoreClient;
+import net.skycore.client.bot.BedWarsBot;
+import net.skycore.client.bot.BotConfig;
+import net.skycore.client.bot.BotAppearance;
+import net.skycore.client.bot.BotScript;
 import net.skycore.client.config.ConfigManager;
 import net.skycore.client.gui.menu.MenuAnim;
 import net.skycore.client.gui.menu.MenuDraw;
@@ -87,6 +91,8 @@ public final class WorkspaceScreen extends Screen {
     private static final int HIT_LOOK_SCALE = 114;
     private static final int HIT_LOOK_CLOSE = 115;
     private static final int HIT_MODE_ITEM = 116;
+    /** Пункт «Бот» в сайдбаре: не категория модулей, поэтому отдельный тип. */
+    private static final int HIT_BOT_TAB = 117;
 
     private static final int MAX_HITS = 640;
     private static final int MAX_VISIBLE = 160;
@@ -112,6 +118,7 @@ public final class WorkspaceScreen extends Screen {
     private final WorkspaceTheme theme = new WorkspaceTheme();
     private final MenuAnim anim = new MenuAnim();
     private final WorkspaceColorPicker picker = new WorkspaceColorPicker();
+    private final WorkspaceBotPanel botPanel = new WorkspaceBotPanel();
 
     private final IdentityHashMap<ClientModule, Integer> moduleIndex = new IdentityHashMap<>();
     private final int[] categoryCount = new int[5];
@@ -133,6 +140,28 @@ public final class WorkspaceScreen extends Screen {
     // ---- состояние
     private ModuleCategory category = ModuleCategory.COMBAT;
     private ClientModule selected;
+
+    /**
+     * Открыта ли вкладка «Бот».
+     *
+     * <p>Бот — не категория модулей ({@link ModuleCategory}), а отдельный раздел,
+     * поэтому переключение хранится своим флагом, а не значением {@link #category}:
+     * иначе {@code getByCategory} получил бы несуществующую категорию, а карточка
+     * модуля {@code ClickGUI} потеряла бы выбор раздела.
+     */
+    private boolean botView;
+
+    /** Прокрутка колонок вкладки «Бот» — своя, чтобы не сбивать прокрутку модулей. */
+    private float botLeftScroll;
+    private float botLeftScrollTarget;
+    private float botRightScroll;
+    private float botRightScrollTarget;
+
+    /** Поле ввода вкладки «Бот», в котором стоит курсор (-1 — нет). */
+    private int botEditField = -1;
+    private String botEditBuffer = "";
+    /** Настройки бота менялись: файл пишется один раз при закрытии меню. */
+    private boolean botDirty;
 
     private String search = "";
     private boolean searchFocused;
@@ -176,7 +205,17 @@ public final class WorkspaceScreen extends Screen {
     private final WorkspaceSettings.Sink sink = new WorkspaceSettings.Sink() {
         @Override
         public void hit(int type, int a, int b, float x, float y, float w, float h) {
-            addHit(type, a, b, x, y, w, h);
+            if (botView && type >= WorkspaceBotPanel.HIT_START && type <= WorkspaceBotPanel.HIT_TEST_ERROR) {
+                float top = layout.listY + layout.s(38.0F);
+                float bottom = layout.listY + layout.listH - layout.s(8.0F);
+                float clippedTop = Math.max(y, top);
+                float clippedBottom = Math.min(y + h, bottom);
+                if (clippedBottom > clippedTop) {
+                    addHit(type, a, b, x, clippedTop, w, clippedBottom - clippedTop);
+                }
+            } else {
+                addHit(type, a, b, x, y, w, h);
+            }
         }
     };
 
@@ -249,7 +288,10 @@ public final class WorkspaceScreen extends Screen {
     private void draw(float open) {
         this.layout.measure(this.width, this.height, MenuPrefs.menuScale());
         this.theme.sync();
-        collectVisible();
+        if (!this.botView) {
+            // на вкладке бота список модулей не рисуется — фильтрация не нужна
+            collectVisible();
+        }
 
         int dim = (int) (255.0F * MenuPrefs.dim / 100.0F * open);
         if (MenuPrefs.blur) {
@@ -269,9 +311,14 @@ public final class WorkspaceScreen extends Screen {
             WorkspaceDraw.sidebar(this.layout, this.theme);
             sidebar(this.layout);
             header(this.layout);
-            moduleList(this.layout);
-            settingsPane(this.layout);
+            if (this.botView) {
+                botPage(this.layout);
+            } else {
+                moduleList(this.layout);
+                settingsPane(this.layout);
+            }
 
+            if (this.botView) this.botPanel.notification(this.layout, this.theme);
             if (this.lookOpen) {
                 lookPopover(this.layout);
             }
@@ -310,7 +357,7 @@ public final class WorkspaceScreen extends Screen {
         float itemHeight = l.s(30.0F);
 
         for (int i = 0; i < TABS.length; i++) {
-            boolean active = this.search.isEmpty() && TABS[i] == this.category;
+            boolean active = !this.botView && this.search.isEmpty() && TABS[i] == this.category;
             boolean hovered = inside(x, itemY, width, itemHeight);
             if (hovered) {
                 this.hot = 200 + i;
@@ -347,6 +394,52 @@ public final class WorkspaceScreen extends Screen {
                 addHit(HIT_CATEGORY, i, 0, x, itemY, width, itemHeight);
             }
             itemY += itemHeight + l.s(4.0F);
+        }
+
+        // ---- вкладка «Бот»: не категория модулей, поэтому отделена разделителем
+        itemY += l.s(6.0F);
+        WorkspaceDraw.divider(l, x, itemY, width, this.theme);
+        itemY += l.s(9.0F);
+
+        boolean botHovered = inside(x, itemY, width, itemHeight);
+        if (botHovered) {
+            this.hot = 260;
+        }
+        float botHover = this.anim.to(260, botHovered ? 1.0F : 0.0F, 18.0F);
+        float botOn = this.anim.to(261, this.botView ? 1.0F : 0.0F, 16.0F);
+
+        int botBackground = MenuDraw.mix(MenuDraw.a(this.theme.text, botHovered ? 16 : 0),
+                MenuDraw.a(this.theme.accent, this.theme.light ? 34 : 46), botOn);
+        if ((botBackground >>> 24) != 0) {
+            MenuDraw.round(x, itemY, width, itemHeight, l.s(8.0F), botBackground);
+        }
+        if (botOn > 0.02F) {
+            MenuDraw.round(x, itemY + l.s(7.0F), Math.max(2.0F, l.s(2.5F)),
+                    itemHeight - l.s(14.0F), l.s(1.5F), MenuDraw.a(this.theme.accent, (int) (230 * botOn)));
+        }
+
+        int botTextColor = MenuDraw.mix(
+                MenuDraw.mix(this.theme.muted, this.theme.text, botHover),
+                this.theme.light ? this.theme.accent : this.theme.accent2, botOn);
+        MenuDraw.iconCs(IconGlyphs.AUTOBUY, x + l.s(14.0F), itemY + itemHeight * 0.5F, l.s(13.0F), botTextColor);
+        MenuDraw.textMid(L("Бот", "Bot"), x + l.s(28.0F), itemY, itemHeight, Weight.SEMIBOLD, l.s(11.5F),
+                botTextColor);
+
+        // бейдж: сколько ботов запущено, иначе — заданное количество
+        String botBadge = BedWarsBot.INSTANCE.isRunning()
+                ? BedWarsBot.INSTANCE.activeBotsText()
+                : BotConfig.botCountText();
+        float botBadgeFont = l.s(9.0F);
+        float botBadgeW = Math.max(l.s(16.0F),
+                MenuDraw.textWidth(botBadge, Weight.MEDIUM, botBadgeFont) + l.s(10.0F));
+        MenuDraw.round(x + width - botBadgeW, itemY + (itemHeight - l.s(14.0F)) * 0.5F, botBadgeW, l.s(14.0F),
+                l.s(7.0F), MenuDraw.a(this.theme.text, this.theme.light ? 14 : 12));
+        MenuDraw.textCenterMid(botBadge, x + width - botBadgeW * 0.5F,
+                itemY + (itemHeight - l.s(14.0F)) * 0.5F, l.s(14.0F), Weight.MEDIUM, botBadgeFont,
+                this.theme.dim);
+
+        if (!this.closing) {
+            addHit(HIT_BOT_TAB, 0, 0, x, itemY, width, itemHeight);
         }
 
         // нижний блок: палитра и подсказка
@@ -400,6 +493,13 @@ public final class WorkspaceScreen extends Screen {
             addHit(HIT_CLOSE, 0, 0, escX, y, escW, height);
         }
 
+        if (this.botView) {
+            // поиск ищет по модулям и их настройкам, а на вкладке бота их нет:
+            // вместо поля показываем подпись раздела, чтобы шапка не пустовала
+            botHeaderTitle(l, x, y, height, rightEdge - escW - l.s(10.0F));
+            return;
+        }
+
         float searchW = Math.max(l.s(150.0F), l.listW - l.s(8.0F));
         float searchX = x;
         boolean searchHovered = inside(searchX, y, searchW, height);
@@ -434,6 +534,158 @@ public final class WorkspaceScreen extends Screen {
         }
         if (!this.closing) {
             addHit(HIT_SEARCH, 0, 0, searchX, y, searchW, height);
+        }
+    }
+
+    // ---- вкладка «Бот»
+
+    /**
+     * Подпись раздела в шапке вместо поиска.
+     *
+     * <p>Поиск в Workspace ищет по модулям и их настройкам; на вкладке бота модулей
+     * нет, поэтому поле ввода здесь выглядело бы как неработающий элемент — а мёртвых
+     * контролов в меню клиента быть не должно (см. {@code docs/GUI-SELECTION.md}).
+     */
+    private void botHeaderTitle(WorkspaceLayout l, float x, float y, float height, float rightLimit) {
+        String title = L("Бот BedWars", "BedWars bot");
+        MenuDraw.textMid(title, x, y, height, Weight.BOLD, l.s(12.5F), this.theme.text);
+        String hint = L("визуальная часть, логика — заглушки", "visual only, logic is stubbed");
+        float hintX = x + MenuDraw.textWidth(title, Weight.BOLD, l.s(12.5F)) + l.s(10.0F);
+        MenuDraw.textMid(MenuDraw.ellipsize(hint, Weight.MEDIUM, l.s(9.0F),
+                        Math.max(l.s(40.0F), rightLimit - hintX)),
+                hintX, y, height, Weight.MEDIUM, l.s(9.0F), this.theme.dim);
+    }
+
+    /**
+     * Содержимое вкладки «Бот».
+     *
+     * <p>Геометрия та же, что у списка модулей и панели настроек: левая колонка
+     * ({@code listX/listW}) и правая ({@code paneX/paneW}). Поэтому вкладка не
+     * «прыгает» относительно остальных разделов и прокрутка колесом работает по тем
+     * же областям, что и раньше.
+     */
+    private void botPage(WorkspaceLayout l) {
+        this.botLeftScrollTarget = Math.max(0, this.botLeftScrollTarget);
+        this.botRightScrollTarget = Math.max(0, this.botRightScrollTarget);
+        // плавная прокрутка — тот же подход, что у списка модулей и панели настроек
+        this.botLeftScroll += (this.botLeftScrollTarget - this.botLeftScroll) * 0.35F;
+        if (Math.abs(this.botLeftScrollTarget - this.botLeftScroll) < 0.5F) {
+            this.botLeftScroll = this.botLeftScrollTarget;
+        }
+        this.botRightScroll += (this.botRightScrollTarget - this.botRightScroll) * 0.35F;
+        if (Math.abs(this.botRightScrollTarget - this.botRightScroll) < 0.5F) {
+            this.botRightScroll = this.botRightScrollTarget;
+        }
+
+        boolean live = !this.closing && !this.lookOpen && this.popRow < 0 && !this.picker.isOpen();
+        this.botPanel.render(l, this.theme, this.anim, this.mouseX, this.mouseY, live,
+                this.botEditField, this.botEditBuffer, this.botLeftScroll, this.botRightScroll, this.sink);
+
+        // итоговые высоты панель считает при отрисовке — ограничиваем прокрутку по ним
+        float leftView = l.listH - l.s(38.0F);
+        float rightView = l.paneH - l.s(46.0F);
+        this.botLeftScrollTarget = clampScroll(this.botLeftScrollTarget, this.botPanel.leftTotal(), leftView);
+        this.botRightScrollTarget = clampScroll(this.botRightScrollTarget, this.botPanel.rightTotal(), rightView);
+        this.botLeftScroll = clampScroll(this.botLeftScroll, this.botPanel.leftTotal(), leftView);
+        this.botRightScroll = clampScroll(this.botRightScroll, this.botPanel.rightTotal(), rightView);
+    }
+
+    /** Действия вкладки «Бот». Возвращает {@code true}, если тип относится к боту. */
+    private boolean runBotHit(int type, int a, int b) {
+        if (BedWarsBot.INSTANCE.isRunning() && (type == WorkspaceBotPanel.HIT_STRING
+                || type == WorkspaceBotPanel.HIT_SLIDER)) return true;
+        switch (type) {
+            case WorkspaceBotPanel.HIT_APPEARANCE -> {
+                if (a < 0 || a >= BotScript.MAX_BOTS) return true;
+                if (b == 0) BotAppearance.cycleColor(a);
+                if (b == 1) BotAppearance.toggleCompact(a);
+                if (b == 2) BotAppearance.toggleNotifications(a);
+                this.botDirty = true;
+                MenuSound.play(MenuSound.SELECT);
+            }
+            case WorkspaceBotPanel.HIT_TEST_ERROR -> BedWarsBot.INSTANCE.previewError(a);
+            case WorkspaceBotPanel.HIT_START -> {
+                BedWarsBot.INSTANCE.start();
+                MenuSound.play(MenuSound.TOGGLE_ON);
+            }
+            case WorkspaceBotPanel.HIT_STOP -> {
+                BedWarsBot.INSTANCE.stop();
+                MenuSound.play(MenuSound.TOGGLE_OFF);
+            }
+            case WorkspaceBotPanel.HIT_STEP -> {
+                BedWarsBot.INSTANCE.previewStep();
+                MenuSound.play(MenuSound.TICK);
+            }
+            case WorkspaceBotPanel.HIT_CLEAR_LOG -> {
+                BedWarsBot.INSTANCE.clearLog();
+                MenuSound.play(MenuSound.RESET, 1.0F, 0.5F);
+            }
+            case WorkspaceBotPanel.HIT_STRING -> {
+                if (this.botEditField != a) {
+                    this.botEditField = a;
+                    this.botEditBuffer = botFieldValue(a);
+                }
+                MenuSound.play(MenuSound.SELECT);
+            }
+            case WorkspaceBotPanel.HIT_SLIDER -> applyBotCount(this.mouseX);
+            case WorkspaceBotPanel.HIT_VOTE -> {
+                int cell = b == 1 ? BotScript.VOTE_CELL_B : BotScript.VOTE_CELL_A;
+                if (BotConfig.voteCell(a) != cell) {
+                    BotConfig.setVoteCell(a, cell);
+                    this.botDirty = true;
+                    MenuSound.play(MenuSound.SELECT);
+                }
+            }
+            default -> {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** Текущее значение поля ввода вкладки «Бот». */
+    private static String botFieldValue(int field) {
+        return switch (field) {
+            case WorkspaceBotPanel.FIELD_PREFIX -> BotConfig.nickPrefix;
+            case WorkspaceBotPanel.FIELD_PASSWORD -> BotConfig.password;
+            case WorkspaceBotPanel.FIELD_OWNER -> BotConfig.ownerNick;
+            default -> "";
+        };
+    }
+
+    /** Записывает буфер ввода в настройки бота. */
+    private void commitBotString() {
+        if (this.botEditField < 0) {
+            return;
+        }
+        switch (this.botEditField) {
+            case WorkspaceBotPanel.FIELD_PREFIX -> BotConfig.setNickPrefix(this.botEditBuffer);
+            case WorkspaceBotPanel.FIELD_PASSWORD -> BotConfig.setPassword(this.botEditBuffer);
+            case WorkspaceBotPanel.FIELD_OWNER -> BotConfig.setOwnerNick(this.botEditBuffer);
+            default -> {
+            }
+        }
+        this.botDirty = true;
+        this.botEditField = -1;
+        this.botEditBuffer = "";
+    }
+
+    /** Число ботов по положению курсора на ползунке. */
+    private void applyBotCount(double mouseX) {
+        WorkspaceLayout l = this.layout;
+        float x = l.paneX + l.s(14.0F);
+        float width = l.paneW - l.s(28.0F);
+        if (width <= 1.0F) {
+            return;
+        }
+        float ratio = (float) ((mouseX - x) / width);
+        ratio = Math.max(0.0F, Math.min(1.0F, ratio));
+        int span = BotScript.MAX_BOTS - BotScript.MIN_BOTS;
+        int count = BotScript.MIN_BOTS + Math.round(ratio * span);
+        if (count != BotConfig.nicknameCount()) {
+            BotConfig.setBotCount(count);
+            this.botDirty = true;
+            MenuSound.play(MenuSound.TICK, 1.0F, 0.6F);
         }
     }
 
@@ -929,6 +1181,7 @@ public final class WorkspaceScreen extends Screen {
         if (index < 0) {
             this.searchFocused = false;
             commitString();
+            commitBotString();
             return false;
         }
 
@@ -936,6 +1189,11 @@ public final class WorkspaceScreen extends Screen {
         int type = this.hitType[index];
         int a = this.hitA[index];
         int b = this.hitB[index];
+
+        // клик по любому элементу, кроме поля ввода бота, завершает ввод в этом поле
+        if (this.botEditField >= 0 && !(type == WorkspaceBotPanel.HIT_STRING && a == this.botEditField)) {
+            commitBotString();
+        }
 
         if (button == 1) {
             // правая кнопка: переключить модуль/сбросить бинд, настройки не трогаем
@@ -975,6 +1233,13 @@ public final class WorkspaceScreen extends Screen {
             runHit(type, a, b);
             return true;
         }
+        if (type == WorkspaceBotPanel.HIT_SLIDER) {
+            // ползунок числа ботов: тип свой, поэтому не конфликтует с ползунком настройки
+            this.dragType = type;
+            MenuSound.play(MenuSound.GRAB);
+            runHit(type, a, b);
+            return true;
+        }
         if (type == WorkspaceSettings.HIT_MULTI || type == WorkspaceSettings.HIT_ACTION) {
             runHit(type, a, b);
             return true;
@@ -986,9 +1251,16 @@ public final class WorkspaceScreen extends Screen {
     @Override
     public boolean mouseReleased(MouseButtonEvent event) {
         if (this.dragType != HIT_NONE) {
+            int released = this.dragType;
             this.dragType = HIT_NONE;
             this.dragRow = -1;
-            markDirty();
+            if (released == WorkspaceBotPanel.HIT_SLIDER) {
+                // ползунок бота пишет в skycore/bot.json: флаг «грязно» уже выставлен
+                // в applyBotCount, а общий конфиг модулей трогать не нужно
+                saveBotConfig();
+            } else {
+                markDirty();
+            }
             MenuSound.play(MenuSound.DROP, 1.0F, 0.5F);
             return true;
         }
@@ -1001,6 +1273,10 @@ public final class WorkspaceScreen extends Screen {
         this.mouseY = (float) event.y();
         if (this.dragType == WorkspaceSettings.HIT_SLIDER) {
             applySlider(this.dragRow, event.x(), this.dragX, this.dragW);
+            return true;
+        }
+        if (this.dragType == WorkspaceBotPanel.HIT_SLIDER) {
+            applyBotCount(event.x());
             return true;
         }
         if (this.dragType == WorkspaceColorPicker.HIT_SV) {
@@ -1031,12 +1307,20 @@ public final class WorkspaceScreen extends Screen {
         float delta = (float) vertical * this.layout.s(38.0F);
         if (mouseX >= this.layout.paneX && mouseX <= this.layout.paneX + this.layout.paneW
                 && mouseY >= this.layout.paneY && mouseY <= this.layout.paneY + this.layout.paneH) {
+            if (this.botView) {
+                this.botRightScrollTarget -= delta;
+                return true;
+            }
             this.paneScrollTarget = clampScroll(this.paneScrollTarget - delta, this.paneTotal,
                     this.layout.paneH - this.layout.s(64.0F));
             return true;
         }
         if (mouseX >= this.layout.listX && mouseX <= this.layout.listX + this.layout.listW
                 && mouseY >= this.layout.listY && mouseY <= this.layout.listY + this.layout.listH) {
+            if (this.botView) {
+                this.botLeftScrollTarget -= delta;
+                return true;
+            }
             this.listScrollTarget = clampScroll(this.listScrollTarget - delta, this.listTotal,
                     this.layout.listH - this.layout.s(38.0F));
             return true;
@@ -1066,6 +1350,23 @@ public final class WorkspaceScreen extends Screen {
             }
             if (key == GLFW.GLFW_KEY_BACKSPACE) {
                 this.picker.backspaceHex();
+                return true;
+            }
+        }
+
+        if (this.botEditField >= 0) {
+            if (key == GLFW.GLFW_KEY_ESCAPE) {
+                this.botEditField = -1;
+                this.botEditBuffer = "";
+                return true;
+            }
+            if (key == GLFW.GLFW_KEY_ENTER || key == GLFW.GLFW_KEY_KP_ENTER) {
+                commitBotString();
+                MenuSound.play(MenuSound.SELECT);
+                return true;
+            }
+            if (key == GLFW.GLFW_KEY_BACKSPACE && !this.botEditBuffer.isEmpty()) {
+                this.botEditBuffer = this.botEditBuffer.substring(0, this.botEditBuffer.length() - 1);
                 return true;
             }
         }
@@ -1107,7 +1408,7 @@ public final class WorkspaceScreen extends Screen {
             return true;
         }
 
-        if (key == GLFW.GLFW_KEY_F && isControlDown()) {
+        if (!this.botView && key == GLFW.GLFW_KEY_F && isControlDown()) {
             this.searchFocused = true;
             MenuSound.play(MenuSound.SELECT);
             return true;
@@ -1133,6 +1434,15 @@ public final class WorkspaceScreen extends Screen {
         if (this.picker.hexFocused()) {
             for (int i = 0; i < typed.length(); i++) {
                 this.picker.typeHex(typed.charAt(i));
+            }
+            return true;
+        }
+        if (this.botEditField >= 0) {
+            // префикс ника и ник ограничены 16 символами, пароль — 32 (см. BotConfig.sanitize)
+            int max = this.botEditField == WorkspaceBotPanel.FIELD_PASSWORD ? 32 : 16;
+            if (this.botEditBuffer.length() + typed.length() <= max) {
+                this.botEditBuffer = this.botEditBuffer + typed;
+                MenuSound.play(MenuSound.TYPE);
             }
             return true;
         }
@@ -1166,8 +1476,10 @@ public final class WorkspaceScreen extends Screen {
             return;
         }
         commitString();
+        commitBotString();
         MenuPrefs.save();
         saveConfig();
+        saveBotConfig();
         this.closing = true;
         this.closingAt = System.currentTimeMillis();
         this.lookOpen = false;
@@ -1182,10 +1494,24 @@ public final class WorkspaceScreen extends Screen {
         switch (type) {
             case HIT_CATEGORY -> {
                 this.category = TABS[Math.floorMod(a, TABS.length)];
+                this.botView = false;
                 this.search = "";
                 this.searchFocused = false;
                 this.listScrollTarget = 0.0F;
+                commitBotString();
                 MenuSound.play(MenuSound.TAB);
+            }
+            case HIT_BOT_TAB -> {
+                if (!this.botView) {
+                    commitString();
+                    this.botView = true;
+                    this.search = "";
+                    this.searchFocused = false;
+                    this.popRow = -1;
+                    this.botLeftScrollTarget = 0.0F;
+                    this.botRightScrollTarget = 0.0F;
+                    MenuSound.play(MenuSound.TAB);
+                }
             }
             case HIT_SEARCH -> {
                 this.searchFocused = true;
@@ -1312,8 +1638,7 @@ public final class WorkspaceScreen extends Screen {
                 MenuSound.play(MenuSound.SELECT);
                 markDirty();
             }
-            default -> {
-            }
+            default -> runBotHit(type, a, b);
         }
     }
 
@@ -1552,6 +1877,25 @@ public final class WorkspaceScreen extends Screen {
             this.config.save();
         } catch (RuntimeException failure) {
             SkycoreClient.LOGGER.warn("Failed to save Skycore config after Workspace change", failure);
+        }
+    }
+
+    /**
+     * Записывает настройки бота.
+     *
+     * <p>Отдельный файл {@code skycore/bot.json} и отдельный флаг: бот не является
+     * модулем, поэтому его настройки не относятся к {@link ConfigManager} и не должны
+     * заставлять его перезаписывать пользовательский профиль.
+     */
+    private void saveBotConfig() {
+        if (!this.botDirty) {
+            return;
+        }
+        this.botDirty = false;
+        try {
+            BotConfig.save();
+        } catch (RuntimeException failure) {
+            SkycoreClient.LOGGER.warn("Failed to save bot settings after Workspace change", failure);
         }
     }
 
