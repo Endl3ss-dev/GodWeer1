@@ -40,6 +40,10 @@ import net.skycore.client.setting.Setting;
 import net.skycore.client.theme.ThemeManager;
 
 public final class RenderGuiHelper extends Screen implements StringBufferHelper {
+   private final net.skycore.client.gui.workspace.SkycoreBotPage botPage =
+      new net.skycore.client.gui.workspace.SkycoreBotPage();
+   private float botMouseX;
+   private float botMouseY;
    private final ClickGUIModule clickGui;
    private long lastAnimationFrame;
    private long pickerAnimationAt;
@@ -152,7 +156,11 @@ public final class RenderGuiHelper extends Screen implements StringBufferHelper 
          BeginFrameHelper.pushScissor(computedValue4, computedValue6, 976.0F * computedValue, 642.0F * computedValue);
 
          try {
-            if (this.selectedView == RenderGuiHelper.View.CONFIGS) {
+            if (this.selectedView == RenderGuiHelper.View.BOT) {
+               this.maxScroll = this.targetScroll = 0;
+               this.botPage.render(this, value, computedValue6, computedValue, color,
+                  this.botMouseX, this.botMouseY, !this.closing && !this.navDragging);
+            } else if (this.selectedView == RenderGuiHelper.View.CONFIGS) {
                this.renderConfigs(value, computedValue6, computedValue, color);
             } else if (this.selectedView == RenderGuiHelper.View.COSMETICS) {
                this.renderCosmetics(value, computedValue6, computedValue, color);
@@ -166,7 +174,8 @@ public final class RenderGuiHelper extends Screen implements StringBufferHelper 
             BeginFrameHelper.popScissor();
          }
 
-         this.renderScrollBar(computedValue4, computedValue6, computedValue, color);
+         if (this.selectedView != RenderGuiHelper.View.BOT)
+            this.renderScrollBar(computedValue4, computedValue6, computedValue, color);
          this.renderCategoryNavigation(computedValue2, computedValue3, width, height, computedValue, color);
       }
    }
@@ -503,6 +512,7 @@ public final class RenderGuiHelper extends Screen implements StringBufferHelper 
    @Override
    public boolean keyPressed(KeyEvent keyEvent) {
       int value = keyEvent.key();
+      if (!this.closing && this.selectedView == View.BOT && this.botPage.key(value)) return true;
       if (this.bindingModule == null && this.bindingSetting == null) {
          if (this.pickerHexFocused) {
             if (value == 256) {
@@ -888,6 +898,7 @@ public final class RenderGuiHelper extends Screen implements StringBufferHelper 
 
    @Override
    public String localize(String text) {
+      if ("Bot".equals(text)) return SelectAndSaveHelper.isRussian() ? "Бот" : "Bot";
       return SelectAndSaveHelper.text(text);
    }
 
@@ -1036,7 +1047,12 @@ public final class RenderGuiHelper extends Screen implements StringBufferHelper 
       computedValue2 -= 8.0F * coordinate3;
       float computedValue5 = 192.0F * coordinate3;
       computedValue2 -= computedValue5;
-      this.renderSearch(computedValue2, coordinate2, computedValue5, 38.0F * coordinate3, coordinate3, color);
+      if (this.selectedView == View.BOT) {
+         this.text(computedValue2 + 12 * coordinate3, coordinate2 + 12 * coordinate3,
+            11, "BedWars · DEMO", this.secondaryColor(), 500, coordinate3, color);
+      } else {
+         this.renderSearch(computedValue2, coordinate2, computedValue5, 38.0F * coordinate3, coordinate3, color);
+      }
       computedValue2 -= 8.0F * coordinate3 + 38.0F * coordinate3;
       this.renderLanguageButton(computedValue2, coordinate2, coordinate3, color);
       if (this.selectedView == RenderGuiHelper.View.COSMETICS) {
@@ -1154,6 +1170,7 @@ public final class RenderGuiHelper extends Screen implements StringBufferHelper 
 
    @Override
    public boolean mouseDragged(MouseButtonEvent mouseButtonEvent, double value, double value2) {
+      if (!this.closing && this.selectedView == View.BOT && this.botPage.drag(mouseButtonEvent.x())) return true;
       if (this.navPressActive) {
          double x = mouseButtonEvent.x() - this.navPressX;
          double y = mouseButtonEvent.y() - this.navPressY;
@@ -1236,6 +1253,7 @@ public final class RenderGuiHelper extends Screen implements StringBufferHelper 
 
    private void startClose() {
       if (!this.closing) {
+         this.botPage.leave();
          this.navPressActive = false;
          this.navDragging = false;
          this.navPreview = null;
@@ -1260,6 +1278,11 @@ public final class RenderGuiHelper extends Screen implements StringBufferHelper 
       int value = mouseButtonEvent.button();
       if (this.bindingModule == null && this.bindingSetting == null) {
          TargetHelper region = this.findRegion(x, y);
+         if (this.closing && this.selectedView == View.BOT) return true;
+         // Existing navigation/header regions win over bot controls, including a dock
+         // temporarily overlapping the content while it is being repositioned.
+         if (this.selectedView == View.BOT && region == null && this.botPage.click(x, y, value)) return true;
+         if (this.selectedView == View.BOT && region != null) this.botPage.leave();
          if (this.pickerTarget != null && !this.pickerClosing && (region == null || !region.kind().isPicker())) {
             this.closePicker();
          }
@@ -1606,7 +1629,7 @@ public final class RenderGuiHelper extends Screen implements StringBufferHelper 
       RenderGuiHelper.View[] viewValues = new RenderGuiHelper.View[]{
          RenderGuiHelper.View.COMBAT, RenderGuiHelper.View.MOVEMENT, RenderGuiHelper.View.RENDER, RenderGuiHelper.View.PLAYER, RenderGuiHelper.View.MISC
       };
-      RenderGuiHelper.View[] viewValues2 = new RenderGuiHelper.View[]{RenderGuiHelper.View.AUTOBUY, RenderGuiHelper.View.CONFIGS, RenderGuiHelper.View.COSMETICS};
+      RenderGuiHelper.View[] viewValues2 = new RenderGuiHelper.View[]{RenderGuiHelper.View.AUTOBUY, RenderGuiHelper.View.CONFIGS, RenderGuiHelper.View.COSMETICS, RenderGuiHelper.View.BOT};
       RenderGuiHelper.DockSide dockSide = this.navDragging && this.navPreview != null ? this.navPreview : this.categoryDock;
       int value = dockSide != RenderGuiHelper.DockSide.LEFT && dockSide != RenderGuiHelper.DockSide.RIGHT ? 0 : 1;
       float computedValue = 5.0F * width;
@@ -1860,6 +1883,16 @@ public final class RenderGuiHelper extends Screen implements StringBufferHelper 
 
    private void selectView(RenderGuiHelper.View selectedView2) {
       if (selectedView2 != this.selectedView) {
+         if (this.selectedView == View.BOT || selectedView2 == View.BOT) {
+            this.botPage.leave();
+            this.commitStringEdit();
+            this.configNameFocused = false;
+            this.bindingModule = null;
+            this.bindingSetting = null;
+            this.pickerTarget = null;
+            this.pickerDrag = null;
+            this.pickerHexFocused = false;
+         }
          rememberedScroll.put(this.selectedView, this.targetScroll);
          this.selectedView = selectedView2;
          rememberedView = selectedView2;
@@ -1943,6 +1976,7 @@ public final class RenderGuiHelper extends Screen implements StringBufferHelper 
 
    @Override
    public boolean mouseScrolled(double value, double value2, double value3, double value4) {
+      if (this.selectedView == View.BOT) return !this.closing && this.botPage.scroll(value, value2, value4);
       float value5 = this.currentScale();
       float width = 992.0F * value5;
       float height = 704.0F * value5;
@@ -2297,6 +2331,7 @@ public final class RenderGuiHelper extends Screen implements StringBufferHelper 
 
    @Override
    public boolean mouseReleased(MouseButtonEvent progress) {
+      if (this.selectedView == View.BOT && this.botPage.release()) return true;
       if (this.navPressActive && progress.button() == 0) {
          RenderGuiHelper.DockSide dockSide = this.navDragging ? this.snapCandidate(progress.x(), progress.y()) : null;
          if (this.navDragging) {
@@ -2395,6 +2430,8 @@ public final class RenderGuiHelper extends Screen implements StringBufferHelper 
    public void extractRenderState(GuiGraphicsExtractor guiGraphicsExtractor, int coordinate, int coordinate2, float coordinate3) {
       int value = 1;
       this.cosmeticPreviewEntity = false;
+      this.botMouseX = coordinate;
+      this.botMouseY = coordinate2;
       this.renderFrame(guiGraphicsExtractor, this.minecraft.getDeltaTracker());
       if (this.cosmeticPreviewEntity) {
          if (this.minecraft != null) {
@@ -2498,6 +2535,7 @@ public final class RenderGuiHelper extends Screen implements StringBufferHelper 
       }
 
       String text = characterEvent.codepointAsString();
+      if (this.selectedView == View.BOT) return !this.closing && this.botPage.type(text);
       if (this.pickerHexFocused) {
          for (int value = 0; value < text.length(); value++) {
             char character = text.charAt(value);
@@ -2811,14 +2849,15 @@ public final class RenderGuiHelper extends Screen implements StringBufferHelper 
       MISC("Misc", "\ue009", ModuleCategory.MISC),
       AUTOBUY("Autobuy", "\ue002", (ModuleCategory)null),
       CONFIGS("Configs", "\ue006", (ModuleCategory)null),
-      COSMETICS("Cosmetics", "\ue007", (ModuleCategory)null);
+      COSMETICS("Cosmetics", "\ue007", (ModuleCategory)null),
+      BOT("Bot", "\ue00c", (ModuleCategory)null);
 
       private final ModuleCategory category;
       private final String icon;
       private final String label;
 
       private static RenderGuiHelper.View[] $values() {
-         RenderGuiHelper.View[] viewValues = new RenderGuiHelper.View[8];
+         RenderGuiHelper.View[] viewValues = new RenderGuiHelper.View[9];
          viewValues[0] = COMBAT;
          viewValues[1] = MOVEMENT;
          viewValues[2] = RENDER;
@@ -2827,6 +2866,7 @@ public final class RenderGuiHelper extends Screen implements StringBufferHelper 
          viewValues[5] = AUTOBUY;
          viewValues[6] = CONFIGS;
          viewValues[7] = COSMETICS;
+         viewValues[8] = BOT;
          return viewValues;
       }
 

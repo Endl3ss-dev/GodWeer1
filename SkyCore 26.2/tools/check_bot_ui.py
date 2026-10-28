@@ -22,7 +22,8 @@ class BotUiChecks(unittest.TestCase):
     def test_java_syntax(self):
         files = list((JAVA / 'bot').glob('*.java')) + [
             JAVA / 'gui/workspace/WorkspaceBotPanel.java',
-            JAVA / 'gui/workspace/WorkspaceScreen.java', JAVA / 'SkycoreClient.java']
+            JAVA / 'gui/workspace/WorkspaceScreen.java', JAVA / 'SkycoreClient.java',
+            JAVA / 'gui/workspace/SkycoreBotPage.java', JAVA / 'util/RenderGuiHelper.java']
         for path in files:
             with self.subTest(file=path.name):
                 self.assertFalse(PARSER.parse(path.read_bytes()).root_node.has_error)
@@ -62,6 +63,23 @@ class BotUiChecks(unittest.TestCase):
         source = (JAVA / 'bot/BedWarsBot.java').read_text(encoding='utf-8')
         self.assertNotIn('BotConfig.registerCommand()', source)
         self.assertIn('/reg ********', source)
+
+    def test_skycore_navigation_and_event_routing(self):
+        source = (JAVA / 'util/RenderGuiHelper.java').read_text(encoding='utf-8')
+        self.assertIn('BOT("Bot",', source)
+        self.assertIn('viewValues[8] = BOT;', source)
+        for call in ('render', 'click', 'key', 'type', 'scroll', 'drag', 'release', 'leave'):
+            self.assertIn('this.botPage.' + call + '(', source)
+        self.assertIn('this.botMouseX = coordinate;', source)
+        self.assertIn('this.botMouseY = coordinate2;', source)
+
+    def test_skycore_uses_receiving_palette_and_shared_renderer(self):
+        source = (JAVA / 'gui/workspace/SkycoreBotPage.java').read_text(encoding='utf-8')
+        for token in ('host.surfaceColor()', 'host.primaryColor()', 'host.accentColor()',
+                      'host.fieldColor()', 'panel.render(', 'panel.notification('):
+            self.assertIn(token, source)
+        self.assertNotIn('new BedWarsBot', source)
+        self.assertNotIn('setScreen', source)
 
     def test_wrapper(self):
         import zipfile

@@ -1,10 +1,25 @@
-# BedWars bot — Workspace UI prototype
+# BedWars bot — Skycore UI and Workspace prototype
 
 Updated: 2026-10-28. This is an interactive **offline UI demo**, not a network bot.
 No server connection, registration, inventory click or party command is sent.
 The server remains fixed to `mc.musteryworld.net`.
 
-## Open and use
+## Skycore UI integration (2026-10-28)
+
+The Bot tab is now also embedded in **Interface → Skycore**, alongside Autobuy,
+Configs and Cosmetics. This is the original `RenderGuiHelper` menu, not Workspace
+and not the Swerve menu. Open Render / ClickGUI settings, set Interface to Skycore,
+close and reopen ClickGUI, then choose Bot in its navigation dock. The dock works
+in all four orientations. The unused module search is replaced by a DEMO label.
+
+`gui/workspace/SkycoreBotPage` adapts the shared bot renderer to Skycore content
+geometry and receiving `ThemeManager` colors. It does not create a new Screen or
+model. Input hit areas are clipped, navigation/header regions take priority, and
+edits are committed/saved when leaving the tab or closing Skycore UI. Menu fade is
+restored after bot rendering. Workspace access remains for backwards compatibility;
+its model/config is the same, not a second bot fleet. All network actions remain stubs.
+
+## Workspace access (also retained)
 
 ClickGUI → Interface: Workspace → Бот / Bot in the sidebar.
 The UI uses Workspace layout, palette, fonts and drawing primitives. Both columns
@@ -118,9 +133,9 @@ in an existing launcher installation. The previous branch name pointed elsewhere
 
 ## Verification and limitations
 
-`python tools/check_bot_ui.py` runs six **static** regression checks: Java syntax
+`python tools/check_bot_ui.py` runs eight **static** regression checks: Java syntax
 (tree-sitter), internal panel call arities, vote-loading normalization, fixed
-endpoint/slots, password masking and wrapper ZIP integrity/configuration.
+endpoint/slots, password masking wrapper ZIP integrity/configuration, and Skycore navigation/input/palette integration.
 Requires `pip install tree-sitter tree-sitter-java`.
 
 These checks do NOT replace javac or in-game testing. Full Gradle compilation,
