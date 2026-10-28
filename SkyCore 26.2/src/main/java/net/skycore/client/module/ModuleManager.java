@@ -31,6 +31,7 @@ import net.skycore.client.module.combat.ItemSwapModule;
 import net.skycore.client.module.combat.TargetPearlModule;
 import net.skycore.client.module.combat.TriggerBotModule;
 import net.skycore.client.module.misc.AutoDuelModule;
+import net.skycore.client.module.misc.DinnerboneModule;
 import net.skycore.client.module.misc.KillSayModule;
 import net.skycore.client.module.misc.SkinStealerModule;
 import net.skycore.client.module.misc.AutoJoinerModule;
@@ -254,6 +255,7 @@ public final class ModuleManager {
       this.trialRegister(AutoMessageModule.INSTANCE);
       this.trialRegister(KillSayModule.INSTANCE);
       this.trialRegister(SkinStealerModule.INSTANCE);
+      this.trialRegister(DinnerboneModule.INSTANCE);
       this.trialRegister(AutoRespawnModule.INSTANCE);
       this.trialRegister(new ClickGUIModule());
       this.trialRegister(AutoDuelModule.INSTANCE);
