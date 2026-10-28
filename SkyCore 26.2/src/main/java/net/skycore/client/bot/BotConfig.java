@@ -39,6 +39,8 @@ public final class BotConfig {
     public static String ownerNick = BotScript.DEFAULT_OWNER;
 
     /** Ячейка голосования за элитры: 12 или 14. */
+    public static int daytimeCell = 11;
+    public static int gameTimeCell = 11;
     public static int elytraCell = BotScript.VOTE_CELL_A;
     /** Ячейка голосования за PvP: 12 (1.8) или 14 (1.12). */
     public static int pvpCell = BotScript.VOTE_CELL_A;
@@ -103,6 +105,8 @@ public final class BotConfig {
             ownerNick = sanitizeNick(string(json, "ownerNick", ownerNick));
             elytraCell = normalizeCell((int) number(json, "elytraCell", elytraCell));
             pvpCell = normalizeCell((int) number(json, "pvpCell", pvpCell));
+            daytimeCell = normalizeTime((int) number(json, "daytimeCell", 11));
+            gameTimeCell = normalizeTime((int) number(json, "gameTimeCell", 11));
             resourcesCell = normalizeCell((int) number(json, "resourcesCell", resourcesCell));
             for (int i = 0; i < BotScript.MAX_BOTS; i++) {
                 String key = "appearance" + i;
@@ -129,6 +133,8 @@ public final class BotConfig {
         json.addProperty("elytraCell", elytraCell);
         json.addProperty("pvpCell", pvpCell);
         json.addProperty("resourcesCell", resourcesCell);
+        json.addProperty("daytimeCell", daytimeCell);
+        json.addProperty("gameTimeCell", gameTimeCell);
         for (int i = 0; i < BotScript.MAX_BOTS; i++) {
             JsonObject a = new JsonObject();
             a.addProperty("color", BotAppearance.colorIndex(i));
@@ -183,8 +189,12 @@ public final class BotConfig {
      *
      * @return 12 или 14; для голосований «позже» всегда 12, они не настраиваются
      */
+    private static int normalizeTime(int cell) { return cell == 13 || cell == 15 ? cell : 11; }
+
     public static int voteCell(int voteIndex) {
         return switch (voteIndex) {
+            case BotScript.VOTE_DAYTIME -> normalizeTime(daytimeCell);
+            case BotScript.VOTE_GAME_TIME -> normalizeTime(gameTimeCell);
             case BotScript.VOTE_ELYTRA -> normalizeCell(elytraCell);
             case BotScript.VOTE_PVP -> normalizeCell(pvpCell);
             case BotScript.VOTE_RESOURCES -> normalizeCell(resourcesCell);
@@ -194,6 +204,8 @@ public final class BotConfig {
 
     /** Сохраняет выбор ячейки голосования; для недоступных голосований игнорируется. */
     public static void setVoteCell(int voteIndex, int cell) {
+        if (voteIndex == BotScript.VOTE_DAYTIME) { daytimeCell = normalizeTime(cell); return; }
+        if (voteIndex == BotScript.VOTE_GAME_TIME) { gameTimeCell = normalizeTime(cell); return; }
         int normalized = normalizeCell(cell);
         switch (voteIndex) {
             case BotScript.VOTE_ELYTRA -> elytraCell = normalized;

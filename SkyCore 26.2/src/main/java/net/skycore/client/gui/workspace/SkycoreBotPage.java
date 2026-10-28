@@ -27,6 +27,12 @@ public final class SkycoreBotPage {
     private String buffer = "";
     private float leftScroll, rightScroll, leftTarget, rightTarget;
     private boolean dragging, dirty;
+    private float logX, logY, logW, logH;
+    public void logButton(float x, float y, float w, float h) { logX=x; logY=y; logW=w; logH=h; }
+    public boolean clickLog(double x, double y, int button) {
+        if (button != 0 || x < logX || x >= logX + logW || y < logY || y >= logY + logH) return false;
+        toggleLog(); return true;
+    }
     private final WorkspaceSettings.Sink sink = this::hit;
 
     public void render(RenderGuiHelper host, float x, float y, float unit, float opacity,
@@ -79,12 +85,14 @@ public final class SkycoreBotPage {
     }
 
     private void hit(int type, int arg, int option, float x, float y, float w, float h) {
-        float top = Math.max(y, layout.listY + layout.s(38));
+        float top = Math.max(y, layout.listY + (type == WorkspaceBotPanel.HIT_PARTY || type == WorkspaceBotPanel.HIT_HOME ? 0 : layout.s(38)));
         float bottom = Math.min(y + h, layout.listY + layout.listH - layout.s(8));
         if (hitCount >= MAX_HITS || bottom <= top) return;
         hx[hitCount] = x; hy[hitCount] = top; hw[hitCount] = w; hh[hitCount] = bottom - top;
         types[hitCount] = type; args[hitCount] = arg; options[hitCount++] = option;
     }
+
+    public void toggleLog() { commit(); panel.toggleLog(); leftTarget = leftScroll = 0; }
 
     public boolean contains(double x, double y) {
         return x >= layout.listX && x < layout.contentX + layout.contentW
@@ -105,6 +113,10 @@ public final class SkycoreBotPage {
         if (type != WorkspaceBotPanel.HIT_STRING || editing != arg) commit();
         BedWarsBot bot = BedWarsBot.INSTANCE;
         switch (type) {
+            case WorkspaceBotPanel.HIT_HOME -> { panel.home(); leftTarget = leftScroll = 0; }
+            case WorkspaceBotPanel.HIT_PARTY -> { panel.toggleParty(); leftTarget = leftScroll = 0; }
+            case WorkspaceBotPanel.HIT_LOG -> panel.toggleLog();
+            case WorkspaceBotPanel.HIT_STOP_ONE -> bot.stopOne(arg);
             case WorkspaceBotPanel.HIT_START -> bot.start();
             case WorkspaceBotPanel.HIT_STOP -> bot.stop();
             case WorkspaceBotPanel.HIT_STEP -> bot.previewStep();
@@ -123,7 +135,7 @@ public final class SkycoreBotPage {
                 if (!bot.isRunning()) { dragging = true; countAt(x); }
             }
             case WorkspaceBotPanel.HIT_VOTE -> {
-                BotConfig.setVoteCell(arg, option == 1 ? BotScript.VOTE_CELL_B : BotScript.VOTE_CELL_A);
+                BotConfig.setVoteCell(arg, BotScript.voteCellAt(arg, option));
                 dirty = true;
             }
             case WorkspaceBotPanel.HIT_APPEARANCE -> {

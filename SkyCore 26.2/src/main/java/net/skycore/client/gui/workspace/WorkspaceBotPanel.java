@@ -54,6 +54,10 @@ final class WorkspaceBotPanel {
     static final int HIT_VOTE = 136;
     static final int HIT_APPEARANCE = 137;
     static final int HIT_TEST_ERROR = 138;
+    static final int HIT_PARTY = 139;
+    static final int HIT_LOG = 140;
+    static final int HIT_STOP_ONE = 141;
+    static final int HIT_HOME = 142;
 
     // ---- поля ввода
     static final int FIELD_PREFIX = 0;
@@ -102,6 +106,10 @@ final class WorkspaceBotPanel {
         }
     }
 
+    private int page;
+    void toggleLog() { page = page == 1 ? 0 : 1; }
+    void home() { page = 0; }
+    void toggleParty() { page = page == 2 ? 0 : 2; }
     private float leftTotal;
     private float rightTotal;
 
@@ -137,25 +145,22 @@ final class WorkspaceBotPanel {
     // ---- высоты (чистая математика, считается до отрисовки)
 
     private float leftHeight(WorkspaceLayout l) {
+        if (page == 1) return l.s(40 + SECTION + LOG_LINES * LOG_ROW + 16);
+        if (page == 2) return l.s(SECTION + (BedWarsBot.INSTANCE.partySize() + 3) * 22 + 16);
         int stages = BotStage.flow().length - 1;
         float units = PAD * 2.0F + 8.0F
                 + SERVER_H + SECTION_GAP
                 + SECTION + stages * STAGE_ROW + SECTION_GAP
-                + SECTION + STRIP_H + 6.0F + CAPTION + SECTION_GAP
-                + SECTION + STRIP_H + 6.0F + CAPTION + SECTION_GAP
                 + SECTION + BotScript.VOTES.length * VOTE_ROW + SECTION_GAP
                 + SECTION + 2.0F * (SWATCH + SWATCH_GAP) + CAPTION;
         return l.s(units);
     }
 
     private float rightHeight(WorkspaceLayout l) {
-        int bots = BedWarsBot.INSTANCE.displayCount();
         float units = PAD * 2.0F + 8.0F
                 + SECTION + FIELD_ROW + SLIDER_ROW + FIELD_ROW + FIELD_ROW + SECTION_GAP
-                + SECTION + BUTTON_ROW * 2.0F + 8.0F + SECTION_GAP
-                + SECTION + botCardsHeight() + SECTION_GAP
-                + SECTION + (BedWarsBot.INSTANCE.partySize() + 3) * 22.0F + SECTION_GAP
-                + SECTION + LOG_LINES * LOG_ROW;
+                + SECTION + BUTTON_ROW + SECTION_GAP
+                + SECTION + botCardsHeight() + SECTION_GAP;
         return l.s(units);
     }
 
@@ -180,8 +185,14 @@ final class WorkspaceBotPanel {
         WorkspaceDraw.pane(x, y, w, h, radius, t);
 
         float head = l.s(HEAD);
-        MenuDraw.textMid(title(), x + pad, y, head, Weight.MEDIUM, l.s(12.5F), t.text);
-        MenuDraw.textRight("DEMO", x + w - pad, y + l.s(14), Weight.MEDIUM, l.s(10), t.accent2);
+        MenuDraw.textRight(page == 0 ? title() : L("Назад", "Back"), x + w - pad,
+                y + l.s(14), Weight.MEDIUM, l.s(11), t.text);
+        MenuDraw.round(x + pad - l.s(4), y + l.s(5), l.s(64), head - l.s(10), l.s(6), t.inset);
+        MenuDraw.textMid("Party", x + pad, y, head, Weight.MEDIUM, l.s(12.5F), t.text);
+        if (live) {
+            sink.hit(HIT_PARTY, 0, 0, x + pad, y, l.s(72), head);
+            if (page != 0) sink.hit(HIT_HOME, 0, 0, x + w - l.s(85), y, l.s(70), head);
+        }
         WorkspaceDraw.divider(l, x + pad, y + head - l.line(), w - pad * 2.0F, t);
 
         float viewTop = y + head;
@@ -193,12 +204,16 @@ final class WorkspaceBotPanel {
         MenuDraw.scissor(x + l.s(1.0F), viewTop, w - l.s(2.0F), viewHeight);
         try {
             float cursor = viewTop + l.s(8.0F) - scroll;
+            if (page == 1) {
+                button(l, t, anim, contentX, cursor, contentWidth, l.s(30), clearTitle(),
+                        IconGlyphs.TRASH, false, false, true, live, HIT_CLEAR_LOG, KEY_BASE + 343,
+                        mouseX, mouseY, sink);
+                logSection(l, t, anim, contentX, cursor + l.s(40), contentWidth, mouseX, mouseY, viewTop, viewBottom);
+                return;
+            }
+            if (page == 2) { partySection(l, t, contentX, cursor, contentWidth); return; }
             cursor = serverSection(l, t, anim, contentX, cursor, contentWidth);
             cursor = stageSection(l, t, anim, contentX, cursor, contentWidth, mouseY, viewTop, viewBottom);
-            cursor = hotbarSection(l, t, anim, contentX, cursor, contentWidth, mouseX, mouseY,
-                    BotScript.LOBBY_HOTBAR, lobbyTitle(), lobbyHint(), live, KEY_BASE + 40);
-            cursor = hotbarSection(l, t, anim, contentX, cursor, contentWidth, mouseX, mouseY,
-                    BotScript.GAME_HOTBAR, gameTitle(), gameHint(), live, KEY_BASE + 70);
             cursor = voteSection(l, t, anim, contentX, cursor, contentWidth, mouseX, mouseY,
                     viewTop, viewBottom, live, sink);
             swatchSection(l, t, anim, contentX, cursor, contentWidth, mouseX, mouseY,
@@ -406,14 +421,15 @@ final class WorkspaceBotPanel {
                     x, rowY, l.s(20.0F), Weight.MEDIUM, l.s(11.0F), usable ? t.text : t.muted);
 
             float segmentY = rowY + l.s(26.0F);
-            float secondX = x + width - segmentWidth;
-            float firstX = secondX - segmentGap - segmentWidth;
-            segment(l, t, anim, firstX, segmentY, segmentWidth, segmentHeight, vote.optionLabel(BotScript.VOTE_CELL_A),
-                    usable && selected == BotScript.VOTE_CELL_A, usable, live, i, 0,
-                    mouseX, mouseY, sink, KEY_BASE + 140 + i * 2);
-            segment(l, t, anim, secondX, segmentY, segmentWidth, segmentHeight, vote.optionLabel(BotScript.VOTE_CELL_B),
-                    usable && selected == BotScript.VOTE_CELL_B, usable, live, i, 1,
-                    mouseX, mouseY, sink, KEY_BASE + 141 + i * 2);
+            int count = BotScript.voteOptionCount(i);
+            float choiceWidth = (width - segmentGap * (count - 1)) / count;
+            for (int option = 0; option < count; option++) {
+                int cell = BotScript.voteCellAt(i, option);
+                segment(l, t, anim, x + option * (choiceWidth + segmentGap), segmentY,
+                        choiceWidth, segmentHeight, BotScript.voteAnswer(i, option),
+                        selected == cell, true, live, i, option, mouseX, mouseY, sink,
+                        KEY_BASE + 140 + i * 3 + option);
+            }
         }
 
         return y + BotScript.VOTES.length * rowHeight + l.s(SECTION_GAP);
@@ -500,8 +516,7 @@ final class WorkspaceBotPanel {
                     viewTop, viewBottom, live, sink);
             cursor = botSection(l, t, anim, contentX, cursor, contentWidth, mouseX, mouseY,
                     viewTop, viewBottom, live, sink);
-            cursor = partySection(l, t, contentX, cursor, contentWidth);
-            logSection(l, t, anim, contentX, cursor, contentWidth, mouseX, mouseY, viewTop, viewBottom);
+
         } finally {
             MenuDraw.scissorEnd();
         }
@@ -581,7 +596,7 @@ final class WorkspaceBotPanel {
         float height = l.s(SLIDER_ROW);
         if (y + height >= viewTop - l.s(2.0F) && y <= viewBottom + l.s(2.0F)) {
             float font = l.s(10.5F);
-            MenuDraw.textMid(countLabel(), x, y, l.s(20.0F), Weight.MEDIUM, font, t.text);
+            MenuDraw.textMid(L("Запустить ботов", "Bots to start"), x, y, l.s(20.0F), Weight.MEDIUM, font, t.text);
             MenuDraw.textRight(BotConfig.botCountText(), x + width, y, Weight.MEDIUM, font, t.text);
 
             int count = BotConfig.nicknameCount();
@@ -601,10 +616,6 @@ final class WorkspaceBotPanel {
             MenuDraw.circle(knobX, trackY + trackHeight * 0.5F, knobRadius, t.knob);
             MenuDraw.ring(knobX, trackY + trackHeight * 0.5F, knobRadius + l.s(1.5F), l.s(1.5F),
                     MenuDraw.a(t.accent2, 170));
-
-            String preview = BotConfig.nicknamePreview();
-            MenuDraw.textMid(MenuDraw.ellipsize(preview, Weight.MEDIUM, l.s(10.0F), width),
-                    x, y + l.s(34.0F), l.s(12.0F), Weight.MEDIUM, l.s(10.0F), t.muted);
 
             if (live) {
                 sink.hit(HIT_SLIDER, FIELD_COUNT, 0, x, y + l.s(20.0F), width, l.s(22.0F));
@@ -635,17 +646,7 @@ final class WorkspaceBotPanel {
                     mouseX, mouseY, sink);
         }
 
-        float secondRow = y + height + gap;
-        if (secondRow + height >= viewTop - l.s(2.0F) && secondRow <= viewBottom + l.s(2.0F)) {
-            button(l, t, anim, x, secondRow, half, height, stepTitle(),
-                    LegacyIconGlyphs.CHEVRON, true, false, true, live, HIT_STEP, KEY_BASE + 342,
-                    mouseX, mouseY, sink);
-            button(l, t, anim, x + half + gap, secondRow, half, height, clearTitle(),
-                    LegacyIconGlyphs.TRASH, true, false, true, live, HIT_CLEAR_LOG, KEY_BASE + 343,
-                    mouseX, mouseY, sink);
-        }
-
-        return secondRow + height + l.s(SECTION_GAP);
+        return y + height + l.s(SECTION_GAP);
     }
 
     private void button(WorkspaceLayout l, WorkspaceTheme t, MenuAnim anim,
@@ -697,7 +698,7 @@ final class WorkspaceBotPanel {
     private float botSection(WorkspaceLayout l, WorkspaceTheme t, MenuAnim anim,
                              float x, float y, float width, float mouseX, float mouseY,
                              float viewTop, float viewBottom, boolean live, WorkspaceSettings.Sink sink) {
-        y = sectionTitle(l, t, x, y, width, IconGlyphs.PLAYER, false, botListTitle(), "DEMO");
+        y = sectionTitle(l, t, x, y, width, IconGlyphs.PLAYER, false, botListTitle(), "");
         BedWarsBot bot = BedWarsBot.INSTANCE;
         for (int i = 0; i < bot.displayCount(); i++) {
             float height = l.s(BotAppearance.compact(i) ? 62 : 84);
@@ -714,18 +715,18 @@ final class WorkspaceBotPanel {
                 MenuDraw.textMid(bot.status(i).label(), x + l.s(43), y + l.s(23), l.s(14),
                         Weight.MEDIUM, l.s(10), bot.status(i).color());
                 if (!BotAppearance.compact(i)) {
-                    MenuDraw.textMid("mc.musteryworld.net · DEMO", x + l.s(10), y + l.s(38), l.s(15),
+                    MenuDraw.textMid("mc.musteryworld.net", x + l.s(10), y + l.s(38), l.s(15),
                             Weight.MEDIUM, l.s(10), t.muted);
                 }
                 float controlsY = y + height - l.s(23);
-                float cell = (width - l.s(20)) / 4;
+                float cell = (width - l.s(20)) / 3;
                 cardControl(l, t, x + l.s(8), controlsY, cell, L("Цвет", "Color"), i, 0, live, sink);
-                cardControl(l, t, x + l.s(8) + cell, controlsY, cell, L("Размер", "Size"), i, 1, live, sink);
-                cardControl(l, t, x + l.s(8) + cell * 2, controlsY, cell,
+                cardControl(l, t, x + l.s(8) + cell, controlsY, cell,
                         BotAppearance.notifications(i) ? L("Увед. +", "Alerts on") : L("Увед. −", "Alerts off"), i, 2, live, sink);
-                MenuDraw.textCenterMid(L("Тест !", "Test !"), x + l.s(8) + cell * 3.5F, controlsY, l.s(18),
+                MenuDraw.textCenterMid(stopTitle(), x + l.s(8) + cell * 2.5F, controlsY, l.s(18),
                         Weight.MEDIUM, l.s(10), t.danger);
-                if (live) sink.hit(HIT_TEST_ERROR, i, 0, x + l.s(8) + cell * 3, controlsY, cell, l.s(18));
+                if (live && bot.isRunning()) sink.hit(HIT_STOP_ONE, i, 0,
+                        x + l.s(8) + cell * 2, controlsY, cell, l.s(18));
             }
             y += height + l.s(8);
         }
@@ -740,13 +741,13 @@ final class WorkspaceBotPanel {
     }
 
     private float partySection(WorkspaceLayout l, WorkspaceTheme t, float x, float y, float width) {
-        y = sectionTitle(l, t, x, y, width, IconGlyphs.PLAYER, false, L("Пати", "Party"), "DEMO");
+        y = sectionTitle(l, t, x, y, width, IconGlyphs.PLAYER, false, L("Пати", "Party"), "");
         BedWarsBot bot = BedWarsBot.INSTANCE;
         partyLine(l, t, x, y, width, L("Лидер", "Leader"), bot.partyLeader());
         y += l.s(22);
         partyLine(l, t, x, y, width, L("Приглашён", "Invited"), bot.invitedOwner());
         y += l.s(22);
-        MenuDraw.textMid(L("Участники (демо)", "Members (demo)"), x, y, l.s(22), Weight.MEDIUM, l.s(10), t.muted);
+        MenuDraw.textMid(L("Участники", "Members"), x, y, l.s(22), Weight.MEDIUM, l.s(10), t.muted);
         y += l.s(22);
         for (int i = 0; i < bot.partySize(); i++) {
             partyLine(l, t, x, y, width, i == 0 ? L("Лидер", "Leader") : L("Участник", "Member"), bot.partyMember(i));
@@ -834,7 +835,7 @@ final class WorkspaceBotPanel {
         } else {
             MenuDraw.iconCs(glyph, iconX, iconY, iconSize, iconColor);
         }
-        MenuDraw.textMid(title, x + iconSize + l.s(8.0F), y, height, Weight.MEDIUM, l.s(10.5F), t.text);
+        MenuDraw.textMid(title, x + iconSize + l.s(8.0F), y, height, Weight.MEDIUM, l.s(10.5F), title.equals(scenarioTitle()) ? 0xFFFFFFFF : t.text);
         MenuDraw.textRight(MenuDraw.ellipsize(hint, Weight.MEDIUM, l.s(10.0F),
                         Math.max(l.s(30.0F), width - MenuDraw.textWidth(title, Weight.MEDIUM, l.s(10.5F))
                                 - iconSize - l.s(20.0F))),
@@ -909,7 +910,7 @@ final class WorkspaceBotPanel {
     }
 
     private static String serverCaption() {
-        return L("Сервер (зафиксирован)", "Server (fixed)");
+        return L("Сервер", "Server");
     }
 
     private static String lockCaption() {
@@ -917,11 +918,11 @@ final class WorkspaceBotPanel {
     }
 
     private static String scenarioTitle() {
-        return L("Сценарий", "Scenario");
+        return L("Порядок шагов бота", "Bot step order");
     }
 
     private static String scenarioHint() {
-        return L("порядок шагов бота", "bot step order");
+        return "";
     }
 
     private static String lobbyTitle() {
@@ -973,7 +974,7 @@ final class WorkspaceBotPanel {
     }
 
     private static String connectHint() {
-        return BedWarsBot.INSTANCE.isRunning() ? L("остановите демо для правки", "stop demo to edit") : L("ники и регистрация", "nicks and registration");
+        return BedWarsBot.INSTANCE.isRunning() ? L("остановите ботов для правки", "stop bots to edit") : L("ники и регистрация", "nicks and registration");
     }
 
     private static String prefixLabel() {
@@ -1013,7 +1014,7 @@ final class WorkspaceBotPanel {
     }
 
     private static String clearTitle() {
-        return L("Очистить журнал", "Clear log");
+        return L("Очистить логи", "Clear logs");
     }
 
     private static String botListTitle() {

@@ -1048,8 +1048,10 @@ public final class RenderGuiHelper extends Screen implements StringBufferHelper 
       float computedValue5 = 192.0F * coordinate3;
       computedValue2 -= computedValue5;
       if (this.selectedView == View.BOT) {
+         this.botPage.logButton(computedValue2, coordinate2, computedValue5, 38 * coordinate3);
+         BeginFrameHelper.rect(computedValue2, coordinate2, computedValue5, 38 * coordinate3).color(alpha(this.surfaceColor(), color)).radius(12 * coordinate3).draw();
          this.text(computedValue2 + 12 * coordinate3, coordinate2 + 12 * coordinate3,
-            11, "BedWars · DEMO", this.secondaryColor(), 500, coordinate3, color);
+            11, "Log", this.primaryColor(), 500, coordinate3, color);
       } else {
          this.renderSearch(computedValue2, coordinate2, computedValue5, 38.0F * coordinate3, coordinate3, color);
       }
@@ -1277,6 +1279,7 @@ public final class RenderGuiHelper extends Screen implements StringBufferHelper 
       double y = mouseButtonEvent.y();
       int value = mouseButtonEvent.button();
       if (this.bindingModule == null && this.bindingSetting == null) {
+         if (!this.closing && this.selectedView == View.BOT && this.botPage.clickLog(x, y, value)) return true;
          TargetHelper region = this.findRegion(x, y);
          if (this.closing && this.selectedView == View.BOT) return true;
          // Existing navigation/header regions win over bot controls, including a dock

@@ -92,13 +92,34 @@ class BotUiChecks(unittest.TestCase):
 
     def test_full_vote_answers_and_module_font(self):
         source = (JAVA / 'gui/workspace/WorkspaceBotPanel.java').read_text(encoding='utf-8')
-        self.assertIn('vote.optionLabel(BotScript.VOTE_CELL_A)', source)
-        self.assertIn('vote.optionLabel(BotScript.VOTE_CELL_B)', source)
+        self.assertIn('BotScript.voteAnswer(i, option)', source)
+        self.assertIn('BotScript.voteOptionCount(i)', source)
         self.assertNotIn('segmentHeight, BotScript.CELL_', source)
         self.assertNotIn('Weight.BOLD', source)
         self.assertNotIn('Weight.SEMIBOLD', source)
         data = (JAVA / 'bot/BotScript.java').read_text(encoding='utf-8')
         self.assertIn('"Виртуальный", "Virtual", "Классика", "Classic"', data)
+
+    def test_time_votes_and_separate_pages(self):
+        script = (JAVA / 'bot/BotScript.java').read_text()
+        panel = (JAVA / 'gui/workspace/WorkspaceBotPanel.java').read_text()
+        config = (JAVA / 'bot/BotConfig.java').read_text()
+        self.assertIn('11 + option * 2', script)
+        self.assertIn('{"День", "Вечер", "Ночь"}', script)
+        self.assertIn('{"20", "30", "50"}', script)
+        hotbar = script.split('public static final Slot[] GAME_HOTBAR = {')[1].split('};')[0]
+        self.assertEqual(hotbar.count('new Slot('), 9)
+        for key in ('daytimeCell', 'gameTimeCell'):
+            self.assertIn('json.addProperty("' + key + '"', config)
+            self.assertIn('number(json, "' + key + '"', config)
+        draw_left = panel.split('private void drawLeft')[1].split('private float serverSection')[0]
+        self.assertNotIn('cursor = hotbarSection', draw_left)
+        self.assertIn('if (page == 1)', draw_left)
+        self.assertIn('if (page == 2)', draw_left)
+        cards = panel.split('private float botSection')[1].split('private void cardControl')[0]
+        self.assertNotIn('HIT_TEST_ERROR', cards)
+        self.assertNotIn('"Размер"', cards)
+        self.assertIn('HIT_STOP_ONE', cards)
 
     def test_team_colors_require_menu_snapshot(self):
         source = (JAVA / 'gui/workspace/WorkspaceBotPanel.java').read_text(encoding='utf-8')

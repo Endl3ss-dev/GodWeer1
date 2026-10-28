@@ -100,11 +100,11 @@ public final class BedWarsBot {
     /** Explicit UI test: does not claim a real network failure. */
     public void previewError(int index) {
         if (!running || index < 0 || index >= activeBots) {
-            notifyResult(prefixRu("Сначала запустите демо", "Start the demo first"), true);
+            notifyResult(prefixRu("Сначала запустите ботов", "Start bots first"), true);
             return;
         }
         statuses[index] = BotStatus.ERROR;
-        String message = prefixRu("[демо] Ошибка подключения: ", "[demo] Connection error: ") + sessionNames[index];
+        String message = prefixRu("Ошибка подключения: ", "Connection error: ") + sessionNames[index];
         log(message);
         if (BotAppearance.notifications(index)) notifyResult(message, true);
     }
@@ -222,6 +222,15 @@ public final class BedWarsBot {
     }
 
     /** Остановка сценария — заглушка: настоящая реализация обязана рвать соединения. */
+    public void stopOne(int index) {
+        if (!running || index < 0 || index >= activeBots) return;
+        statuses[index] = BotStatus.IDLE;
+        log(prefixRu("Остановлен: ", "Stopped: ") + sessionNames[index]);
+        boolean any = false;
+        for (int i = 0; i < activeBots; i++) if (statuses[i] != BotStatus.IDLE) any = true;
+        if (!any) stop();
+    }
+
     public void stop() {
         if (!this.running) {
             return;
@@ -235,7 +244,7 @@ public final class BedWarsBot {
             this.statuses[i] = BotStatus.IDLE;
         }
         log(prefixRu("Остановлено", "Stopped"));
-        notifyResult(prefixRu("Демо остановлено", "Demo stopped"), false);
+        notifyResult(prefixRu("Боты остановлены", "Bots stopped"), false);
     }
 
     /**
@@ -437,12 +446,12 @@ public final class BedWarsBot {
         if (!running) return;
         this.stage = stage;
         for (int i = 0; i < this.activeBots; i++) {
-            this.statuses[i] = status;
+            if (this.statuses[i] != BotStatus.IDLE) this.statuses[i] = status;
         }
         log(prefixRu("[заглушка] ", "[stub] ") + message);
         boolean notify = false;
         for (int i = 0; i < activeBots; i++) notify |= BotAppearance.notifications(i);
-        if (notify) notifyResult(prefixRu("[демо] Этап: ", "[demo] Stage: ") + stage.label(), false);
+        if (notify) notifyResult(prefixRu("Этап: ", "Stage: ") + stage.label(), false);
     }
 
     /** Этап сценария, к которому относится голосование. */

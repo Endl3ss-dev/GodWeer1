@@ -179,14 +179,30 @@ public final class BotScript {
      * <p>«Статистика» и «Выбор лобби» сюда не входят — по постановке они недоступны.
      */
     public static final Slot[] GAME_HOTBAR = {
-            new Slot("Выбор команды", "Team select", Availability.NOW),
-            new Slot("Время суток", "Daytime vote", Availability.LATER),
-            new Slot("Время игры", "Game time vote", Availability.LATER),
-            new Slot("Элитры", "Elytra vote", Availability.NOW),
-            new Slot("PvP", "PvP vote", Availability.NOW),
-            new Slot("Ресурсы", "Resources vote", Availability.NOW),
+            new Slot("Выбор команды", "Team selection", Availability.NOW),
+            new Slot("", "", Availability.EMPTY),
+            new Slot("Голосование за время суток", "Daytime vote", Availability.NOW),
+            new Slot("Голосование за время игры", "Game time vote", Availability.NOW),
+            new Slot("Голосование за элитры", "Elytra vote", Availability.NOW),
+            new Slot("Голосование за PvP", "PvP vote", Availability.NOW),
+            new Slot("Голосование за ресурсы", "Resources vote", Availability.NOW),
+            new Slot("", "", Availability.EMPTY),
             new Slot("Назад в лобби", "Back to lobby", Availability.LATER),
     };
+
+    public static int voteCellAt(int vote, int option) {
+        return vote >= VOTE_DAYTIME ? 11 + option * 2 : (option == 0 ? 12 : 14);
+    }
+    public static int voteOptionCount(int vote) { return vote >= VOTE_DAYTIME ? 3 : 2; }
+    public static String voteAnswer(int vote, int option) {
+        if (vote == VOTE_DAYTIME) return SelectAndSaveHelper.isRussian()
+                ? DAY_RU[option] : DAY_EN[option];
+        if (vote == VOTE_GAME_TIME) return DURATIONS[option];
+        return VOTES[vote].optionLabel(voteCellAt(vote, option));
+    }
+    private static final String[] DAY_RU = {"День", "Вечер", "Ночь"};
+    private static final String[] DAY_EN = {"Day", "Evening", "Night"};
+    private static final String[] DURATIONS = {"20", "30", "50"};
 
     /**
      * Голосования в меню игры.
@@ -196,12 +212,12 @@ public final class BotScript {
      * Голосования за время суток и время игры в задаче помечены «позже».
      */
     public static final Vote[] VOTES = {
-            new Vote("Элитры", "Elytra", "с элитрами", "with elytra", "без элитр", "no elytra",
+            new Vote("Элитры", "Elytra", "С элитрами", "With elytra", "Без элитр", "No elytra",
                     Availability.NOW),
             new Vote("PvP", "PvP", "PvP 1.8", "PvP 1.8", "PvP 1.12", "PvP 1.12", Availability.NOW),
             new Vote("Ресурсы", "Resources", "Виртуальный", "Virtual", "Классика", "Classic", Availability.NOW),
-            new Vote("Время суток", "Daytime", "—", "—", "—", "—", Availability.LATER),
-            new Vote("Время игры", "Game time", "—", "—", "—", "—", Availability.LATER),
+            new Vote("Время суток", "Daytime", "День", "Day", "Вечер", "Evening", Availability.NOW),
+            new Vote("Время игры", "Game time", "20", "20", "30", "30", Availability.NOW),
     };
 
     /**

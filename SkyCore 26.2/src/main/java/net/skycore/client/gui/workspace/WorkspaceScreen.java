@@ -205,8 +205,8 @@ public final class WorkspaceScreen extends Screen {
     private final WorkspaceSettings.Sink sink = new WorkspaceSettings.Sink() {
         @Override
         public void hit(int type, int a, int b, float x, float y, float w, float h) {
-            if (botView && type >= WorkspaceBotPanel.HIT_START && type <= WorkspaceBotPanel.HIT_TEST_ERROR) {
-                float top = layout.listY + layout.s(38.0F);
+            if (botView && type >= WorkspaceBotPanel.HIT_START && type <= WorkspaceBotPanel.HIT_HOME) {
+                float top = layout.listY + (type == WorkspaceBotPanel.HIT_PARTY || type == WorkspaceBotPanel.HIT_HOME ? 0 : layout.s(38.0F));
                 float bottom = layout.listY + layout.listH - layout.s(8.0F);
                 float clippedTop = Math.max(y, top);
                 float clippedBottom = Math.min(y + h, bottom);
@@ -604,6 +604,10 @@ public final class WorkspaceScreen extends Screen {
                 MenuSound.play(MenuSound.SELECT);
             }
             case WorkspaceBotPanel.HIT_TEST_ERROR -> BedWarsBot.INSTANCE.previewError(a);
+            case WorkspaceBotPanel.HIT_HOME -> { this.botPanel.home(); this.botLeftScrollTarget = this.botLeftScroll = 0; }
+            case WorkspaceBotPanel.HIT_PARTY -> { this.botPanel.toggleParty(); this.botLeftScrollTarget = this.botLeftScroll = 0; }
+            case WorkspaceBotPanel.HIT_LOG -> this.botPanel.toggleLog();
+            case WorkspaceBotPanel.HIT_STOP_ONE -> BedWarsBot.INSTANCE.stopOne(a);
             case WorkspaceBotPanel.HIT_START -> {
                 BedWarsBot.INSTANCE.start();
                 MenuSound.play(MenuSound.TOGGLE_ON);
@@ -629,7 +633,7 @@ public final class WorkspaceScreen extends Screen {
             }
             case WorkspaceBotPanel.HIT_SLIDER -> applyBotCount(this.mouseX);
             case WorkspaceBotPanel.HIT_VOTE -> {
-                int cell = b == 1 ? BotScript.VOTE_CELL_B : BotScript.VOTE_CELL_A;
+                int cell = BotScript.voteCellAt(a, b);
                 if (BotConfig.voteCell(a) != cell) {
                     BotConfig.setVoteCell(a, cell);
                     this.botDirty = true;
