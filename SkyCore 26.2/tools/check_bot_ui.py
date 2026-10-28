@@ -81,6 +81,35 @@ class BotUiChecks(unittest.TestCase):
         self.assertNotIn('new BedWarsBot', source)
         self.assertNotIn('setScreen', source)
 
+    def test_timeline_breath_progress_and_first_step(self):
+        source = (JAVA / 'gui/workspace/WorkspaceBotPanel.java').read_text(encoding='utf-8')
+        self.assertIn('STAGE_TEXT[i] = Integer.toString(i);', source)
+        self.assertIn('Math.sin(', source)
+        self.assertIn('System.nanoTime()', source)
+        self.assertIn('MenuPrefs.animations', source)
+        self.assertIn('anim.to(KEY_BASE + 401', source)
+        self.assertIn('progress * rowHeight', source)
+
+    def test_full_vote_answers_and_module_font(self):
+        source = (JAVA / 'gui/workspace/WorkspaceBotPanel.java').read_text(encoding='utf-8')
+        self.assertIn('vote.optionLabel(BotScript.VOTE_CELL_A)', source)
+        self.assertIn('vote.optionLabel(BotScript.VOTE_CELL_B)', source)
+        self.assertNotIn('segmentHeight, BotScript.CELL_', source)
+        self.assertNotIn('Weight.BOLD', source)
+        self.assertNotIn('Weight.SEMIBOLD', source)
+        data = (JAVA / 'bot/BotScript.java').read_text(encoding='utf-8')
+        self.assertIn('"Виртуальный", "Virtual", "Классика", "Classic"', data)
+
+    def test_team_colors_require_menu_snapshot(self):
+        source = (JAVA / 'gui/workspace/WorkspaceBotPanel.java').read_text(encoding='utf-8')
+        self.assertIn('int count = bot.detectedTeamColorCount();', source)
+        self.assertNotIn('int[] colors = BotScript.WOOL_COLORS;', source)
+        model = (JAVA / 'bot/BedWarsBot.java').read_text(encoding='utf-8')
+        self.assertIn('if (!running || stage != BotStage.TEAM_COLORS) return;', model)
+        self.assertIn('"Выбор команды".equals(title)', model)
+        self.assertIn('index >= 0 && index < 16 && !seen[index]', model)
+        self.assertIn('return teamColors.clone();', model)
+
     def test_wrapper(self):
         import zipfile
         with zipfile.ZipFile(ROOT / 'gradle/wrapper/gradle-wrapper.jar') as jar:

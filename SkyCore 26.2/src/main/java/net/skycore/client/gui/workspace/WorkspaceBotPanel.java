@@ -73,7 +73,7 @@ final class WorkspaceBotPanel {
     private static final float STAGE_ROW = 32.0F;
     private static final float STRIP_H = 40.0F;
     private static final float CAPTION = 16.0F;
-    private static final float VOTE_ROW = 40.0F;
+    private static final float VOTE_ROW = 64.0F;
     private static final float SWATCH = 26.0F;
     private static final float SWATCH_GAP = 6.0F;
     private static final float FIELD_ROW = 30.0F;
@@ -98,7 +98,7 @@ final class WorkspaceBotPanel {
 
     static {
         for (int i = 0; i < STAGE_TEXT.length; i++) {
-            STAGE_TEXT[i] = Integer.toString(i + 1);
+            STAGE_TEXT[i] = Integer.toString(i);
         }
     }
 
@@ -180,8 +180,8 @@ final class WorkspaceBotPanel {
         WorkspaceDraw.pane(x, y, w, h, radius, t);
 
         float head = l.s(HEAD);
-        MenuDraw.textMid(title(), x + pad, y, head, Weight.BOLD, l.s(12.5F), t.text);
-        MenuDraw.textRight("DEMO", x + w - pad, y + l.s(14), Weight.SEMIBOLD, l.s(9), t.accent2);
+        MenuDraw.textMid(title(), x + pad, y, head, Weight.MEDIUM, l.s(12.5F), t.text);
+        MenuDraw.textRight("DEMO", x + w - pad, y + l.s(14), Weight.MEDIUM, l.s(10), t.accent2);
         WorkspaceDraw.divider(l, x + pad, y + head - l.line(), w - pad * 2.0F, t);
 
         float viewTop = y + head;
@@ -225,8 +225,8 @@ final class WorkspaceBotPanel {
                 l.s(13.0F), t.light ? t.accent : t.accent2);
 
         float textX = x + l.s(8.0F) + iconBox + l.s(10.0F);
-        MenuDraw.textMid(serverCaption(), textX, y + l.s(8.0F), l.s(16.0F), Weight.MEDIUM, l.s(9.0F), t.dim);
-        MenuDraw.textMid(BotScript.SERVER, textX, y + l.s(24.0F), l.s(20.0F), Weight.SEMIBOLD, l.s(12.0F), t.text);
+        MenuDraw.textMid(serverCaption(), textX, y + l.s(8.0F), l.s(16.0F), Weight.MEDIUM, l.s(10.0F), t.muted);
+        MenuDraw.textMid(BotScript.SERVER, textX, y + l.s(24.0F), l.s(20.0F), Weight.MEDIUM, l.s(12.0F), t.text);
 
         return y + height + l.s(SECTION_GAP);
     }
@@ -243,6 +243,18 @@ final class WorkspaceBotPanel {
         BotStage[] stages = BotStage.flow();
         float rowHeight = l.s(STAGE_ROW);
         float railX = x + l.s(11.0F);
+        float railTop = y + l.s(11.0F);
+        float railHeight = (stages.length - 2) * rowHeight;
+        float progress = anim.to(KEY_BASE + 401, running ? Math.max(0, current - 1) : 0, 5.0F);
+        MenuDraw.round(railX - l.s(1), railTop, l.s(2), railHeight, l.s(1), t.border);
+        float filled = Math.min(railHeight, Math.max(0, progress * rowHeight));
+        if (filled > 0.01F) {
+            MenuDraw.round(railX - l.s(1), railTop, l.s(2), filled, l.s(1), t.accent);
+        }
+        // Time based, not a spring to a constant: keeps breathing while the step waits.
+        float breath = MenuPrefs.animations
+                ? 0.5F + 0.5F * (float) Math.sin((System.nanoTime() % 2_000_000_000L) * Math.PI / 1_000_000_000.0)
+                : 0.5F;
 
         for (int i = 1; i < stages.length; i++) {
             float rowY = y + (i - 1) * rowHeight;
@@ -253,41 +265,35 @@ final class WorkspaceBotPanel {
             boolean done = running && i < current;
             boolean active = running && i == current;
 
-            // вертикальная рельса таймлайна — её видно сквозь строки, поэтому рисуем первой
-            if (i + 1 < stages.length) {
-                MenuDraw.rect(railX - l.s(0.5F), rowY + l.s(18.0F), Math.max(1.0F, l.s(1.0F)),
-                        rowHeight - l.s(14.0F), done || active ? MenuDraw.a(t.accent, 120) : t.border);
-            }
-
             int dotColor = done ? t.accent : active ? t.accent2 : t.track;
             if (active) {
-                float pulse = anim.to(KEY_BASE + 400, 1.0F, 6.0F);
-                MenuDraw.circle(railX, rowY + l.s(11.0F), l.s(6.0F) + l.s(1.5F) * pulse,
-                        MenuDraw.a(t.accent, 60));
+                MenuDraw.circle(railX, rowY + l.s(11.0F), l.s(6.0F + 2.0F * breath),
+                        MenuDraw.a(t.accent, (int) (35 + 45 * breath)));
             }
-            MenuDraw.circle(railX, rowY + l.s(11.0F), l.s(4.0F), dotColor);
+            float radius = active ? l.s(3.5F + 1.5F * breath) : l.s(4.0F);
+            MenuDraw.circle(railX, rowY + l.s(11.0F), radius, dotColor);
             if (done) {
                 MenuDraw.iconLetters(LegacyIconGlyphs.CHECK, railX, rowY + l.s(11.0F), l.s(6.0F), t.onAccent);
             }
 
             float textX = x + l.s(26.0F);
-            int nameColor = done || active ? t.text : t.muted;
-            MenuDraw.textMid(stage.label(), textX, rowY, l.s(16.0F), Weight.SEMIBOLD, l.s(10.5F), nameColor);
-            MenuDraw.textMid(MenuDraw.ellipsize(stage.hint(), Weight.MEDIUM, l.s(8.5F),
+            int nameColor = t.text;
+            MenuDraw.textMid(stage.label(), textX, rowY, l.s(16.0F), Weight.MEDIUM, l.s(10.5F), nameColor);
+            MenuDraw.textMid(MenuDraw.ellipsize(stage.hint(), Weight.MEDIUM, l.s(10.0F),
                             Math.max(l.s(40.0F), width - l.s(120.0F))),
-                    textX, rowY + l.s(14.0F), l.s(14.0F), Weight.MEDIUM, l.s(8.5F),
-                    active ? MenuDraw.a(t.accent2, 220) : t.dim);
+                    textX, rowY + l.s(14.0F), l.s(14.0F), Weight.MEDIUM, l.s(10.0F),
+                    active ? t.accent2 : t.muted);
 
             String badge = STAGE_TEXT[i];
-            float badgeFont = l.s(8.0F);
+            float badgeFont = l.s(10.0F);
             float badgeWidth = Math.max(l.s(16.0F), MenuDraw.textWidth(badge, Weight.MEDIUM, badgeFont) + l.s(8.0F));
-            float badgeHeight = l.s(13.0F);
+            float badgeHeight = l.s(16.0F);
             float badgeX = x + width - badgeWidth;
             float badgeY = rowY + l.s(3.0F);
             MenuDraw.round(badgeX, badgeY, badgeWidth, badgeHeight, badgeHeight * 0.5F,
                     active ? MenuDraw.a(t.accent, t.light ? 40 : 56) : MenuDraw.a(t.text, t.light ? 10 : 8));
             MenuDraw.textCenterMid(badge, badgeX + badgeWidth * 0.5F, badgeY, badgeHeight, Weight.MEDIUM,
-                    badgeFont, active ? (t.light ? t.accent : t.accent2) : t.dim);
+                    badgeFont, active ? (t.light ? t.accent : t.accent2) : t.muted);
         }
 
         return y + (stages.length - 1) * rowHeight + l.s(SECTION_GAP);
@@ -334,7 +340,7 @@ final class WorkspaceBotPanel {
             MenuDraw.outline(cellX, y, cell, cell, l.s(7.0F), borderColor);
 
             if (!blank) {
-                MenuDraw.textCenterMid(SLOT_TEXT[i], cellX + cell * 0.5F, y, cell * 0.62F, Weight.SEMIBOLD,
+                MenuDraw.textCenterMid(SLOT_TEXT[i], cellX + cell * 0.5F, y, cell * 0.62F, Weight.MEDIUM,
                         l.s(10.0F), usable ? t.text : t.muted);
                 int dot = availabilityColor(t, slot.availability());
                 MenuDraw.circle(cellX + cell * 0.5F, y + cell * 0.78F, l.s(2.0F), dot);
@@ -349,13 +355,13 @@ final class WorkspaceBotPanel {
             captionColor = availabilityColor(t, slots[hovered].availability());
         } else if (hovered >= 0) {
             caption = emptyCaption();
-            captionColor = t.dim;
+            captionColor = t.muted;
         } else {
             caption = hint;
-            captionColor = t.dim;
+            captionColor = t.muted;
         }
-        MenuDraw.textCenterMid(MenuDraw.ellipsize(caption, Weight.MEDIUM, l.s(9.0F), width),
-                x + width * 0.5F, captionY, l.s(CAPTION), Weight.MEDIUM, l.s(9.0F), captionColor);
+        MenuDraw.textCenterMid(MenuDraw.ellipsize(caption, Weight.MEDIUM, l.s(10.0F), width),
+                x + width * 0.5F, captionY, l.s(CAPTION), Weight.MEDIUM, l.s(10.0F), captionColor);
 
         return captionY + l.s(CAPTION) + l.s(SECTION_GAP);
     }
@@ -368,8 +374,8 @@ final class WorkspaceBotPanel {
         y = sectionTitle(l, t, x, y, width, IconGlyphs.STAR, false, voteTitle(), voteHint());
 
         float rowHeight = l.s(VOTE_ROW);
-        float segmentWidth = l.s(38.0F);
-        float segmentHeight = l.s(20.0F);
+        float segmentWidth = (width - l.s(6.0F)) * 0.5F;
+        float segmentHeight = l.s(26.0F);
         float segmentGap = l.s(6.0F);
 
         for (int i = 0; i < BotScript.VOTES.length; i++) {
@@ -380,6 +386,12 @@ final class WorkspaceBotPanel {
             BotScript.Vote vote = BotScript.VOTES[i];
             boolean usable = vote.availability().usable();
             int selected = BotConfig.voteCell(i);
+            if (!usable) {
+                MenuDraw.textMid(vote.label(), x, rowY, l.s(22), Weight.MEDIUM, l.s(11), t.muted);
+                MenuDraw.textMid(vote.availability().label(), x, rowY + l.s(26), l.s(22),
+                        Weight.MEDIUM, l.s(10), t.muted);
+                continue;
+            }
 
             boolean rowHover = live && mouseX >= x && mouseX <= x + width
                     && mouseY >= rowY && mouseY <= rowY + rowHeight;
@@ -390,21 +402,16 @@ final class WorkspaceBotPanel {
             }
 
             MenuDraw.textMid(MenuDraw.ellipsize(vote.label(), Weight.MEDIUM, l.s(11.0F),
-                            Math.max(l.s(40.0F), width - l.s(180.0F))),
+                            width),
                     x, rowY, l.s(20.0F), Weight.MEDIUM, l.s(11.0F), usable ? t.text : t.muted);
 
-            String option = usable ? vote.optionLabel(selected) : vote.availability().label();
-            MenuDraw.textMid(MenuDraw.ellipsize(option, Weight.MEDIUM, l.s(8.5F), l.s(150.0F)),
-                    x, rowY + l.s(18.0F), l.s(14.0F), Weight.MEDIUM, l.s(8.5F),
-                    usable ? MenuDraw.a(t.accent2, 220) : t.dim);
-
-            float segmentY = rowY + (rowHeight - segmentHeight) * 0.5F;
+            float segmentY = rowY + l.s(26.0F);
             float secondX = x + width - segmentWidth;
             float firstX = secondX - segmentGap - segmentWidth;
-            segment(l, t, anim, firstX, segmentY, segmentWidth, segmentHeight, BotScript.CELL_A_TEXT,
+            segment(l, t, anim, firstX, segmentY, segmentWidth, segmentHeight, vote.optionLabel(BotScript.VOTE_CELL_A),
                     usable && selected == BotScript.VOTE_CELL_A, usable, live, i, 0,
                     mouseX, mouseY, sink, KEY_BASE + 140 + i * 2);
-            segment(l, t, anim, secondX, segmentY, segmentWidth, segmentHeight, BotScript.CELL_B_TEXT,
+            segment(l, t, anim, secondX, segmentY, segmentWidth, segmentHeight, vote.optionLabel(BotScript.VOTE_CELL_B),
                     usable && selected == BotScript.VOTE_CELL_B, usable, live, i, 1,
                     mouseX, mouseY, sink, KEY_BASE + 141 + i * 2);
         }
@@ -412,19 +419,25 @@ final class WorkspaceBotPanel {
         return y + BotScript.VOTES.length * rowHeight + l.s(SECTION_GAP);
     }
 
-    /** Образцы шерсти: так бот выведет цвета команд, когда прочитает меню выбора. */
+    /** Only colors received from a team-menu snapshot; never display the reference palette as teams. */
     private void swatchSection(WorkspaceLayout l, WorkspaceTheme t, MenuAnim anim,
                                float x, float y, float width, float mouseX, float mouseY,
                                float viewTop, float viewBottom) {
         y = sectionTitle(l, t, x, y, width, IconGlyphs.COSMETICA, false, teamTitle(), teamHint());
 
-        int[] colors = BotScript.WOOL_COLORS;
+        BedWarsBot bot = BedWarsBot.INSTANCE;
+        int count = bot.detectedTeamColorCount();
+        if (count == 0) {
+            MenuDraw.textMid(MenuDraw.ellipsize(teamWaitCaption(), Weight.MEDIUM, l.s(11), width),
+                    x, y, l.s(32), Weight.MEDIUM, l.s(11), t.muted);
+            return;
+        }
         int perRow = 8;
         float gap = l.s(SWATCH_GAP);
         float swatch = Math.min(l.s(SWATCH), (width - gap * 7) / 8);
         int hovered = -1;
 
-        for (int i = 0; i < colors.length; i++) {
+        for (int i = 0; i < count; i++) {
             int column = i % perRow;
             int row = i / perRow;
             float cellX = x + column * (swatch + gap);
@@ -438,7 +451,7 @@ final class WorkspaceBotPanel {
                 hovered = i;
             }
             float hover = anim.to(KEY_BASE + 200 + i, over ? 1.0F : 0.0F, 20.0F);
-            MenuDraw.round(cellX, cellY, swatch, swatch, l.s(6.0F), colors[i]);
+            MenuDraw.round(cellX, cellY, swatch, swatch, l.s(6.0F), BotScript.WOOL_COLORS[bot.detectedTeamColorAt(i)]);
             MenuDraw.outline(cellX, cellY, swatch, swatch, l.s(6.0F),
                     MenuDraw.a(t.text, (int) (30 + 90 * hover)));
             if (hover > 0.02F) {
@@ -448,10 +461,10 @@ final class WorkspaceBotPanel {
         }
 
         float captionY = y + 2.0F * (swatch + gap) + l.s(2.0F);
-        String caption = hovered >= 0 ? BotScript.woolName(hovered) : teamWaitCaption();
-        MenuDraw.textCenterMid(MenuDraw.ellipsize(caption, Weight.MEDIUM, l.s(9.0F), width),
-                x + width * 0.5F, captionY, l.s(CAPTION), Weight.MEDIUM, l.s(9.0F),
-                hovered >= 0 ? t.text : t.dim);
+        String caption = hovered >= 0 ? BotScript.woolName(bot.detectedTeamColorAt(hovered)) : L("Цвета из меню выбора команды", "Colors from team selection menu");
+        MenuDraw.textCenterMid(MenuDraw.ellipsize(caption, Weight.MEDIUM, l.s(10.0F), width),
+                x + width * 0.5F, captionY, l.s(CAPTION), Weight.MEDIUM, l.s(10.0F),
+                hovered >= 0 ? t.text : t.muted);
     }
 
     // ---- правая колонка: управление
@@ -469,7 +482,7 @@ final class WorkspaceBotPanel {
         WorkspaceDraw.pane(x, y, w, h, radius, t);
 
         float head = l.s(HEAD);
-        MenuDraw.textMid(controlTitle(), x + pad, y, head, Weight.BOLD, l.s(12.5F), t.text);
+        MenuDraw.textMid(controlTitle(), x + pad, y, head, Weight.MEDIUM, l.s(12.5F), t.text);
         WorkspaceDraw.divider(l, x + pad, y + head - l.line(), w - pad * 2.0F, t);
 
         float viewTop = y + head;
@@ -545,7 +558,7 @@ final class WorkspaceBotPanel {
             MenuDraw.textMid(MenuDraw.ellipsize(shown.isEmpty() ? "—" : shown, Weight.MEDIUM, font,
                             boxWidth - l.s(12.0F)),
                     boxX + l.s(6.0F), boxY, boxHeight, Weight.MEDIUM, font,
-                    shown.isEmpty() ? t.dim : t.text);
+                    shown.isEmpty() ? t.muted : t.text);
             if (editing) {
                 float caretX = boxX + l.s(6.0F)
                         + Math.min(boxWidth - l.s(12.0F), MenuDraw.textWidth(shown, Weight.MEDIUM, font))
@@ -569,7 +582,7 @@ final class WorkspaceBotPanel {
         if (y + height >= viewTop - l.s(2.0F) && y <= viewBottom + l.s(2.0F)) {
             float font = l.s(10.5F);
             MenuDraw.textMid(countLabel(), x, y, l.s(20.0F), Weight.MEDIUM, font, t.text);
-            MenuDraw.textRight(BotConfig.botCountText(), x + width, y, Weight.SEMIBOLD, font, t.text);
+            MenuDraw.textRight(BotConfig.botCountText(), x + width, y, Weight.MEDIUM, font, t.text);
 
             int count = BotConfig.nicknameCount();
             float ratio = (count - BotScript.MIN_BOTS)
@@ -590,8 +603,8 @@ final class WorkspaceBotPanel {
                     MenuDraw.a(t.accent2, 170));
 
             String preview = BotConfig.nicknamePreview();
-            MenuDraw.textMid(MenuDraw.ellipsize(preview, Weight.MEDIUM, l.s(8.5F), width),
-                    x, y + l.s(34.0F), l.s(12.0F), Weight.MEDIUM, l.s(8.5F), t.dim);
+            MenuDraw.textMid(MenuDraw.ellipsize(preview, Weight.MEDIUM, l.s(10.0F), width),
+                    x, y + l.s(34.0F), l.s(12.0F), Weight.MEDIUM, l.s(10.0F), t.muted);
 
             if (live) {
                 sink.hit(HIT_SLIDER, FIELD_COUNT, 0, x, y + l.s(20.0F), width, l.s(22.0F));
@@ -662,10 +675,10 @@ final class WorkspaceBotPanel {
         }
 
         int color = primary ? MenuDraw.a(t.onAccent, enabled ? 255 : 150)
-                : enabled ? MenuDraw.mix(t.muted, t.text, hover) : t.dim;
+                : enabled ? MenuDraw.mix(t.muted, t.text, hover) : t.muted;
         float font = l.s(10.0F);
         float iconSize = l.s(11.0F);
-        float textWidth = MenuDraw.textWidth(label, Weight.SEMIBOLD, font);
+        float textWidth = MenuDraw.textWidth(label, Weight.MEDIUM, font);
         float total = iconSize + l.s(6.0F) + textWidth;
         float startX = x + (width - total) * 0.5F;
         if (letters) {
@@ -673,7 +686,7 @@ final class WorkspaceBotPanel {
         } else {
             MenuDraw.iconCs(glyph, startX + iconSize * 0.5F, y + height * 0.5F, iconSize, color);
         }
-        MenuDraw.textMid(label, startX + iconSize + l.s(6.0F), y, height, Weight.SEMIBOLD, font, color);
+        MenuDraw.textMid(label, startX + iconSize + l.s(6.0F), y, height, Weight.MEDIUM, font, color);
 
         if (live && enabled) {
             sink.hit(hitType, 0, 0, x, y, width, height);
@@ -696,13 +709,13 @@ final class WorkspaceBotPanel {
                 MenuDraw.outline(x, y, width, height, l.s(9), MenuDraw.a(accent, 100));
                 MenuDraw.round(x + l.s(8), y + l.s(9), l.s(27), l.s(27), l.s(8), MenuDraw.a(accent, 45));
                 MenuDraw.iconCs(IconGlyphs.PLAYER, x + l.s(21.5F), y + l.s(22.5F), l.s(15), accent);
-                MenuDraw.textMid(MenuDraw.ellipsize(bot.nickname(i), Weight.SEMIBOLD, l.s(11), width - l.s(54)),
-                        x + l.s(43), y + l.s(8), l.s(15), Weight.SEMIBOLD, l.s(11), t.text);
+                MenuDraw.textMid(MenuDraw.ellipsize(bot.nickname(i), Weight.MEDIUM, l.s(11), width - l.s(54)),
+                        x + l.s(43), y + l.s(8), l.s(15), Weight.MEDIUM, l.s(11), t.text);
                 MenuDraw.textMid(bot.status(i).label(), x + l.s(43), y + l.s(23), l.s(14),
-                        Weight.MEDIUM, l.s(9), bot.status(i).color());
+                        Weight.MEDIUM, l.s(10), bot.status(i).color());
                 if (!BotAppearance.compact(i)) {
                     MenuDraw.textMid("mc.musteryworld.net · DEMO", x + l.s(10), y + l.s(38), l.s(15),
-                            Weight.MEDIUM, l.s(8), t.dim);
+                            Weight.MEDIUM, l.s(10), t.muted);
                 }
                 float controlsY = y + height - l.s(23);
                 float cell = (width - l.s(20)) / 4;
@@ -711,7 +724,7 @@ final class WorkspaceBotPanel {
                 cardControl(l, t, x + l.s(8) + cell * 2, controlsY, cell,
                         BotAppearance.notifications(i) ? L("Увед. +", "Alerts on") : L("Увед. −", "Alerts off"), i, 2, live, sink);
                 MenuDraw.textCenterMid(L("Тест !", "Test !"), x + l.s(8) + cell * 3.5F, controlsY, l.s(18),
-                        Weight.MEDIUM, l.s(8), t.danger);
+                        Weight.MEDIUM, l.s(10), t.danger);
                 if (live) sink.hit(HIT_TEST_ERROR, i, 0, x + l.s(8) + cell * 3, controlsY, cell, l.s(18));
             }
             y += height + l.s(8);
@@ -722,7 +735,7 @@ final class WorkspaceBotPanel {
     private void cardControl(WorkspaceLayout l, WorkspaceTheme t, float x, float y, float w,
                              String title, int bot, int option, boolean live, WorkspaceSettings.Sink sink) {
         MenuDraw.round(x, y, w - l.s(3), l.s(18), l.s(5), t.inset);
-        MenuDraw.textCenterMid(title, x + (w - l.s(3)) * 0.5F, y, l.s(18), Weight.MEDIUM, l.s(8), t.muted);
+        MenuDraw.textCenterMid(title, x + (w - l.s(3)) * 0.5F, y, l.s(18), Weight.MEDIUM, l.s(10), t.muted);
         if (live) sink.hit(HIT_APPEARANCE, bot, option, x, y, w - l.s(3), l.s(18));
     }
 
@@ -733,7 +746,7 @@ final class WorkspaceBotPanel {
         y += l.s(22);
         partyLine(l, t, x, y, width, L("Приглашён", "Invited"), bot.invitedOwner());
         y += l.s(22);
-        MenuDraw.textMid(L("Участники (демо)", "Members (demo)"), x, y, l.s(22), Weight.MEDIUM, l.s(9), t.dim);
+        MenuDraw.textMid(L("Участники (демо)", "Members (demo)"), x, y, l.s(22), Weight.MEDIUM, l.s(10), t.muted);
         y += l.s(22);
         for (int i = 0; i < bot.partySize(); i++) {
             partyLine(l, t, x, y, width, i == 0 ? L("Лидер", "Leader") : L("Участник", "Member"), bot.partyMember(i));
@@ -743,9 +756,9 @@ final class WorkspaceBotPanel {
     }
 
     private void partyLine(WorkspaceLayout l, WorkspaceTheme t, float x, float y, float w, String label, String value) {
-        MenuDraw.textMid(label, x, y, l.s(22), Weight.MEDIUM, l.s(9), t.dim);
-        MenuDraw.textRight(MenuDraw.ellipsize(value, Weight.SEMIBOLD, l.s(9), w * 0.55F),
-                x + w, y + l.s(6), Weight.SEMIBOLD, l.s(9), t.text);
+        MenuDraw.textMid(label, x, y, l.s(22), Weight.MEDIUM, l.s(10), t.muted);
+        MenuDraw.textRight(MenuDraw.ellipsize(value, Weight.MEDIUM, l.s(10), w * 0.55F),
+                x + w, y + l.s(6), Weight.MEDIUM, l.s(10), t.text);
     }
 
     /** Non-modal result banner. All successful operations here are explicitly demo operations. */
@@ -757,8 +770,8 @@ final class WorkspaceBotPanel {
         int color = BedWarsBot.INSTANCE.noticeError() ? t.danger : t.accent2;
         MenuDraw.round(l.contentX, y, w, l.s(32), l.s(8), t.window);
         MenuDraw.outline(l.contentX, y, w, l.s(32), l.s(8), MenuDraw.a(color, 180));
-        MenuDraw.textMid(MenuDraw.ellipsize(message, Weight.SEMIBOLD, l.s(10), w - l.s(24)),
-                l.contentX + l.s(12), y, l.s(32), Weight.SEMIBOLD, l.s(10), color);
+        MenuDraw.textMid(MenuDraw.ellipsize(message, Weight.MEDIUM, l.s(10), w - l.s(24)),
+                l.contentX + l.s(12), y, l.s(32), Weight.MEDIUM, l.s(10), color);
     }
 
     /** Консоль журнала: строки готовит {@link BedWarsBot}, панель их только показывает. */
@@ -778,11 +791,11 @@ final class WorkspaceBotPanel {
 
         if (shown == 0) {
             MenuDraw.textCenterMid(logEmpty(), x + width * 0.5F, y, rowHeight * LOG_LINES + l.s(8.0F),
-                    Weight.MEDIUM, l.s(9.0F), t.dim);
+                    Weight.MEDIUM, l.s(10.0F), t.muted);
             return;
         }
 
-        float font = l.s(8.5F);
+        float font = l.s(10.0F);
         for (int i = 0; i < shown; i++) {
             float rowY = y + l.s(4.0F) + (shown - 1 - i) * rowHeight;
             if (rowY + rowHeight < viewTop - l.s(2.0F) || rowY > viewBottom + l.s(2.0F)) {
@@ -790,9 +803,9 @@ final class WorkspaceBotPanel {
             }
             String stamp = bot.logStamp(i);
             MenuDraw.textMid(stamp, x + l.s(6.0F), rowY, rowHeight, Weight.MEDIUM, font,
-                    MenuDraw.a(t.dim, 170));
+                    MenuDraw.a(t.muted, 170));
             float stampWidth = MenuDraw.textWidth(stamp, Weight.MEDIUM, font) + l.s(10.0F);
-            int lineColor = MenuDraw.mix(t.dim, t.text, i == 0 ? 1.0F : 0.35F);
+            int lineColor = MenuDraw.mix(t.muted, t.text, i == 0 ? 1.0F : 0.35F);
             MenuDraw.textMid(MenuDraw.ellipsize(bot.logLine(i), Weight.MEDIUM, font,
                             Math.max(l.s(30.0F), width - stampWidth - l.s(10.0F))),
                     x + l.s(6.0F) + stampWidth, rowY, rowHeight, Weight.MEDIUM, font, lineColor);
@@ -821,11 +834,11 @@ final class WorkspaceBotPanel {
         } else {
             MenuDraw.iconCs(glyph, iconX, iconY, iconSize, iconColor);
         }
-        MenuDraw.textMid(title, x + iconSize + l.s(8.0F), y, height, Weight.SEMIBOLD, l.s(10.5F), t.text);
-        MenuDraw.textRight(MenuDraw.ellipsize(hint, Weight.MEDIUM, l.s(8.5F),
-                        Math.max(l.s(30.0F), width - MenuDraw.textWidth(title, Weight.SEMIBOLD, l.s(10.5F))
+        MenuDraw.textMid(title, x + iconSize + l.s(8.0F), y, height, Weight.MEDIUM, l.s(10.5F), t.text);
+        MenuDraw.textRight(MenuDraw.ellipsize(hint, Weight.MEDIUM, l.s(10.0F),
+                        Math.max(l.s(30.0F), width - MenuDraw.textWidth(title, Weight.MEDIUM, l.s(10.5F))
                                 - iconSize - l.s(20.0F))),
-                x + width, y + (height - l.s(9.0F)) * 0.5F, Weight.MEDIUM, l.s(8.5F), t.dim);
+                x + width, y + (height - l.s(9.0F)) * 0.5F, Weight.MEDIUM, l.s(10.0F), t.muted);
         return y + height;
     }
 
@@ -834,8 +847,8 @@ final class WorkspaceBotPanel {
                             float right, float y, float height) {
         BedWarsBot bot = BedWarsBot.INSTANCE;
         String label = bot.isRunning() ? bot.stage().label() : stoppedLabel();
-        int color = bot.isRunning() ? BotStatus.CONNECTING.color() : t.dim;
-        float font = l.s(8.5F);
+        int color = bot.isRunning() ? BotStatus.CONNECTING.color() : t.muted;
+        float font = l.s(10.0F);
         float width = MenuDraw.textWidth(label, Weight.MEDIUM, font) + l.s(24.0F);
         float x = right - width;
 
@@ -860,8 +873,8 @@ final class WorkspaceBotPanel {
         MenuDraw.round(x, y, width, height, height * 0.5F, background);
         MenuDraw.outline(x, y, width, height, height * 0.5F,
                 selected ? MenuDraw.a(t.accent, 160) : enabled ? t.border : MenuDraw.a(t.text, t.light ? 12 : 8));
-        MenuDraw.textCenterMid(label, x + width * 0.5F, y, height, Weight.SEMIBOLD, l.s(9.5F),
-                selected ? (t.light ? t.accent : t.accent2) : enabled ? t.muted : t.dim);
+        MenuDraw.textCenterMid(label, x + width * 0.5F, y, height, Weight.MEDIUM, l.s(10.0F),
+                selected ? (t.light ? t.accent : t.accent2) : enabled ? t.muted : t.muted);
         if (live && enabled) {
             sink.hit(HIT_VOTE, vote, cell, x, y, width, height);
         }
@@ -872,10 +885,14 @@ final class WorkspaceBotPanel {
         return switch (availability) {
             case NOW -> t.accent2;
             case LATER -> LATER_COLOR;
-            case NEVER -> t.dim;
-            case EMPTY -> MenuDraw.a(t.dim, 90);
+            case NEVER -> t.muted;
+            case EMPTY -> MenuDraw.a(t.muted, 90);
         };
     }
+
+    // All text in this panel uses Weight.MEDIUM: MenuText resolves it to the
+    // same InterBoldHelper.forWeight(500) face as Skycore module names.
+    // Measurements and ellipsis use the identical face and point size.
 
     // ---- подписи (язык клиента)
 
@@ -932,7 +949,7 @@ final class WorkspaceBotPanel {
     }
 
     private static String voteHint() {
-        return L("ячейка 12 или 14", "cell 12 or 14");
+        return L("выберите ответ", "choose an answer");
     }
 
     private static String teamTitle() {
@@ -944,7 +961,7 @@ final class WorkspaceBotPanel {
     }
 
     private static String teamWaitCaption() {
-        return L("Образцы шерсти · меню сервера не читалось", "Wool samples · server menu not read");
+        return L("Ожидание данных меню выбора команды", "Waiting for team selection menu data");
     }
 
     private static String controlTitle() {

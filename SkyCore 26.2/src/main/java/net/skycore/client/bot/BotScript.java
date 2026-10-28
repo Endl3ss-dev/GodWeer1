@@ -192,14 +192,14 @@ public final class BotScript {
      * Голосования в меню игры.
      *
      * <p>Ячейка 12 — первый вариант, ячейка 14 — второй:
-     * элитры (с элитрами / без), PvP (1.8 / 1.12), ресурсы (1.8 / 1.12).
+     * элитры (с элитрами / без), PvP (1.8 / 1.12), ресурсы (виртуальный / классика).
      * Голосования за время суток и время игры в задаче помечены «позже».
      */
     public static final Vote[] VOTES = {
             new Vote("Элитры", "Elytra", "с элитрами", "with elytra", "без элитр", "no elytra",
                     Availability.NOW),
-            new Vote("PvP", "PvP", "1.8", "1.8", "1.12", "1.12", Availability.NOW),
-            new Vote("Ресурсы", "Resources", "1.8", "1.8", "1.12", "1.12", Availability.NOW),
+            new Vote("PvP", "PvP", "PvP 1.8", "PvP 1.8", "PvP 1.12", "PvP 1.12", Availability.NOW),
+            new Vote("Ресурсы", "Resources", "Виртуальный", "Virtual", "Классика", "Classic", Availability.NOW),
             new Vote("Время суток", "Daytime", "—", "—", "—", "—", Availability.LATER),
             new Vote("Время игры", "Game time", "—", "—", "—", "—", Availability.LATER),
     };

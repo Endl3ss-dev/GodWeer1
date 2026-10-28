@@ -212,6 +212,7 @@ public final class BedWarsBot {
         this.sessionOwner = BotConfig.ownerNick;
         for (int i = 0; i < activeBots; i++) sessionNames[i] = BotConfig.nickname(i);
         this.stage = BotStage.CONNECT;
+        this.teamColors = new int[0];
         for (int i = 0; i < this.statuses.length; i++) {
             this.statuses[i] = i < this.activeBots ? BotStatus.QUEUED : BotStatus.IDLE;
         }
@@ -229,6 +230,7 @@ public final class BedWarsBot {
         this.activeBots = 0;
         this.activeBotsText = "0";
         this.stage = BotStage.IDLE;
+        this.teamColors = new int[0];
         for (int i = 0; i < this.statuses.length; i++) {
             this.statuses[i] = BotStatus.IDLE;
         }
@@ -377,16 +379,32 @@ public final class BedWarsBot {
                 prefixRu("Ожидание начала партии", "Waiting for the match to start"));
     }
 
-    /**
-     * Цвета команд, прочитанные ботом в меню выбора команды.
-     *
-     * <p>Заглушка возвращает {@code null}: настоящих данных ещё нет, и интерфейс
-     * показывает сетку образцов {@link BotScript#WOOL_COLORS} с подписью, что чтение
-     * не выполнялось. Реализация должна вернуть индексы красок, которые бот увидел.
+    private int[] teamColors = new int[0];
+
+    /** Accept only a snapshot from the team-selection menu, never infer teams from
+     * players, beds or reference palette. Protocol/menu reader remains unimplemented.
+     * Must be called on the client thread by that future reader.
      */
-    public int[] detectedTeamColors() {
-        return null;
+    public void acceptTeamMenuColors(String title, int[] woolIndices) {
+        if (!running || stage != BotStage.TEAM_COLORS) return;
+        if (!("Выбор команды".equals(title) || "Выбор команд".equals(title)
+                || "Team selection".equals(title))) return;
+        if (woolIndices == null) { teamColors = new int[0]; return; }
+        boolean[] seen = new boolean[16];
+        int count = 0;
+        for (int index : woolIndices) if (index >= 0 && index < 16 && !seen[index]) {
+            seen[index] = true;
+            count++;
+        }
+        int[] snapshot = new int[count];
+        int next = 0;
+        for (int index = 0; index < seen.length; index++) if (seen[index]) snapshot[next++] = index;
+        teamColors = snapshot;
     }
+
+    public int[] detectedTeamColors() { return teamColors.clone(); }
+    public int detectedTeamColorCount() { return teamColors.length; }
+    public int detectedTeamColorAt(int index) { return teamColors[index]; }
 
     // ---- внутреннее
 

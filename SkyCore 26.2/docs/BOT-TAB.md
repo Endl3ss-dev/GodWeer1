@@ -28,8 +28,8 @@ Stop returns all bots to idle. Nothing advances automatically in the client tick
 
 The scenario describes server cells 8 → 11, party commands, category hotbar slot 3
 and cells 11 → 10, waiting for Eye of Ender, team wool colors and votes 12 / 14.
-Resource vote labels 1.8 / 1.12 follow the user's description; their server meaning
-has not been verified. The wool palette is a reference, NOT detected server data.
+Resource vote answers are Virtual / Classic; PvP answers are PvP 1.8 / PvP 1.12. The UI shows no team colors until a team-selection menu snapshot is received.
+The menu reader is still a stub: demo steps never manufacture team colors.
 
 ## Per-bot cards and customization
 
@@ -133,7 +133,7 @@ in an existing launcher installation. The previous branch name pointed elsewhere
 
 ## Verification and limitations
 
-`python tools/check_bot_ui.py` runs eight **static** regression checks: Java syntax
+`python tools/check_bot_ui.py` runs eleven **static** regression checks: Java syntax
 (tree-sitter), internal panel call arities, vote-loading normalization, fixed
 endpoint/slots, password masking wrapper ZIP integrity/configuration, and Skycore navigation/input/palette integration.
 Requires `pip install tree-sitter tree-sitter-java`.
@@ -159,3 +159,19 @@ PowerShell execution and Minecraft rendering have not been verified in the sandb
 Own implementation on existing SkyCore Workspace primitives (no external bot code).
 Official wrapper: https://github.com/gradle/gradle/blob/v9.7.1/gradle/wrapper/gradle-wrapper.jar
 Official distribution: https://github.com/gradle/gradle-distributions/releases/tag/v9.7.1
+
+## Timeline and readability fixes
+
+- Connection is displayed as step 1 (IDLE is not a displayed numbered step).
+- A two-second time-based sine animates both the current marker radius and its halo;
+  disabling menu animations freezes the pulse at a stable size.
+- The rail is one continuous track; its filled length interpolates to the current
+  step using a frame-rate-aware spring. It does not advance without completed steps.
+- Vote buttons contain full answers, not inventory slot IDs; internal IDs 12/14 stay
+  unchanged for the future menu reader. Unavailable votes say Later.
+- Panel text uses the same Inter Medium face as Skycore module names (forWeight(500)),
+  with larger small text and matching measurements/ellipsis, without global font edits.
+- Team colors come only from acceptTeamMenuColors during TEAM_COLORS with a recognized
+  team-menu title. Values are validated, deduplicated and copied; the snapshot persists
+  for the session and is cleared on start/stop. No snapshots are currently supplied
+  because the network/menu reader is not implemented. Empty state is explicit.
