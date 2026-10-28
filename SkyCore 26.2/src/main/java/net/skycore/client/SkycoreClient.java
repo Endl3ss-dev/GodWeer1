@@ -7,6 +7,8 @@ import net.fabricmc.fabric.api.client.rendering.v1.level.LevelRenderEvents;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.skycore.client.account.AccountManager;
+import net.skycore.client.bot.BedWarsBot;
+import net.skycore.client.bot.BotConfig;
 import net.skycore.client.command.CommandManager;
 import net.skycore.client.config.ConfigManager;
 import net.skycore.client.config.MacroManager;
@@ -90,6 +92,9 @@ public final class SkycoreClient implements ClientModInitializer {
       // Оформление перенесённого меню живёт отдельным файлом: общий конфиг описывает
       // модули, их настройки и темы, и менять его формат ради меню не нужно.
       MenuPrefs.load();
+      // Настройки бота BedWars — тоже отдельный файл (skycore/bot.json): бот не модуль,
+      // поэтому в формат пользовательских конфигов он не подмешивается.
+      BotConfig.load();
       commands = new CommandManager();
       interfaceRenderer = new HudRenderer(MODULES, config);
       Minecraft instance = Minecraft.getInstance();
@@ -174,6 +179,10 @@ public final class SkycoreClient implements ClientModInitializer {
    private void onEndTick(Minecraft minecraft) {
       SpoofElytraAsChestplateHelper.tick();
       SynchronizeHelper.synchronize();
+      // Привод сценария бота BedWars. Сейчас метод пуст (заглушка), но вызывается
+      // именно отсюда: настоящая реализация будет опрашивать подключения и переводить
+      // ботов между этапами, и для этого ей нужен один такт на клиентский тик.
+      BedWarsBot.INSTANCE.tick();
       if (minecraft.gui.screen() == null) {
          long windowHandle = minecraft.getWindow().handle();
 
