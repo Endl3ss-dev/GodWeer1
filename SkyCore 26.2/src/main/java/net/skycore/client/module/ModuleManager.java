@@ -28,6 +28,8 @@ import net.skycore.client.module.combat.CriticalsModule;
 import net.skycore.client.module.combat.ElytraTargetModule;
 import net.skycore.client.module.combat.FakePlayerModule;
 import net.skycore.client.module.combat.ItemSwapModule;
+import net.skycore.client.module.combat.SpearDashModule;
+import net.skycore.client.module.combat.SpearExploitModule;
 import net.skycore.client.module.combat.TargetPearlModule;
 import net.skycore.client.module.combat.TriggerBotModule;
 import net.skycore.client.module.misc.AutoDuelModule;
@@ -188,6 +190,8 @@ public final class ModuleManager {
       this.trialRegister(AutoSwapModule.INSTANCE);
       this.trialRegister(AutoExplosionModule.INSTANCE);
       this.trialRegister(new AutoMaceModule());
+      this.trialRegister(new SpearDashModule());
+      this.trialRegister(new SpearExploitModule());
       this.trialRegister(new AttackAuraModule());
       this.trialRegister(AntiBotModule.INSTANCE);
       this.trialRegister(AntiThornsModule.INSTANCE);
