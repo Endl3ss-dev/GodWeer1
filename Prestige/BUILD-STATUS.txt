@@ -1,0 +1,9 @@
+Original client classes: 544/544
+Original methods: 10406
+Original fields: 4829
+Compiler call aliases removed: 43978
+Restored invocation/constant instructions: 44003
+Additional Java control-flow/support methods: 5457
+Additional compiler fields: 0
+Class file target: Java 21 (65)
+Case-preserving class entries: 557

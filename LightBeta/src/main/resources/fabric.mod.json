@@ -1,0 +1,28 @@
+{
+  "schemaVersion": 1,
+  "id": "light",
+  "version": "${version}",
+  "name": "mod-menu-api",
+  "description": "",
+  "authors": [
+    "BellienSystem",
+    "CrIzIs"
+  ],
+  "contact": {},
+  "license": "All-Rights-Reserved",
+  "environment": "*",
+  "accessWidener": "light.accesswidener",
+  "mixins": [
+    "light-client.mixins.json"
+  ],
+  "entrypoints": {
+    "preLaunch": [
+      "tech.lightclient.ModCleanup"
+    ]
+  },
+  "depends": {
+    "minecraft": "~1.21.11",
+    "java": ">=21",
+    "fabric-api": "*"
+  }
+}

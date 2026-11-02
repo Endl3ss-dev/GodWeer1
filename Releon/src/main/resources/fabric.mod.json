@@ -1,0 +1,52 @@
+{
+  "schemaVersion": 1,
+  "id": "releon-tech",
+  "version": "1.0.0",
+  "name": "Releon-Tech",
+  "description": "This is an example description! Tell everyone what your mod is about!",
+  "authors": [
+    "Me!"
+  ],
+  "contact": {
+    "homepage": "https://fabricmc.net/",
+    "sources": "https://github.com/FabricMC/fabric-example-mod"
+  },
+  "license": "CC0-1.0",
+  "icon": "assets/releon/ui/icon.png",
+  "environment": "client",
+  "entrypoints": {
+    "main": [
+      "releon.ru.Engine"
+    ],
+    "client": [
+      "releon.ru.Engine"
+    ]
+  },
+  "accessWidener": "releon-tech.accesswidener",
+  "mixins": [
+    "mixins.json"
+  ],
+  "depends": {
+    "fabricloader": "\u003e\u003d0.19.2",
+    "minecraft": "1.21.11",
+    "java": "\u003e\u003d21",
+    "fabric-api": "*"
+  },
+  "jars": [
+    {
+      "file": "META-INF/jars/jna-5.14.0.jar"
+    },
+    {
+      "file": "META-INF/jars/jna-platform-5.14.0.jar"
+    },
+    {
+      "file": "META-INF/jars/media-player-info-0.1.0.jar"
+    },
+    {
+      "file": "META-INF/jars/netty-codec-socks-4.2.7.Final.jar"
+    },
+    {
+      "file": "META-INF/jars/netty-handler-proxy-4.2.7.Final.jar"
+    }
+  ]
+}
