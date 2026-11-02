@@ -1,0 +1,8 @@
+PatPat 1.3.1+1.21.4+fabric
+
+Copyright: LopyMine, nikita51
+License: LGPL-3.0-only (see LICENSE_PatPat in this directory and the bundled PatPat JAR)
+Upstream source: https://github.com/LopyMine/PatPat/tree/4fea59411e3c4938229e733ed80dbd06d31ae8e1
+Readable source snapshot in this repository: DeobfPatPat/src/main/
+
+Swerve bundles the original, unmodified PatPat JAR as a nested Fabric mod. Swerve's PatPatModule is a separate adapter that toggles PatPat's existing client enabled setting.

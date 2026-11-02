@@ -1,0 +1,63 @@
+{
+	"required": true,
+	"package": "net.lopymine.patpat.mixin",
+	"refmap": "${mod_id}.refmap.json",
+	"compatibilityLevel": "JAVA_${java}",
+	"plugin": "net.lopymine.patpat.compat.PatPatMixinConfigPlugin",
+	"mixins": [],
+	"client": [
+		"EntityRendererMixin",
+		"LivingEntityRendererMixin",
+		/*? if =1.16.5*/
+		//"TitleScreenMixin",
+		/*? if >=1.21.2*/
+		"EntityRenderStateMixin",
+		/*? if <1.19.3*/
+		//"ScreenMixin",
+		"MinecraftClientMixin",
+		"CameraMixin",
+		"AbstractClientPlayerEntityMixin",
+		"KeyEntryMixin",
+		"KeybindingMixin",
+		"KeyboardHandlerMixin",
+		"KeyBindsScreenMixin",
+
+        //? if >=1.19.4 {
+        "KeyBindsScreenAccessor",
+        //?}
+
+		//? if forge {
+		/*"forge.MinecraftMixin",
+		*///?}
+
+		//? if fabric {
+		"ModMenuMixin",
+		//?}
+
+		//? if <=1.21.10 {
+		/*"GameRendererMixin",
+		*///?} else {
+		"LocalPlayerMixin",
+		//?}
+
+		/*? if >=1.21.9 {*/
+		"LevelRendererMixin",
+		"FeatureRenderDispatcherMixin",
+		/*?}*/
+
+		"EntityMixin",
+		"EnderDragonRendererMixin",
+		"MultiPlayerGameModeMixin",
+
+		"tests.WindowMixin",
+		"tests.KeyboardHandlerMixin",
+		"tests.KeyboardHandlerInvoker",
+		"tests.MouseHandlerMixin",
+		"tests.MouseHandlerInvoker",
+		"tests.AbstractSelectionListInvoker",
+		"KeyMappingAccessor"
+	],
+	"injectors": {
+		"defaultRequire": 1
+	}
+}

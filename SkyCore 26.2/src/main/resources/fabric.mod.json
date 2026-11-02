@@ -1,0 +1,38 @@
+{
+  "schemaVersion": 1,
+  "id": "skycore",
+  "version": "1.0.0-recovered",
+  "name": "Skycore",
+  "description": "t.me/goonglang t.me/rosetkaqqe t.me/movefix",
+  "authors": [],
+  "license": "All Rights Reserved",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "net.skycore.client.SkycoreClient"
+    ]
+  },
+  "mixins": [
+    "skycore.mixins.json"
+  ],
+  "jars": [
+    {
+      "file": "META-INF/jars/CreativeCore_FABRIC_v2.14.16_mc26.2.jar"
+    },
+    {
+      "file": "META-INF/jars/ItemPhysic_FABRIC_v1.8.15_mc26.2.jar"
+    },
+    {
+      "file": "META-INF/jars/jsvg-2.1.0.jar"
+    }
+  ],
+  "depends": {
+    "fabricloader": ">=0.19.5",
+    "minecraft": "~26.2",
+    "java": ">=25",
+    "fabric-api": "*"
+  },
+  "contact": {
+    "homepage": "https://t.me/goonglang"
+  }
+}

@@ -161,7 +161,12 @@ final class WardrobePage {
         f = Math.max(0, Math.min(1, f));
         int knob = menu.S(10);
         int kx = slx + Math.round((slw - knob) * f);
-        Px.circle(g, kx + knob / 2, ty, knob / 2, MenuScreen.acc());
+        if (MenuPrefs.gradient) {
+            // заполненная часть дорожки — градиент из акцента во второй цвет
+            Px.roundGrad(g, slx, ty - menu.S(2), Math.max(menu.S(4), kx + knob / 2 - slx), menu.S(4), menu.S(2),
+                    MenuScreen.acc(), MenuScreen.acc2());
+        }
+        menu.accentFill(g, kx, ty - knob / 2, knob, knob, knob / 2);
         scaleX = slx;
         scaleW = slw;
         if (!menu.under()) {
@@ -228,7 +233,7 @@ final class WardrobePage {
         int R = menu.S(9);
         Px.round(g, x, y, w, h, R, Px.mix(menu.plate(), lt ? 0xFFFFFFFF : Px.mix(menu.T().bg() | 0xFF000000, 0xFFFFFFFF, .07f), hv));
         if (wa > .001f) {
-            Px.round(g, x, y, w, h, R, Px.a(MenuScreen.acc(), (int) ((lt ? 20 : 32) * wa)));
+            menu.accentWash(g, x, y, w, h, R, (int) ((lt ? 20 : 32) * wa));
         }
         Px.outline(g, x, y, w, h, R,
                 Px.mix(Px.a(menu.T().text(), (int) ((lt ? 20 : 13) + 14 * hv)), Px.a(MenuScreen.acc(), 230), wa));
@@ -247,7 +252,7 @@ final class WardrobePage {
             int ccy = y + menu.S(12) + r;
             float o = Px.fade;
             Px.fade = o * wa;
-            Px.circle(g, ccx, ccy, r, MenuScreen.acc());
+            menu.accentFill(g, ccx - r, ccy - r, r * 2, r * 2, r);
             MenuScreen.glyph(g, "check", ccx - menu.S(6), ccy - menu.S(6), menu.S(12), 0xFFFFFFFF);
             Px.fade = o;
         }

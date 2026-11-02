@@ -6,13 +6,18 @@
 	"mixins": [
 	],
 	"client": [
+		"accessor.AbstractWidgetAccessor",
 		"accessor.GameRendererAccessor",
 		"accessor.LocalPlayerAccessor",
 		"accessor.MouseHandlerAccessor",
 		"accessor.ModelPartAccessor",
+		"client.MixinAbstractButton",
 		"client.MixinAbstractRecipeBookScreen",
+		"client.MixinAbstractSliderButton",
 		"client.MixinChatComponent",
+		"client.MixinCheckbox",
 		"client.MixinClientPacketListener",
+		"client.MixinClientCommonPacketListenerImpl",
 		"client.MixinGui",
 		"client.MixinInputConstants",
 		"client.MixinKeyboardHandler",

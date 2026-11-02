@@ -91,6 +91,8 @@ public final class ViewModel extends Module {
     // из-за опечатки пресет «Плавная» давал не тот выброс.
     private static final double C3 = C1 * 1.525D;
 
+    // [!] Настройки и раскладка рук уже лежат в swerve/viewmodel.json (свой асинхронный
+    // писатель с дебаунсом). Общий конфиг их не дублирует — см. Module.usesOwnConfig.
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
     private static final Path FILE = FabricLoader.getInstance().getConfigDir().resolve("swerve/viewmodel.json");
 
@@ -200,6 +202,11 @@ public final class ViewModel extends Module {
         super.onEnable();
         load();
         lastFrameNanos = System.nanoTime();
+    }
+
+    @Override
+    public boolean usesOwnConfig() {
+        return true;
     }
 
     @Override

@@ -1,11 +1,13 @@
 package swerve.mixins.render;
 
 import swerve.utils.render.spatial.CameraHandle;
+import swerve.utils.rotation.FreeLook;
 import swerve.utils.movement.ElytraFlightRotation;
 import swerve.utils.render.spatial.SpatialCamera;
 
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.level.BlockGetter;
 
@@ -38,7 +40,16 @@ public abstract class MixinCamera implements CameraHandle {
             return;
         }
         ElytraFlightRotation.captureCamera(yaw, pitch);
-        if (ElytraFlightRotation.isActive()) {
+        if (FreeLook.active()) {
+            // [+] Молчаливая ротация ауры: камера смотрит туда, куда её увёл игрок,
+            // тело при этом уже развёрнуто на цель (FreeLookComponent из Private).
+            // Если мышь не двигалась дольше IDLE_BEFORE_FOLLOW_MS, камера плавно
+            // догоняет углы тела — видно, куда бьёт аура; чувствительность не меняется.
+            FreeLook.follow((LocalPlayer) entity,
+                    Minecraft.getInstance().getDeltaTracker().getRealtimeDeltaTicks() / 20.0F);
+            yaw = FreeLook.yaw();
+            pitch = FreeLook.pitch();
+        } else if (ElytraFlightRotation.isActive()) {
             yaw = ElytraFlightRotation.getFreeYaw();
             pitch = ElytraFlightRotation.getFreePitch();
         }

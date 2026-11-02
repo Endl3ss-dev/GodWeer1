@@ -1,0 +1,1 @@
+{"required":true,"package":"net.lopymine.patpat.mixin.controlling","refmap":"patpat.refmap.json","plugin":"net.lopymine.patpat.compat.controlling.ControllingCompatPlugin","compatibilityLevel":"JAVA_21","mixins":[],"client":["KeyBindsScreenAccessor","NewKeyBindsScreenModernMixin","NewKeyEntryMixin"],"injectors":{"defaultRequire":1}}

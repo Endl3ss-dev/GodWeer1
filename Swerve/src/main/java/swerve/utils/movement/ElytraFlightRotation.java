@@ -97,6 +97,14 @@ public final class ElytraFlightRotation {
 
     private static float fixRotate(float delta) {
         float gcd = getGCDValue();
+        // [+] Чувствительность мыши 0% — нижнее значение ползунка, и шаг обнуляется:
+        // round(delta/0)*0 даёт 0.0 по всем осям, rotate() никогда не «догоняет» цель,
+        // а resetting остаётся true — свободная камера и поворот элитры залипают.
+        // Без квантования при нулевом шаге ротация работает как обычно (GcdUtil в
+        // таком состоянии остаётся в безопасности: у него шаг = 0.2^3*8*0.15 > 0).
+        if (!(gcd > 0.0F)) {
+            return delta;
+        }
         return Math.round(delta / gcd) * gcd;
     }
 

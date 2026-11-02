@@ -1,0 +1,104 @@
+//~ client_fabric_commands
+
+package net.lopymine.patpat.client.command.ignore;
+
+import lombok.experimental.ExtensionMethod;
+import net.minecraft.commands.SharedSuggestionProvider;
+import net.minecraft.network.chat.Component;
+import net.minecraft.world.entity.EntityType;
+
+import com.mojang.brigadier.Command;
+import com.mojang.brigadier.builder.LiteralArgumentBuilder;
+import com.mojang.brigadier.context.CommandContext;
+
+import net.lopymine.patpat.client.command.argument.EntityTypeArgumentType;
+import net.lopymine.patpat.client.config.list.PatPatClientIgnoreMobListConfig;
+import net.lopymine.patpat.extension.ClientCommandExtension;
+import net.lopymine.patpat.utils.CommandText;
+import net.lopymine.patpat.utils.VersionedThings;
+
+import java.util.Objects;
+
+//? if forge || neoforge {
+/*import net.minecraft.commands.FabricClientCommandSource;
+*///?} else {
+//? if <1.19 {
+/*import net.fabricmc.fabric.api.client.command.v1.FabricClientCommandSource;
+*///?} else {
+import net.fabricmc.fabric.api.client.command.v2.FabricClientCommandSource;
+ //?}
+//?}
+import static net.lopymine.patpat.client.command.PatPatClientCommandManager.literal;
+import static net.lopymine.patpat.client.command.PatPatClientCommandManager.argument;
+
+@ExtensionMethod(ClientCommandExtension.class)
+public class PatPatClientIgnoreCommand {
+
+	private static final String ENTITY_TYPE_ARGUMENT_NAME = "entity";
+
+	private PatPatClientIgnoreCommand() {
+		throw new IllegalStateException("Command class");
+	}
+
+	public static LiteralArgumentBuilder<FabricClientCommandSource> get() {
+		return literal("ignore")
+				.then(getAdd())
+				.then(getRemove());
+	}
+
+	public static LiteralArgumentBuilder<FabricClientCommandSource> getAdd() {
+		return literal("add")
+				.then(argument(ENTITY_TYPE_ARGUMENT_NAME, EntityTypeArgumentType.entityType())
+						.suggests((context, builder) -> SharedSuggestionProvider
+								.suggestResource(VersionedThings.ENTITY_TYPE.stream()
+												.filter(
+														/*? >1.19.2 {*/entityType -> entityType.isEnabled((context.getSource()).enabledFeatures()) && entityType.canSummon()
+														/*?} else {*/
+														/*EntityType::canSummon
+														*//*?}*/
+												),
+										builder,
+										EntityType::getKey,
+										EntityType::getDescription)
+						)
+						.executes(context -> onIgnoreChange(context, true)));
+	}
+
+	public static LiteralArgumentBuilder<FabricClientCommandSource> getRemove() {
+		return literal("remove")
+				.then(argument(ENTITY_TYPE_ARGUMENT_NAME, EntityTypeArgumentType.entityType())
+						.suggests((context, builder) -> SharedSuggestionProvider
+								.suggestResource(PatPatClientIgnoreMobListConfig.getInstance().getValues().stream().toList(),
+										builder,
+										EntityType::getKey,
+										EntityType::getDescription
+								)
+						)
+						.executes(context -> onIgnoreChange(context, false)));
+	}
+
+	private static int onIgnoreChange(CommandContext<FabricClientCommandSource> context, boolean add) {
+		EntityType<?> entityType = EntityTypeArgumentType.getEntityType(ENTITY_TYPE_ARGUMENT_NAME, context);
+		PatPatClientIgnoreMobListConfig config = PatPatClientIgnoreMobListConfig.getInstance();
+		boolean success = add ? config.addMob(entityType) : config.removeMob(entityType);
+		String entityTypeStringed = Objects.requireNonNull(VersionedThings.ENTITY_TYPE.getKey(entityType)).toString();
+		Component text;
+		if (success) {
+			config.saveAsync();
+			if (add) {
+				text = CommandText.goldenArgs("ignore.add.success", entityTypeStringed).finish();
+			} else {
+				text = CommandText.goldenArgs("ignore.remove.success", entityTypeStringed).finish();
+			}
+		} else {
+			if (add) {
+				text = CommandText.goldenArgs("ignore.add.already", entityTypeStringed).finish();
+			} else {
+				text = CommandText.goldenArgs("ignore.remove.already", entityTypeStringed).finish();
+			}
+		}
+		context.sendMsg(text);
+		return Command.SINGLE_SUCCESS;
+	}
+
+}

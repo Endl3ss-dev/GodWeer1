@@ -34,6 +34,9 @@ public final class ShaderUtils {
     public static final ShaderProgram FACE = register("face", "face", DefaultVertexFormat.POSITION_TEX_COLOR);
     public static final ShaderProgram SCAN_EFFECT = register("sonar", "scan_effect", DefaultVertexFormat.POSITION_TEX);
 
+    /** Живой фон GUI меню: шёлковые ленты в цветах палитры (см. ui/menu/MenuBg). */
+    public static final ShaderProgram MENU_BG = register("menubg", "menubg", DefaultVertexFormat.POSITION_COLOR);
+
     public static final ShaderProgram BLOCK_OVERLAY = register("blockoverlay", "block_overlay", DefaultVertexFormat.POSITION_TEX_COLOR);
     public static final ShaderProgram BLOCK_OVERLAY_BALATRO = register("blockoverlay", "block_overlay_balatro", DefaultVertexFormat.POSITION_TEX_COLOR);
     public static final ShaderProgram BLOCK_OVERLAY_PLASMA = register("blockoverlay", "block_overlay_plasma", DefaultVertexFormat.POSITION_TEX_COLOR);

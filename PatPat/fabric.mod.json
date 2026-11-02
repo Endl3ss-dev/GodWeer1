@@ -1,0 +1,74 @@
+{
+  "schemaVersion": 1,
+  "id": "patpat",
+  "version": "1.3.1+1.21.4+fabric",
+  "name": "PatPat",
+  "description": "Allows you to pat ANY loved and unloved living mobs in Minecraft!",
+  "authors": [
+    "LopyMine, nikita51"
+  ],
+  "contact": {
+    "homepage": "https://modrinth.com/mod/patpat",
+    "sources": "https://github.com/LopyMine/patpat",
+    "issues": "https://github.com/LopyMine/patpat/issues"
+  },
+  "license": "LGPL-3.0-only",
+  "icon": "icon.png",
+  "environment": "*",
+  "entrypoints": {
+    "main": [
+      "net.lopymine.patpat.entrypoint.impl.fabric.FabricCommonEntrypoint"
+    ],
+    "client": [
+      "net.lopymine.patpat.entrypoint.impl.fabric.FabricClientEntrypoint"
+    ],
+    "server": [
+      "net.lopymine.patpat.entrypoint.impl.fabric.FabricDedicatedEntrypoint"
+    ],
+    "modmenu": [
+      "net.lopymine.patpat.modmenu.integration.PatPatModMenuIntegration"
+    ]
+  },
+  "depends": {
+    "fabricloader": "\u003e\u003d0.18.4",
+    "minecraft": "\u003e\u003d1.21.4",
+    "java": "\u003e\u003d21",
+    "fabric-api": "*"
+  },
+  "accessWidener": "aws/fabric-1.21.4.accesswidener",
+  "mixins": [
+    "patpat.mixins.json",
+    "patpat-controlling.mixins.json",
+    "patpat-geckolib.mixins.json"
+  ],
+  "custom": {
+    "translators": {
+      "MrLemonHog": "Українська (Україна) (100%)",
+      "Nuts": "Español (España) (100%)",
+      "Baymaxawa": "简体中文 (中国大陆) (100%)",
+      "alinco8": "日本語 (日本) (99%)",
+      "TastyPommesLul, Clemens Schmidt": "Deutsch (Deutschland) (97%)",
+      "Hamka": "Polski (Polska) (90%)",
+      "승수": "한국어 (대한민국) (41%)",
+      "Balojan": "Tiếng Việt (Việt Nam) (42%)",
+      "Gallium, Matt TCL": "Français (France) (28%)",
+      "hectorg22": "Português (Brasil) (23%)",
+      "okunamayanad": "Türkçe (Türkiye) (23%)",
+      "Valdemras “a game” Chacha": "Lietuvių (Lietuva) (21%)"
+    },
+    "modmenu": {
+      "links": {
+        "modmenu.discord": "https://discord.gg/NZzxdkrV4s",
+        "modmenu.curseforge": "https://www.curseforge.com/minecraft/mc-mods/patpat",
+        "modmenu.modrinth": "https://modrinth.com/mod/patpat",
+        "Weblate": "https://weblate.nik51.name/projects/patpat"
+      },
+      "update_checker": true
+    }
+  },
+  "jars": [
+    {
+      "file": "META-INF/jars/fabric-permissions-api-0.3.3.jar"
+    }
+  ]
+}

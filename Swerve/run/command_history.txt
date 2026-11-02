@@ -1,50 +1,50 @@
-/clan pay 10000000
-/clan pay 1000000
-/clan pay 100000
-/pay sxl3ntlxrdcvrsed 450000000
-/pay sxl3ntlxrdcvrsed 45000000
-/pay sxl3ntlxrdcvrsed 95000000
-/c chat
-/clan chat
-/clan
-/pay sxl3ntlxrdcvrsed 60000000
-/c 1
-/c pay 1
-/c pay 1488
-/c pay 100000000
-/c bal
+/bungee
+/find
+/find wkwdkwdmq
+/find _Su
+/find _SyXaRiK
+/find extremator
+/shop
+/home
+/shop
+/tpa undeadvv
+/shop
+/tpa undeadvv
+/shop
+/tpa undeadvv
+/shop
+/tpa undeadvv
+/home
+/tpa undeadvv
+/shop
+/meow
+/shop
+/home
+/shop
+/tpaccept
+/toggleselfdisguise
+/tpaccept
+/tpa Gay1488_67_pidor
+/shop
+/home
+/tpa Gay1488_67_pidor
+/l wd
+/home
+/shop
+/statistics RedSlime333
+/statistics mali
+/statistics vikusyya
+/statistics Agent__83
+/pay rrrrte45 15
+/pay rrrrte45 100
+/home
+/shop
+/home
+/tpa pengvin1210
+/spawn
+/home
+/hub
+/spawn
 /clan
 /clan info
 /hub
-/clan pay 7000000
-/clan pay 70000000
-/clan pay 13000000
-/clan info
-/ohhh
-/clan pay 9000000
-/clan pay 86000000
-/clan pay 120000000
-/statistics
-/statistics KlausBekker
-/shop
-/statistics KlausBekker
-/tpa Dimon4ik6757
-/l wd
-/statistics KlausBekker
-/l wd
-/statistics KlausBekker
-/pay KlausBekker 45000000
-/balance info
-/clan info
-/statistics KlausBekker
-/clan info
-/statistics KlausBekker
-/clan
-/clan ц
-/party
-/party info
-/m KlausBekker можно на тебе килку протестить? плс
-/c home
-/shop
-/clan
-/shop

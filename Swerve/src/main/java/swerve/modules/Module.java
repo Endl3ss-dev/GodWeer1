@@ -1,5 +1,7 @@
 package swerve.modules;
 
+import swerve.Swerve;
+import swerve.config.ConfigManager;
 import swerve.modules.api.setting.Setting;
 import swerve.utils.client.NotificationManager;
 
@@ -43,6 +45,20 @@ public abstract class Module {
     }
 
     public void setEnabled(boolean state) {
+        applyEnabled(state, true);
+    }
+
+    /**
+     * [+] Восстановление состояния из конфига: без уведомления в чат.
+     *
+     * <p>Иначе каждый запуск клиента начинался бы с пачки сообщений о включении
+     * модулей, которые пользователь включил в прошлой сессии.
+     */
+    public void setEnabledQuiet(boolean state) {
+        applyEnabled(state, false);
+    }
+
+    private void applyEnabled(boolean state, boolean notify) {
         boolean lastState = this.enable;
         this.enable = state;
 
@@ -54,18 +70,43 @@ public abstract class Module {
             }
         } catch (Exception e) {
             this.enable = false;
-            onDisable();
+            try {
+                onDisable();
+            } catch (Exception disableFailure) {
+                // [!] Состояние уже сброшено: падение onDisable не должно уводить исключение наружу,
+                // иначе один сломанный модуль отменит восстановление остальных из конфига.
+                Swerve.LOGGER.warn("Module '{}' failed to disable", this.name, disableFailure);
+            }
+        }
+
+        if (lastState == this.enable) {
+            return;
         }
 
         // Единственная точка тоглов: сюда приходят и бинд, и клик в ClickGui.
-        if (lastState != this.enable) {
+        if (notify) {
             NotificationManager.toggle(this, this.enable);
+            // [+] Состояние поменял пользователь — конфиг нужно переписать.
+            ConfigManager.markDirty();
         }
     }
 
     // Модуль, который сам показывает уведомления, может не сообщать о своём выключении.
     public boolean notifiesOnToggle() {
         return true;
+    }
+
+    /**
+     * [+] Настройки модуля живут в его собственном файле, а не в общем конфиге.
+     *
+     * <p>Так устроен ViewModel: раскладка рук и её настройки пишутся асинхронно в
+     * {@code swerve/viewmodel.json} и читаются в {@code onEnable}. Дублировать их в
+     * {@code config.json} нельзя — при включении модуль всё равно прочитает свой файл
+     * и перезапишет значения, получится два источника правды. Общий конфиг в этом
+     * случае хранит только включённость и бинд.
+     */
+    public boolean usesOwnConfig() {
+        return false;
     }
 
     public void addSettings(Setting... settings) {
