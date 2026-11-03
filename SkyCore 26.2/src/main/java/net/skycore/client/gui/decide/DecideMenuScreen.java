@@ -249,6 +249,7 @@ public final class DecideMenuScreen extends Screen {
     private long closingAt;
     private boolean persistDirty;
     private long lastPersistAt;
+    private boolean frameFailed;
     private final float[] hsv = new float[3];
 
     public DecideMenuScreen(ModuleManager modules, ConfigManager config, ClickGUIModule clickGui) {
@@ -795,23 +796,46 @@ public final class DecideMenuScreen extends Screen {
         BeginFrameHelper.beginFrame();
         this.hitCount = 0;
         try {
-            this.drawEffects();
-            this.drawThemeBar();
-            this.drawPanel();
-            this.drawRail();
-            this.drawSearchBar();
-            this.drawHeaderBar();
-            if (this.active.isSpecial()) {
-                this.drawSpecial();
-            } else {
-                this.drawModuleList();
-                this.drawSettingsPanel();
-            }
-            this.drawParticles();
-            DecideCloseAnimation.queueCaptureMarker();
+            this.drawFrame();
             BeginFrameHelper.flush();
+        } catch (RuntimeException failure) {
+            this.drawFailure(failure);
         } finally {
             CurrentGuiGraphicsExtractorHelper.exit2D();
+        }
+    }
+
+    private void drawFrame() {
+        this.drawEffects();
+        this.drawThemeBar();
+        this.drawPanel();
+        this.drawRail();
+        this.drawSearchBar();
+        this.drawHeaderBar();
+        if (this.active.isSpecial()) {
+            this.drawSpecial();
+        } else {
+            this.drawModuleList();
+            this.drawSettingsPanel();
+        }
+        this.drawParticles();
+        DecideCloseAnimation.queueCaptureMarker();
+    }
+
+    /**
+     * A failure inside one widget must not take the client down with it: the frame is reported once,
+     * the click GUI is closed, and the game keeps running with a chat message instead of a crash
+     * screen. Drawing the rest of the frame here would filter through half-built state.
+     */
+    private void drawFailure(RuntimeException failure) {
+        if (!this.frameFailed) {
+            this.frameFailed = true;
+            SkycoreClient.LOGGER.error("Skycore Decide GUI: frame aborted, closing the menu", failure);
+            ChatMessages.displayError("ClickGUI: ошибка отрисовки, меню закрыто (детали в логе)");
+            this.hitCount = 0;
+            this.particleCount = 0;
+            this.exit = true;
+            this.openAnim.setValue(0.0f);
         }
     }
 
@@ -2178,6 +2202,14 @@ public final class DecideMenuScreen extends Screen {
 
     @Override
     public boolean mouseClicked(MouseButtonEvent event, boolean doubleClick) {
+        try {
+            return this.handleClick(event);
+        } catch (RuntimeException failure) {
+            return this.inputFailed("клик", failure);
+        }
+    }
+
+    private boolean handleClick(MouseButtonEvent event) {
         this.mouseX = (float) event.x();
         this.mouseY = (float) event.y();
         int button = event.button();
@@ -2206,7 +2238,7 @@ public final class DecideMenuScreen extends Screen {
         int hit = this.findHit(event.x(), event.y());
         if (hit < 0) {
             this.blurInputs();
-            return super.mouseClicked(event, doubleClick);
+            return false;
         }
         int type = this.hitType[hit];
         int a = this.hitA[hit];
@@ -2624,17 +2656,33 @@ public final class DecideMenuScreen extends Screen {
 
     @Override
     public boolean mouseReleased(MouseButtonEvent event) {
+        try {
+            return this.handleRelease(event);
+        } catch (RuntimeException failure) {
+            return this.inputFailed("отпускание кнопки", failure);
+        }
+    }
+
+    private boolean handleRelease(MouseButtonEvent event) {
         if (this.draggingSlider != null || this.draggingColor != null) {
             DecideSounds.sliderRelease();
             this.persist();
         }
         this.draggingSlider = null;
         this.draggingColor = null;
-        return super.mouseReleased(event);
+        return true;
     }
 
     @Override
     public boolean mouseDragged(MouseButtonEvent event, double dragX, double dragY) {
+        try {
+            return this.handleDrag(event);
+        } catch (RuntimeException failure) {
+            return this.inputFailed("перетаскивание", failure);
+        }
+    }
+
+    private boolean handleDrag(MouseButtonEvent event) {
         this.mouseX = (float) event.x();
         this.mouseY = (float) event.y();
         if (this.draggingColor instanceof ColorSetting color) {
@@ -2658,11 +2706,40 @@ public final class DecideMenuScreen extends Screen {
         if (this.draggingSlider != null) {
             return true;
         }
-        return super.mouseDragged(event, dragX, dragY);
+        return false;
+    }
+
+    /**
+     * One broken interaction closes the menu instead of the game: the input path touches live module
+     * state, and a half-applied edit is worse than a closed ClickGUI.
+     */
+    private boolean inputFailed(String what, RuntimeException failure) {
+        SkycoreClient.LOGGER.error("Skycore Decide GUI: {} failed, closing the menu", what, failure);
+        ChatMessages.displayError("ClickGUI: ошибка (" + what + "), меню закрыто");
+        this.hitCount = 0;
+        this.bindingModule = null;
+        this.bindingSetting = null;
+        this.editingString = null;
+        this.draggingSlider = null;
+        this.draggingColor = null;
+        this.persistDirty = true;
+        this.flushPersist(System.currentTimeMillis());
+        DecideMusic.stop();
+        this.exit = true;
+        this.openAnim.setValue(0.0f);
+        return true;
     }
 
     @Override
     public boolean mouseScrolled(double mouseX, double mouseY, double horizontal, double vertical) {
+        try {
+            return this.handleScroll(mouseX, mouseY, horizontal, vertical);
+        } catch (RuntimeException failure) {
+            return this.inputFailed("прокрутка", failure);
+        }
+    }
+
+    private boolean handleScroll(double mouseX, double mouseY, double horizontal, double vertical) {
         if (this.exit || this.closing || this.captureArmed) {
             return true;
         }
@@ -2716,11 +2793,19 @@ public final class DecideMenuScreen extends Screen {
             }
             return true;
         }
-        return super.mouseScrolled(mouseX, mouseY, horizontal, vertical);
+        return false;
     }
 
     @Override
     public boolean keyPressed(KeyEvent event) {
+        try {
+            return this.handleKey(event);
+        } catch (RuntimeException failure) {
+            return this.inputFailed("клавиша", failure);
+        }
+    }
+
+    private boolean handleKey(KeyEvent event) {
         int key = event.key();
         if (this.bindingModule != null) {
             boolean reset = key == GLFW.GLFW_KEY_ESCAPE || key == GLFW.GLFW_KEY_DELETE;
@@ -2798,7 +2883,7 @@ public final class DecideMenuScreen extends Screen {
             this.close();
             return true;
         }
-        return super.keyPressed(event);
+        return false;
     }
 
     private StringBuilder activeSpecialBuffer() {
@@ -2816,6 +2901,14 @@ public final class DecideMenuScreen extends Screen {
 
     @Override
     public boolean charTyped(CharacterEvent event) {
+        try {
+            return this.handleChar(event);
+        } catch (RuntimeException failure) {
+            return this.inputFailed("ввод символа", failure);
+        }
+    }
+
+    private boolean handleChar(CharacterEvent event) {
         if (!event.isAllowedChatCharacter()) {
             return false;
         }
@@ -2853,7 +2946,7 @@ public final class DecideMenuScreen extends Screen {
             DecideSounds.type();
             return true;
         }
-        return super.charTyped(event);
+        return false;
     }
 
     private void clearSearch() {
