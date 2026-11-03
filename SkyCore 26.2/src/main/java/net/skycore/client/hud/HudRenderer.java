@@ -13,6 +13,7 @@ import net.minecraft.client.input.MouseButtonInfo;
 import net.minecraft.client.renderer.state.gui.GuiRenderState;
 import net.skycore.client.SkycoreClient;
 import net.skycore.client.config.ConfigManager;
+import net.skycore.client.gui.decide.DecideCloseAnimation;
 import net.skycore.client.module.ClientModule;
 import net.skycore.client.module.ModuleManager;
 import net.skycore.client.module.combat.SpearDamageIndicatorModule;
@@ -97,6 +98,20 @@ public final class HudRenderer {
          int guiScaledWidth = instance.getWindow().getGuiScaledWidth();
          int guiScaledHeight = instance.getWindow().getGuiScaledHeight();
          this.reprojectIfNeeded(guiScaledWidth, guiScaledHeight);
+         // Анимация закрытия Decide-меню живёт поверх HUD: снимок кадра уже снят,
+         // и шейпы рисуются независимо от того, включены ли элементы интерфейса.
+         if (DecideCloseAnimation.isActive()) {
+            GuiGraphicsExtractor closeExtractor = new GuiGraphicsExtractor(instance, guiRenderState,
+                    (int) Math.round(this.mouseX(instance)), (int) Math.round(this.mouseY(instance)));
+            CurrentGuiGraphicsExtractorHelper.enter2D(closeExtractor, deltaTracker);
+            BeginFrameHelper.beginFrame();
+            try {
+               DecideCloseAnimation.renderHud(guiScaledWidth, guiScaledHeight);
+               BeginFrameHelper.flush();
+            } finally {
+               CurrentGuiGraphicsExtractorHelper.exit2D();
+            }
+         }
          long nowNanos = System.nanoTime();
          float computedValue = clamp((float)(nowNanos - this.lastFrameAt) / 1.0E9F, 0.0F, 0.05F);
          this.lastFrameAt = nowNanos;

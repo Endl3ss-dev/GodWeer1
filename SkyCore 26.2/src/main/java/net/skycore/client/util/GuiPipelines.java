@@ -45,6 +45,9 @@ public final class GuiPipelines {
    public static final RenderPipeline RING = builder("ring", "ring", false).build();
    public static final RenderPipeline TEXT = builder("text", "text", true).build();
    public static final RenderPipeline MENU_BACKGROUND = builder("menu_background", "menu_background", false).build();
+   public static final RenderPipeline DECIDE_EFFECTS = builder("decide_effects", "decide_effects", false).build();
+   public static final RenderPipeline DECIDE_GRAYSCALE = builder("decide_grayscale", "decide_grayscale", true).build();
+   public static final RenderPipeline DECIDE_CAPTURE_MARKER = builder("decide_capture_marker", "rect", false).build();
 
    private static Builder blurBuilder(String text, String text2) {
       Snippet[] snippetValues = new Snippet[0];
