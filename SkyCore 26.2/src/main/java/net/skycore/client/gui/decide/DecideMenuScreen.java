@@ -246,6 +246,7 @@ public final class DecideMenuScreen extends Screen {
     private boolean exit;
     private boolean closing;
     private boolean captureArmed;
+    private long captureArmedAt;
     private long closingAt;
     private boolean persistDirty;
     private long lastPersistAt;
@@ -300,6 +301,21 @@ public final class DecideMenuScreen extends Screen {
         this.markerScrollTarget = 0.0f;
         this.contentDirty = true;
         this.builtQueryHash = Integer.MIN_VALUE;
+        this.frameFailed = false;
+        // Шрифты грузятся здесь, а не в первом кадре: несовместимый атлас должен показать
+        // сообщение и не открывать меню, а не падать посреди отрисовки.
+        try {
+            DecideFonts.sfRegular();
+            DecideFonts.decide2();
+            DecideFonts.guiIcon();
+        } catch (RuntimeException failure) {
+            SkycoreClient.LOGGER.error("Skycore Decide GUI: font atlas failed to load", failure);
+            ChatMessages.displayError("ClickGUI: шрифты Decide не загрузились (детали в логе)");
+            this.exit = true;
+            this.frameFailed = true;
+            this.openAnim.setValue(0.0f);
+            return;
+        }
         DecideTheme.ensureLoaded();
         DecideCloseAnimation.cancel();
         this.openAnim.setValue(0.0f);
@@ -769,12 +785,24 @@ public final class DecideMenuScreen extends Screen {
             this.caretBlink = !this.caretBlink;
         }
 
-        if (this.captureArmed && DecideCloseAnimation.consumeReadyToCloseScreen()) {
-            this.captureArmed = false;
-            this.closing = true;
-            this.closingAt = now;
-            this.releaseScreen();
-            return;
+        if (this.captureArmed) {
+            if (DecideCloseAnimation.consumeReadyToCloseScreen()) {
+                this.captureArmed = false;
+                this.closing = true;
+                this.closingAt = now;
+                this.releaseScreen();
+                return;
+            }
+            if (now - this.captureArmedAt > 1500L) {
+                // Снимок кадра не состоялся (смена размера окна, потеря контекста): вместо того
+                // чтобы оставить меню висящим без реакции на ввод, выходим обычной анимацией.
+                DecideCloseAnimation.cancel();
+                this.captureArmed = false;
+                this.exit = true;
+                this.openAnim.run(0.0f, 0.2f, Easing.SINE_IN);
+                DecideMusic.stop();
+                return;
+            }
         }
         if (this.closing) {
             if (now - this.closingAt > 80L) {
@@ -788,9 +816,14 @@ public final class DecideMenuScreen extends Screen {
             return;
         }
 
-        this.measure();
-        this.ensureContent();
-        this.flushPersist(now);
+        try {
+            this.measure();
+            this.ensureContent();
+            this.flushPersist(now);
+        } catch (RuntimeException failure) {
+            this.drawFailure(failure);
+            return;
+        }
 
         CurrentGuiGraphicsExtractorHelper.enter2D(extractor, this.minecraft == null ? null : this.minecraft.getDeltaTracker());
         BeginFrameHelper.beginFrame();
@@ -799,6 +832,9 @@ public final class DecideMenuScreen extends Screen {
             this.drawFrame();
             BeginFrameHelper.flush();
         } catch (RuntimeException failure) {
+            // Экран уже вошёл в 2D-контекст: сначала выравниваем состояние кадра, только потом
+            // сообщаем об ошибке, иначе следующий кадр получит непарный scissor и упадёт снова.
+            BeginFrameHelper.beginFrame();
             this.drawFailure(failure);
         } finally {
             CurrentGuiGraphicsExtractorHelper.exit2D();
@@ -828,15 +864,21 @@ public final class DecideMenuScreen extends Screen {
      * screen. Drawing the rest of the frame here would filter through half-built state.
      */
     private void drawFailure(RuntimeException failure) {
-        if (!this.frameFailed) {
-            this.frameFailed = true;
-            SkycoreClient.LOGGER.error("Skycore Decide GUI: frame aborted, closing the menu", failure);
-            ChatMessages.displayError("ClickGUI: ошибка отрисовки, меню закрыто (детали в логе)");
-            this.hitCount = 0;
-            this.particleCount = 0;
-            this.exit = true;
-            this.openAnim.setValue(0.0f);
+        if (this.frameFailed) {
+            return;
         }
+        this.frameFailed = true;
+        SkycoreClient.LOGGER.error("Skycore Decide GUI: frame aborted, closing the menu", failure);
+        ChatMessages.displayError("ClickGUI: ошибка отрисовки, меню закрыто (детали в логе)");
+        this.hitCount = 0;
+        this.particleCount = 0;
+        this.exit = true;
+        this.openAnim.setValue(0.0f);
+        // Смена экрана прямо посреди кадра ломает состояние рендера, поэтому закрытие
+        // откладывается на начало следующей отрисовки — там экран снимается штатно.
+        DecideMusic.stop();
+        this.persistDirty = true;
+        this.flushPersist(System.currentTimeMillis());
     }
 
     private void releaseScreen() {
@@ -3004,6 +3046,7 @@ public final class DecideMenuScreen extends Screen {
             return false;
         }
         this.captureArmed = true;
+        this.captureArmedAt = System.currentTimeMillis();
         DecideGuiMovement.release(Minecraft.getInstance());
         DecideSounds.close();
         DecideMusic.stop();
