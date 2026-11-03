@@ -1106,7 +1106,8 @@ public final class DecideMenuScreen extends Screen {
                                  TextHeightHelper font, int client) {
         float boxW = DecideDraw.textWidth(font, label, this.s(8.0f)) + this.s(7.0f);
         float boxH = this.s(14.0f);
-        float boxX = iconX + this.s(16.0f) + this.s(4.0f) - this.s(16.0f) * (1.0f - anim);
+        // Подсказка выезжает влево от рейла, как в оригинале: справа её перекрыл бы поиск.
+        float boxX = iconX - this.s(7.0f) - boxW - this.s(4.0f) + this.s(16.0f) * (1.0f - anim);
         DecideDraw.glow(boxX, y, boxW, boxH, DecideDraw.getColor(0, anim * open * 0.1f), this.s(4.0f), this.s(6.0f));
         DecideDraw.blur(boxX, y, boxW, boxH, open * anim, this.s(4.0f),
                 DecideDraw.multAlpha(DecideTheme.currentBackgroundColor(), open * anim * 0.2f));
@@ -1136,7 +1137,7 @@ public final class DecideMenuScreen extends Screen {
         DecideDraw.rect(x, y, w, h, DecideDraw.overCol(DecideDraw.getColor(0, 0.15f * open),
                 DecideDraw.getColor(25, 0.3f * open), Math.max(hoverAnim, focusAnim)), this.s(6.0f));
         DecideDraw.outline(x, y, w, h, this.s(0.5f), DecideDraw.replAlpha(client, open * focusAnim), this.s(6.0f));
-        DecideDraw.text(icons, "b", x + this.s(7.0f), y + this.s(7.0f), this.s(6.0f),
+        DecideDraw.text(icons, "g", x + this.s(7.0f), y + this.s(7.0f), this.s(6.0f),
                 DecideDraw.overCol(DecideDraw.getColor(255, open * (0.3f + 0.5f * hoverAnim)),
                         DecideDraw.replAlpha(client, open * (0.3f + 0.7f * hoverAnim)), hoverAnim));
 
@@ -1324,7 +1325,7 @@ public final class DecideMenuScreen extends Screen {
         if (emptyAnim > 0.01f) {
             float centerX = x + w * 0.5f;
             float centerY = y + h * 0.5f - this.s(8.0f) + this.s(6.0f) - this.s(6.0f) * emptyAnim;
-            DecideDraw.textCentered(DecideFonts.guiIcon(), "b", centerX, centerY, this.s(8.0f),
+            DecideDraw.textCentered(DecideFonts.guiIcon(), "g", centerX, centerY, this.s(8.0f),
                     DecideDraw.replAlpha(client, open * emptyAnim * 0.4f));
             DecideDraw.textCentered(font, "Ничего не найдено", centerX, centerY + this.s(14.0f), this.s(7.0f),
                     DecideDraw.getColor(255, open * emptyAnim * 0.5f));
