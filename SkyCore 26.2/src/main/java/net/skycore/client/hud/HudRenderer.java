@@ -108,6 +108,10 @@ public final class HudRenderer {
             try {
                DecideCloseAnimation.renderHud(guiScaledWidth, guiScaledHeight);
                BeginFrameHelper.flush();
+            } catch (RuntimeException failure) {
+               // Эффект закрытия не должен утянуть за собой весь HUD-проход.
+               SkycoreClient.LOGGER.warn("Skycore Decide GUI: close animation frame failed", failure);
+               DecideCloseAnimation.cancel();
             } finally {
                CurrentGuiGraphicsExtractorHelper.exit2D();
             }

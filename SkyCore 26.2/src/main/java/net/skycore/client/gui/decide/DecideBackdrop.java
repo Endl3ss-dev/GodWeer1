@@ -12,6 +12,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.navigation.ScreenRectangle;
 import net.minecraft.client.gui.render.TextureSetup;
+import net.skycore.client.SkycoreClient;
 import net.skycore.client.util.BeginFrameHelper;
 import net.skycore.client.util.CurrentGuiGraphicsExtractorHelper;
 import net.skycore.client.util.GuiPipelines;
@@ -49,15 +50,23 @@ public final class DecideBackdrop {
         if (sceneCopy.width != sourceTarget.width || sceneCopy.height != sourceTarget.height) {
             return;
         }
-        RenderSystem.getDevice()
-                .createCommandEncoder()
-                .copyTextureToTexture(
-                        sourceTarget.getColorTexture(),
-                        sceneCopy.getColorTexture(),
-                        0, 0, 0, 0, 0,
-                        sourceTarget.width,
-                        sourceTarget.height
-                );
+        try {
+            RenderSystem.getDevice()
+                    .createCommandEncoder()
+                    .copyTextureToTexture(
+                            sourceTarget.getColorTexture(),
+                            sceneCopy.getColorTexture(),
+                            0, 0, 0, 0, 0,
+                            sourceTarget.width,
+                            sourceTarget.height
+                    );
+        } catch (RuntimeException failure) {
+            // Без копии кадра эффект «серый фон» показывать нечего: освобождаем цель,
+            // чтобы не пытаться копировать в неё каждый кадр, и рисуем меню без него.
+            SkycoreClient.LOGGER.warn("Skycore Decide GUI: grayscale capture failed", failure);
+            sceneCopy.destroyBuffers();
+            sceneCopy = null;
+        }
     }
 
     public static void drawGrayscale(float w, float h, float state) {

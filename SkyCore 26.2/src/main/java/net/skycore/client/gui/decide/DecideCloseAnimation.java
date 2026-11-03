@@ -17,6 +17,7 @@ import net.minecraft.client.gui.navigation.ScreenRectangle;
 import net.minecraft.client.gui.render.TextureSetup;
 import net.minecraft.client.renderer.state.level.CameraRenderState;
 import net.minecraft.world.phys.Vec3;
+import net.skycore.client.SkycoreClient;
 import net.skycore.client.util.BeginFrameHelper;
 import net.skycore.client.util.CaptureLevelProjectionHelper;
 import net.skycore.client.util.CurrentGuiGraphicsExtractorHelper;
@@ -167,15 +168,24 @@ public final class DecideCloseAnimation {
         if (snapshotTarget.width != sourceTarget.width || snapshotTarget.height != sourceTarget.height) {
             return;
         }
-        RenderSystem.getDevice()
-                .createCommandEncoder()
-                .copyTextureToTexture(
-                        sourceTarget.getColorTexture(),
-                        snapshotTarget.getColorTexture(),
-                        0, 0, 0, 0, 0,
-                        sourceTarget.width,
-                        sourceTarget.height
-                );
+        // Тот же приём, что и у хостовых blur-эффектов (FocusBlurRenderer): снимок цветовой
+        // текстуры основного таргета в отдельную RGBA8-цель. Ошибка копирования не должна
+        // ронять клиент — тогда анимация просто не запускается.
+        try {
+            RenderSystem.getDevice()
+                    .createCommandEncoder()
+                    .copyTextureToTexture(
+                            sourceTarget.getColorTexture(),
+                            snapshotTarget.getColorTexture(),
+                            0, 0, 0, 0, 0,
+                            sourceTarget.width,
+                            sourceTarget.height
+                    );
+        } catch (RuntimeException failure) {
+            SkycoreClient.LOGGER.warn("Skycore Decide GUI: close-animation capture failed", failure);
+            cancel();
+            return;
+        }
         nx1 = pendingNx1;
         ny1 = pendingNy1;
         nx2 = pendingNx2;
@@ -253,10 +263,16 @@ public final class DecideCloseAnimation {
             cancel();
             return;
         }
-        if (activeMode == MODE_3D) {
-            render3D(extractor, view, guiWidth, guiHeight);
-        } else if (activeMode == MODE_SHATTER) {
-            renderShatter(extractor, view, guiWidth, guiHeight);
+        try {
+            if (activeMode == MODE_3D) {
+                render3D(extractor, view, guiWidth, guiHeight);
+            } else if (activeMode == MODE_SHATTER) {
+                renderShatter(extractor, view, guiWidth, guiHeight);
+            }
+        } catch (RuntimeException failure) {
+            // Анимация закрытия — украшение: любая её ошибка просто выключает эффект.
+            SkycoreClient.LOGGER.warn("Skycore Decide GUI: close animation aborted", failure);
+            cancel();
         }
     }
 
