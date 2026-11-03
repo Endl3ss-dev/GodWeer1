@@ -25,7 +25,7 @@ public final class SpearMaceDoubleTapModule extends ClientModule {
    private static final long TAP_TIMEOUT_MS = 1000L;
 
    private final NumberSetting triggerFallDistance = this.add(
-      new NumberSetting("Trigger Fall Distance", "Swaps to the mace after falling this far (blocks).", 3.0, 0.0, 20.0, 0.5)
+      new NumberSetting("Trigger Fall Distance", "Swaps to the mace after falling this far (blocks).", 3.0, 0.0, 20.0, 0.5, "")
    );
 
    private long triggeredAtMs;
