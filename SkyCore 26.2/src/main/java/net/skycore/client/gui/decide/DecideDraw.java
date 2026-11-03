@@ -196,7 +196,7 @@ public final class DecideDraw {
         float gh = Math.max(0.2f, h);
         BeginFrameHelper.rect(x, y, gw, gh)
                 .color(0)
-                .shadow(blurRadius, color)
+                .shadow(color, blurRadius)
                 .radius(radius)
                 .hudGlow(false)
                 .draw();
