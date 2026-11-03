@@ -16,6 +16,7 @@ import net.minecraft.network.syncher.SynchedEntityData.DataValue;
 import net.minecraft.world.item.ItemStack;
 import net.skycore.client.SkycoreClient;
 import net.skycore.client.module.combat.AutoTotemModule;
+import net.skycore.client.module.combat.SpearMaceDoubleTapModule;
 import net.skycore.client.module.render.ParticlesModule;
 import net.skycore.client.module.render.ThunderShatterModule;
 import net.skycore.client.util.FindTextureInTagHelper;
@@ -30,6 +31,7 @@ public abstract class ClientPacketListenerHandleEntityEventMixin {
    private void skycore$handleEntityEvent(ClientboundEntityEventPacket clientboundEntityEventPacket, CallbackInfo callbackInfo) {
       if (Minecraft.getInstance().isSameThread()) {
          SkycoreClient.modules().get(AutoTotemModule.class).ifPresent(autoTotemModule -> autoTotemModule.onEntityEvent(clientboundEntityEventPacket));
+         SpearMaceDoubleTapModule.INSTANCE.onEntityEvent(clientboundEntityEventPacket);
          ThunderShatterModule.INSTANCE.onEntityEvent(clientboundEntityEventPacket);
          ParticlesModule.INSTANCE.onEntityEvent(clientboundEntityEventPacket);
       }

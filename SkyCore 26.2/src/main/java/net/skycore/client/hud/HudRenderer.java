@@ -15,6 +15,7 @@ import net.skycore.client.SkycoreClient;
 import net.skycore.client.config.ConfigManager;
 import net.skycore.client.module.ClientModule;
 import net.skycore.client.module.ModuleManager;
+import net.skycore.client.module.combat.SpearDamageIndicatorModule;
 import net.skycore.client.module.render.ClickGUIModule;
 import net.skycore.client.module.render.InterfaceModule;
 import net.skycore.client.util.BeginFrameHelper;
@@ -121,13 +122,14 @@ public final class HudRenderer {
          boolean armorHudEnabled = this.interfaceModule.isArmorHudEnabled();
          boolean targetHudEnabled = this.interfaceModule.isTargetHudEnabled();
          boolean notificationsEnabled = this.interfaceModule.isNotificationsEnabled();
+         boolean spearDamageEnabled = SpearDamageIndicatorModule.INSTANCE.shouldRender(instance, computedValue);
          if (notificationsEnabled) {
             this.interfaceModule.notifications().tick(instance.player);
          } else {
             this.interfaceModule.notifications().tick(null);
          }
 
-         if (watermarkEnabled || informationEnabled || hotkeysEnabled || bindsEnabled || hotbarEnabled || potionsEnabled || cooldownsEnabled || armorHudEnabled || targetHudEnabled || notificationsEnabled) {
+         if (watermarkEnabled || informationEnabled || hotkeysEnabled || bindsEnabled || hotbarEnabled || potionsEnabled || cooldownsEnabled || armorHudEnabled || targetHudEnabled || notificationsEnabled || spearDamageEnabled) {
             boolean condition = instance.gui.screen() instanceof ChatScreen;
             GuiGraphicsExtractor guiGraphicsExtractor = new GuiGraphicsExtractor(instance, guiRenderState, (int)Math.round(this.mouseX(instance)), (int)Math.round(this.mouseY(instance)));
             CurrentGuiGraphicsExtractorHelper.enter2D(guiGraphicsExtractor, deltaTracker);
@@ -178,6 +180,12 @@ public final class HudRenderer {
 
                if (notificationsEnabled) {
                   this.interfaceModule.notifications().render(value, condition, guiScaledWidth);
+               }
+
+               if (spearDamageEnabled) {
+                  BeginFrameHelper.setHudIconGlowColor(0);
+                  SpearDamageIndicatorModule.INSTANCE.renderHud(guiScaledWidth, guiScaledHeight);
+                  BeginFrameHelper.setHudIconGlowColor(color);
                }
 
                BeginFrameHelper.flush();
