@@ -101,10 +101,17 @@ public final class SkycoreClient implements ClientModInitializer {
       interfaceRenderer = new HudRenderer(MODULES, config);
       Minecraft instance = Minecraft.getInstance();
       ClickGUIModule clickGUIModule = MODULES.get(ClickGUIModule.class).orElseThrow();
+      // Диагностика: если стиль меню после загрузки конфига не совпадает с тем,
+      // что записано в skycore/beta-local.json, это видно в логе без догадок.
+      Path configPath = config.path();
+      LOGGER.info("Skycore GUI style = '{}' (конфиг: {}, {})",
+              clickGUIModule.menuStyle().get(), configPath,
+              configPath != null && java.nio.file.Files.exists(configPath) ? "файл есть" : "файла нет");
       clickGUIModule.setOpenAction(() -> {
          // Workspace — основное меню: ветка по умолчанию (и всё, что не названо явно
          // внутри него) открывает его, а не старый экран.
          if (clickGUIModule.menuStyle().is("Decide")) {
+            LOGGER.info("Skycore GUI: opening the Decide menu");
             instance.setScreenAndShow(new DecideMenuScreen(MODULES, config, clickGUIModule));
          } else if (clickGUIModule.menuStyle().is("Skycore")) {
             instance.setScreenAndShow(new RenderGuiHelper(MODULES, THEMES, config, clickGUIModule));
