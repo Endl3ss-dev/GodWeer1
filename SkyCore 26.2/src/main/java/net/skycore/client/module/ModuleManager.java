@@ -31,6 +31,8 @@ import net.skycore.client.module.combat.FakePlayerModule;
 import net.skycore.client.module.combat.InstantLungeModule;
 import net.skycore.client.module.combat.ItemSwapModule;
 import net.skycore.client.module.combat.SpearDamageIndicatorModule;
+import net.skycore.client.module.combat.SpearDashModule;
+import net.skycore.client.module.combat.SpearExploitModule;
 import net.skycore.client.module.combat.SpearMaceDoubleTapModule;
 import net.skycore.client.module.combat.TargetPearlModule;
 import net.skycore.client.module.combat.TriggerBotModule;
@@ -196,6 +198,8 @@ public final class ModuleManager {
       this.trialRegister(InstantLungeModule.INSTANCE);
       this.trialRegister(SpearDamageIndicatorModule.INSTANCE);
       this.trialRegister(SpearMaceDoubleTapModule.INSTANCE);
+      this.trialRegister(new SpearDashModule());
+      this.trialRegister(new SpearExploitModule());
       this.trialRegister(new AttackAuraModule());
       this.trialRegister(AntiBotModule.INSTANCE);
       this.trialRegister(AntiThornsModule.INSTANCE);
