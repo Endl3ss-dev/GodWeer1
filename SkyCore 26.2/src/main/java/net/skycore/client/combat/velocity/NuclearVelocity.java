@@ -3,7 +3,7 @@ package net.skycore.client.combat.velocity;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.network.protocol.Packet;
-import net.minecraft.network.protocol.game.ClientboundContainerAckPacket;
+import net.minecraft.network.protocol.game.ClientboundBlockChangedAckPacket;
 import net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket;
 import net.minecraft.util.Util;
 import net.skycore.client.module.movement.FlightModule;
@@ -20,7 +20,9 @@ import net.skycore.client.module.movement.VelocityModule;
  * <ul>
  *   <li>{@code Cancel} — отмена пакета скорости своего игрока;</li>
  *   <li>{@code Grim} — отмена пакета скорости с меткой {@code toSkip = 8}; подтверждения
- *       транзакций ({@code SConfirmTransactionPacket}) отменяются, пока метка больше единицы,
+ *       ({@code SConfirmTransactionPacket} в источнике; в 26.2 пакета подтверждения транзакций
+ *       больше нет, поэтому считается ближайший серверный ack — {@code ClientboundBlockChangedAckPacket})
+ *       отменяются, пока метка больше единицы,
  *       и каждая отмена уменьшает её; телепорт сбрасывает метку в {@code -8};</li>
  *   <li>{@code Grim Air} — работает только в воздухе вне элитр/воды/лавы и при выключенных
  *       FreeCam/Flight: отменяет подтверждения транзакций и пакет скорости, если
@@ -101,7 +103,7 @@ public final class NuclearVelocity implements VelocityHandler {
             this.toSkip = -8;
             return false;
          }
-         if (packet instanceof ClientboundContainerAckPacket) {
+         if (packet instanceof ClientboundBlockChangedAckPacket) {
             if (this.toSkip < 0) {
                this.toSkip++;
             } else if (this.toSkip > 1) {
@@ -122,7 +124,7 @@ public final class NuclearVelocity implements VelocityHandler {
             return false;
          }
          if (!player.isFallFlying() && player.fallDistance < 2.0F) {
-            if (packet instanceof ClientboundContainerAckPacket && player.fallDistance > 0.7F) {
+            if (packet instanceof ClientboundBlockChangedAckPacket && player.fallDistance > 0.7F) {
                return true;
             }
          }

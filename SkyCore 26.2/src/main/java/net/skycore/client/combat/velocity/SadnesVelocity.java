@@ -7,6 +7,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
+import net.minecraft.core.particles.ParticleTypes;
 import net.minecraft.network.protocol.Packet;
 import net.minecraft.network.protocol.game.ClientboundBlockUpdatePacket;
 import net.minecraft.network.protocol.game.ClientboundDamageEventPacket;
@@ -17,7 +18,7 @@ import net.minecraft.network.protocol.game.ServerboundAttackPacket;
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket;
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket.Pos;
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket.Rot;
-import net.minecraft.network.protocol.game.ServerboundPongPacket;
+import net.minecraft.network.protocol.common.ServerboundPongPacket;
 import net.minecraft.network.protocol.game.ServerboundUseItemOnPacket;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
@@ -55,9 +56,9 @@ import net.skycore.client.module.movement.VelocityModule;
  *       такого события нет — вместо этого на время постановки блока обнуляется ввод игрока;</li>
  *   <li>{@code DeferredPacketQueue} источника перенесён как локальная очередь с повторной
  *       обработкой пакета через {@code Packet#handle} на клиентском потоке;</li>
- *   <li>{@code from_wind_charge} сохранён в настройках, но отделить ветряной заряд от обычного
- *       взрыва можно только по частицам взрыва, а этот API в 26.2 не подтверждён, поэтому
- *       настройка пока не влияет на поведение (сам взрыв при этом отменяется по {@code from_explosions}).</li>
+ *   <li>{@code from_wind_charge} в 26.2 отличается по частице взрыва: ветряной заряд
+ *       ({@code WindCharge}, {@code BreezeWindCharge}) взрывается с {@code ParticleTypes.GUST_EMITTER_SMALL},
+ *       который и приходит в {@code ClientboundExplodePacket#explosionParticle()}.</li>
  * </ul>
  */
 public final class SadnesVelocity implements VelocityHandler {
@@ -153,8 +154,10 @@ public final class SadnesVelocity implements VelocityHandler {
          return false;
       }
 
-      if (packet instanceof ClientboundExplodePacket && this.has("from_explosions")) {
-         return true;
+      if (packet instanceof ClientboundExplodePacket explosion) {
+         if (isWindCharge(explosion) ? this.has("from_wind_charge") : this.has("from_explosions")) {
+            return true;
+         }
       }
 
       if (this.module.is(VelocityModule.SADNES_GRIM_STANDING)) {
@@ -378,6 +381,12 @@ public final class SadnesVelocity implements VelocityHandler {
             raw.handle(listener);
          }
       });
+   }
+
+   /** Ветряной заряд отличается от обычного взрыва только частицей ({@code GUST_EMITTER_*}). */
+   private static boolean isWindCharge(ClientboundExplodePacket explosion) {
+      return explosion.explosionParticle() == ParticleTypes.GUST_EMITTER_SMALL
+              || explosion.explosionParticle() == ParticleTypes.GUST_EMITTER_LARGE;
    }
 
    /** {@code MoveUtil.getDirectionFromInput(yaw, forward, strafe)} источника. */

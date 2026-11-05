@@ -12,7 +12,7 @@ import net.skycore.client.module.movement.VelocityModule;
  * <p>Перенос один в один:
  * <ul>
  *   <li>{@code Vanilla} — отменяет пакет скорости своего игрока;</li>
- *   <li>{@code Funtime} — то же, но только пока игрок в рыхлом сне ({@code player.inPowderSnow});</li>
+ *   <li>{@code Funtime} — то же, но только пока игрок в рыхлом сне ({@code player.isInPowderSnow});</li>
  *   <li>{@code Lag} — отменяет пакет скорости и, дополнительно, <b>все исходящие пакеты</b>:
  *       в источнике после отмены пакета скорости стоит {@code if (event.compute()) event.process()},
  *       где {@code compute()} — это {@code mode == SEND}. Клиент замирает на месте, пока режим включён.</li>
@@ -42,7 +42,7 @@ public final class WildVelocity implements VelocityHandler {
          action.cancel();
          return;
       }
-      if (this.module.is(VelocityModule.WILD_FUNTIME) && player.inPowderSnow) {
+      if (this.module.is(VelocityModule.WILD_FUNTIME) && player.isInPowderSnow) {
          action.cancel();
       }
    }

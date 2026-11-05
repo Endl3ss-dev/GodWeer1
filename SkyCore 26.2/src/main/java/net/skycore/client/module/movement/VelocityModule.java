@@ -89,6 +89,10 @@ public final class VelocityModule extends ClientModule {
    public static final String PRIVATE_AAC_V4 = "Private [AAC v4]";
    public static final String PRIVATE_NCP = "Private [NCP]";
    public static final String PRIVATE_REVERSE = "Private [Reverse]";
+   // Ветки исходного switch, которых нет в списке режимов Private (мёртвый код источника).
+   public static final String PRIVATE_PACKET = "Private [Packet]";
+   public static final String PRIVATE_AAC_PUSH = "Private [AAC Push]";
+   public static final String PRIVATE_GRIM = "Private [Grim]";
 
    public static final String PM_GRIM = "PrivateMove [Grim]";
    public static final String PM_GRIM_LIGHT = "PrivateMove [Grim Light]";
@@ -137,6 +141,7 @@ public final class VelocityModule extends ClientModule {
            NUCLEAR_CANCEL, NUCLEAR_GRIM, NUCLEAR_GRIM_AIR,
            PHOBIA_NEW_GRIM, PHOBIA_OLD_GRIM, PHOBIA_MATRIX, PHOBIA_VANILLA,
            PRIVATE_MATRIX, PRIVATE_VULCAN, PRIVATE_INTAVE, PRIVATE_AAC_V4, PRIVATE_NCP, PRIVATE_REVERSE,
+           PRIVATE_PACKET, PRIVATE_AAC_PUSH, PRIVATE_GRIM,
            PM_GRIM, PM_GRIM_LIGHT, PM_GRIM_HEAVY, PM_GRIM_STABLE, PM_GRIM_ADVANCED, PM_MATRIX, PM_VULCAN,
            PM_INTAVE, PM_VERUS, PM_NCP, PM_AAC, PM_SPARTAN, PM_VANILLA, PM_CUSTOM, PM_ZERO, PM_REDUCE,
            PM_JUMP_RESET,
@@ -154,6 +159,11 @@ public final class VelocityModule extends ClientModule {
            new BooleanSetting("Minced: пропускать при активных спидах", true));
    private final BooleanSetting nuclearDisableOnFlag = this.add(
            new BooleanSetting("Nuclear: вырубить после флага", false));
+
+   private final NumberSetting privateHorizontal = this.add(
+           new NumberSetting("Private: горизонталь %", 0.0, 0.0, 100.0, 1.0));
+   private final NumberSetting privateVertical = this.add(
+           new NumberSetting("Private: вертикаль %", 0.0, 0.0, 100.0, 1.0));
 
    private final NumberSetting movementHorizontal = this.add(
            new NumberSetting("PrivateMove: горизонтальный %", 0.0, 0.0, 100.0, 1.0));
@@ -219,6 +229,9 @@ public final class VelocityModule extends ClientModule {
       this.nuclearDisableOnFlag.visibleWhen(() -> this.mode.is(NUCLEAR_CANCEL)
               || this.mode.is(NUCLEAR_GRIM) || this.mode.is(NUCLEAR_GRIM_AIR));
 
+      this.privateHorizontal.visibleWhen(() -> this.mode.is(PRIVATE_PACKET));
+      this.privateVertical.visibleWhen(() -> this.mode.is(PRIVATE_PACKET));
+
       this.movementHorizontal.visibleWhen(() -> this.mode.is(PM_CUSTOM) || this.mode.is(PM_REDUCE));
       this.movementVertical.visibleWhen(() -> this.mode.is(PM_CUSTOM) || this.mode.is(PM_REDUCE));
       this.movementChance.visibleWhen(() -> this.mode.is(PM_GRIM_ADVANCED) || this.mode.is(PM_MATRIX));
@@ -267,6 +280,14 @@ public final class VelocityModule extends ClientModule {
 
    public BooleanSetting nuclearDisableOnFlag() {
       return this.nuclearDisableOnFlag;
+   }
+
+   public NumberSetting privateHorizontal() {
+      return this.privateHorizontal;
+   }
+
+   public NumberSetting privateVertical() {
+      return this.privateVertical;
    }
 
    public NumberSetting movementHorizontal() {
