@@ -89,13 +89,12 @@ public final class RockstarVelocity implements VelocityHandler {
    }
 
    /**
-    * Прыжок вместо {@code mc.player.jump()}: в 26.2 {@code LivingEntity#jumpFromGround()}
-    * недоступен извне, поэтому повторён ванильный расчёт вертикальной скорости прыжка
-    * (0.42 плюс бонус эффекта прыгучести).
+    * {@code mc.player.jump()} источника — это ванильный {@code LivingEntity#jumpFromGround()}
+    * (в 26.2 он публичный): поднимает {@code deltaMovement.y} до силы прыжка с учётом эффекта
+    * прыгучести и добавляет ванильный спринт-буст.
     */
    private void jump(LocalPlayer player) {
-      Vec3 motion = player.getDeltaMovement();
-      player.setDeltaMovement(new Vec3(motion.x, 0.42 + player.getJumpBoostPower(), motion.z));
+      player.jumpFromGround();
    }
 
    @Override
