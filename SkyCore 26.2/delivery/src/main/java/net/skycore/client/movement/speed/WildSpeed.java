@@ -6,6 +6,7 @@ import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.phys.Vec3;
+import net.skycore.client.SkycoreClient;
 import net.skycore.client.module.combat.AttackAuraModule;
 import net.skycore.client.module.movement.SpeedModule;
 
@@ -73,7 +74,7 @@ public final class WildSpeed extends SpeedHandler {
       Entity nearest = null;
       double best = Double.MAX_VALUE;
       double range = 0.2F;
-      LivingEntity target = AttackAuraModule.INSTANCE.currentTarget();
+      LivingEntity target = SkycoreClient.modules().get(AttackAuraModule.class).map(AttackAuraModule::currentTarget).orElse(null);
 
       for (Entity entity : player.level().getEntities(player, player.getBoundingBox().inflate(1.0))) {
          if (entity != player && entity instanceof Player && entity == target) {
@@ -119,7 +120,7 @@ public final class WildSpeed extends SpeedHandler {
 
     
    private void tick(LocalPlayer player) {
-      LivingEntity target = AttackAuraModule.INSTANCE.currentTarget();
+      LivingEntity target = SkycoreClient.modules().get(AttackAuraModule.class).map(AttackAuraModule::currentTarget).orElse(null);
       if (target == null || player.onGround()) {
          return;
       }
