@@ -145,6 +145,34 @@ public final class SpeedAction {
       }
    }
 
+   /** Private MoveUtil.speed(): горизонтальная скорость из deltaMovement. */
+   public static double horizontalSpeed() {
+      LocalPlayer player = player();
+      if (player == null) {
+         return 0.0;
+      }
+
+      Vec3 velocity = player.getDeltaMovement();
+      return Math.hypot(velocity.x, velocity.z);
+   }
+
+   /** Private MoveUtil.speedSqrt(): фактическое горизонтальное смещение за последний тик. */
+   public static double deltaPositionSpeed() {
+      LocalPlayer player = player();
+      if (player == null) {
+         return 0.0;
+      }
+
+      double dx = player.getX() - player.xo;
+      double dz = player.getZ() - player.zo;
+      return Math.sqrt(dx * dx + dz * dz);
+   }
+
+   /** Vec3#horizontalDistance() источника. */
+   public static double horizontalDistance(Vec3 vector) {
+      return Math.sqrt(vector.x * vector.x + vector.z * vector.z);
+   }
+
    public static AABB box(double expand) {
       LocalPlayer player = player();
       return player == null ? new AABB(0.0, 0.0, 0.0, 0.0, 0.0, 0.0) : player.getBoundingBox().inflate(expand);

@@ -13,12 +13,14 @@ import net.skycore.client.movement.speed.AlphaDlcSpeed;
 import net.skycore.client.movement.speed.LegacySkyCoreSpeed;
 import net.skycore.client.movement.speed.NuclearSpeed;
 import net.skycore.client.movement.speed.PhobiaSpeed;
+import net.skycore.client.movement.speed.PrivateSpeed;
 import net.skycore.client.movement.speed.ReleonSpeed;
 import net.skycore.client.movement.speed.RockstarSpeed;
 import net.skycore.client.movement.speed.SpeedFlyingSpeed;
 import net.skycore.client.movement.speed.SpeedHandler;
 import net.skycore.client.movement.speed.SpeedTimer;
 import net.skycore.client.movement.speed.SwerveSpeed;
+import net.skycore.client.movement.speed.WildSpeed;
 import net.skycore.client.module.ClientModule;
 import net.skycore.client.module.ModuleCategory;
 import net.skycore.client.setting.BooleanSetting;
@@ -60,6 +62,20 @@ public final class SpeedModule extends ClientModule {
 
    public static final String SWERVE_MULTIPLIER = "Swerve [Множитель]";
 
+   public static final String PRIVATE_HVH = "Private [HvH]";
+   public static final String PRIVATE_ENTITY = "Private [Entity]";
+   public static final String PRIVATE_SP_DUEL = "Private [SP-DUEL]";
+   public static final String PRIVATE_NCP = "Private [NCP]";
+   public static final String PRIVATE_MATRIX = "Private [Matrix703]";
+   public static final String PRIVATE_AAC = "Private [AAC5]";
+
+   public static final String WILD_VANILLA = "Wild [Vanilla]";
+   public static final String WILD_ST_DUEL = "Wild [ST duel]";
+   public static final String WILD_HW = "Wild [HW]";
+   public static final String WILD_ARES_ENTITY = "Wild [Ares-Entity]";
+   public static final String WILD_GRIM_ENTITY = "Wild [Grim-Entity]";
+   public static final String WILD_TARGET_STRAFE = "Wild [TargetStrafe]";
+
    private static final String[] MODES = {
       NUCLEAR_COLLISION, NUCLEAR_MATRIX, NUCLEAR_META_HVH, NUCLEAR_HOLY_WORLD,
       ROCKSTAR_ENTITIES,
@@ -67,7 +83,9 @@ public final class SpeedModule extends ClientModule {
       ALPHADLC_RW, ALPHADLC_COLLISION,
       RELEON_VANILLA, RELEON_GRIM, RELEON_REALLY_WORLD, RELEON_HOLY_WORLD, RELEON_FUNTIME, RELEON_SPOOKY_TIME,
       LEGACY_RW, LEGACY_COLLISION,
-      SWERVE_MULTIPLIER
+      SWERVE_MULTIPLIER,
+      PRIVATE_HVH, PRIVATE_ENTITY, PRIVATE_SP_DUEL, PRIVATE_NCP, PRIVATE_MATRIX, PRIVATE_AAC,
+      WILD_VANILLA, WILD_ST_DUEL, WILD_HW, WILD_ARES_ENTITY, WILD_GRIM_ENTITY, WILD_TARGET_STRAFE
    };
 
    private final ModeSetting mode = this.add(new ModeSetting("Режим", NUCLEAR_COLLISION, MODES));
@@ -89,6 +107,16 @@ public final class SpeedModule extends ClientModule {
 
    private final SliderSetting releonSpeed = this.add(new SliderSetting("Releon: скорость", 1.5, 1.0, 5.0, 0.1));
 
+   private final BooleanSetting privateOvertake = this.add(new BooleanSetting("Private: перегон игрока", false));
+   private final SliderSetting privateOvertakeDistance = this.add(
+      new SliderSetting("Private: дистанция перегона", 0.3, 0.1, 1.0, 0.05));
+   private final SliderSetting privateChaseDistance = this.add(
+      new SliderSetting("Private: дистанция догона", 0.15, 0.05, 0.5, 0.05));
+
+   private final SliderSetting wildTarget = this.add(new SliderSetting("Wild: пиковая скорость (BPS)", 7.0, 3.0, 15.0, 1.0));
+   private final SliderSetting wildPending = this.add(new SliderSetting("Wild: сила ускорения", 0.8, 0.1, 2.0, 0.1));
+   private final SliderSetting wildPrevious = this.add(new SliderSetting("Wild: радиус стрейфа", 2.0, 0.5, 5.0, 0.1));
+
    private final SliderSetting swerveMultiplier = this.add(new SliderSetting("Swerve: множитель", 1.15, 1.0, 1.6, 0.01));
    private final BooleanSetting swerveOnlyGround = this.add(new BooleanSetting("Swerve: только на земле", false));
    private final BooleanSetting swerveOnlyForward = this.add(new BooleanSetting("Swerve: только вперёд", false));
@@ -101,6 +129,8 @@ public final class SpeedModule extends ClientModule {
    private final ReleonSpeed releon = new ReleonSpeed(this);
    private final LegacySkyCoreSpeed legacy = new LegacySkyCoreSpeed(this);
    private final SwerveSpeed swerve = new SwerveSpeed(this);
+   private final PrivateSpeed privateSpeed = new PrivateSpeed(this);
+   private final WildSpeed wildSpeed = new WildSpeed(this);
 
    private SpeedHandler lastHandler;
 
@@ -121,6 +151,14 @@ public final class SpeedModule extends ClientModule {
       this.phobiaDiving.visibleWhen(() -> this.mode.is(PHOBIA_FUNTIME_ELYTRA));
 
       this.releonSpeed.visibleWhen(() -> this.mode.is(RELEON_VANILLA));
+
+      this.privateOvertake.visibleWhen(() -> this.mode.is(PRIVATE_ENTITY));
+      this.privateOvertakeDistance.visibleWhen(() -> this.mode.is(PRIVATE_ENTITY) && this.privateOvertake.get());
+      this.privateChaseDistance.visibleWhen(() -> this.mode.is(PRIVATE_ENTITY) && this.privateOvertake.get());
+
+      this.wildTarget.visibleWhen(() -> this.wildModeAny());
+      this.wildPending.visibleWhen(() -> this.wildModeAny());
+      this.wildPrevious.visibleWhen(() -> this.mode.is(WILD_TARGET_STRAFE) == false && this.wildModeAny());
 
       this.swerveMultiplier.visibleWhen(() -> this.mode.is(SWERVE_MULTIPLIER));
       this.swerveOnlyGround.visibleWhen(() -> this.mode.is(SWERVE_MULTIPLIER));
@@ -152,7 +190,7 @@ public final class SpeedModule extends ClientModule {
    }
 
    private SpeedHandler[] handlers() {
-      return new SpeedHandler[]{this.nuclear, this.rockstar, this.phobia, this.alphaDlc, this.releon, this.legacy, this.swerve};
+      return new SpeedHandler[]{this.nuclear, this.rockstar, this.phobia, this.alphaDlc, this.releon, this.legacy, this.swerve, this.privateSpeed, this.wildSpeed};
    }
 
    private SpeedHandler activeHandler() {
@@ -169,6 +207,10 @@ public final class SpeedModule extends ClientModule {
          return this.releon;
       } else if (current.startsWith("SkyCoreLegacy [")) {
          return this.legacy;
+      } else if (current.startsWith("Private [")) {
+         return this.privateSpeed;
+      } else if (current.startsWith("Wild [")) {
+         return this.wildSpeed;
       } else {
          return current.startsWith("Swerve [") ? this.swerve : null;
       }
@@ -303,6 +345,18 @@ public final class SpeedModule extends ClientModule {
       return this.mode.is("SkyCoreLegacy [" + name + "]");
    }
 
+   public boolean privateMode(String name) {
+      return this.mode.is("Private [" + name + "]");
+   }
+
+   public boolean wildMode(String name) {
+      return this.mode.is("Wild [" + name + "]");
+   }
+
+   public boolean wildModeAny() {
+      return this.mode.get().startsWith("Wild [");
+   }
+
    public boolean swerveMode() {
       return this.mode.is(SWERVE_MULTIPLIER);
    }
@@ -349,6 +403,30 @@ public final class SpeedModule extends ClientModule {
 
    public double releonSpeed() {
       return this.releonSpeed.get().doubleValue();
+   }
+
+   public boolean privateOvertake() {
+      return this.privateOvertake.get();
+   }
+
+   public double privateOvertakeDistance() {
+      return this.privateOvertakeDistance.get().doubleValue();
+   }
+
+   public double privateChaseDistance() {
+      return this.privateChaseDistance.get().doubleValue();
+   }
+
+   public double wildTarget() {
+      return this.wildTarget.get().doubleValue();
+   }
+
+   public double wildPending() {
+      return this.wildPending.get().doubleValue();
+   }
+
+   public double wildPrevious() {
+      return this.wildPrevious.get().doubleValue();
    }
 
    public double swerveMultiplier() {
