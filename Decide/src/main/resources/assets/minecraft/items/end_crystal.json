@@ -1,0 +1,363 @@
+{
+  "model": {
+    "type": "minecraft:select",
+    "property": "minecraft:custom_model_data",
+    "index": 0,
+    "cases": [
+      {
+        "when": "decide:item_skin:crystal_3d_01",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_3d_01"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_3d_02",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_3d_02"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_3d_03",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_3d_03"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_3d_04",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_3d_04"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_3d_05",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_3d_05"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_3d_06",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_3d_06"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_3d_07",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_3d_07"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_3d_08",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_3d_08"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_3d_09",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_3d_09"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_3d_10",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_3d_10"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_3d_11",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_3d_11"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_3d_12",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_3d_12"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_3d_13",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_3d_13"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_3d_14",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_3d_14"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_3d_15",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_3d_15"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_3d_16",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_3d_16"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_3d_17",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_3d_17"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_3d_18",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_3d_18"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_3d_19",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_3d_19"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_3d_20",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_3d_20"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_3d_21",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_3d_21"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_3d_22",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_3d_22"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_3d_23",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_3d_23"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_3d_24",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_3d_24"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_3d_25",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_3d_25"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_3d_26",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_3d_26"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_3d_27",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_3d_27"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_3d_28",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_3d_28"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_3d_29",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_3d_29"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_3d_30",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_3d_30"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_ny_01",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_ny_01"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_ny_02",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_ny_02"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_ny_03",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_ny_03"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_ny_04",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_ny_04"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_ny_05",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_ny_05"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_ny_06",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_ny_06"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_ny_07",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_ny_07"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_ny_08",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_ny_08"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_ny_09",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_ny_09"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_ny_10",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_ny_10"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_ny_11",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_ny_11"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_ny_12",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_ny_12"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_ny_13",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_ny_13"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_ny_14",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_ny_14"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_ny_15",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_ny_15"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_ny_16",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_ny_16"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_ny_17",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_ny_17"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_ny_18",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_ny_18"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_ny_19",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_ny_19"
+        }
+      },
+      {
+        "when": "decide:item_skin:crystal_ny_20",
+        "model": {
+          "type": "minecraft:model",
+          "model": "decide:item_skin/crystal_ny_20"
+        }
+      }
+    ],
+    "fallback": {
+      "type": "minecraft:model",
+      "model": "minecraft:item/end_crystal"
+    }
+  }
+}

@@ -15,6 +15,8 @@ import net.skycore.client.config.MacroManager;
 import net.skycore.client.config.NameList;
 import net.skycore.client.event.ClientTickEvent;
 import net.skycore.client.event.EventBus;
+import net.skycore.client.gui.decide.DecideGuiMovement;
+import net.skycore.client.gui.decide.DecideMenuScreen;
 import net.skycore.client.gui.menu.MenuPrefs;
 import net.skycore.client.gui.menu.MenuScreen;
 import net.skycore.client.gui.workspace.WorkspaceScreen;
@@ -99,10 +101,19 @@ public final class SkycoreClient implements ClientModInitializer {
       interfaceRenderer = new HudRenderer(MODULES, config);
       Minecraft instance = Minecraft.getInstance();
       ClickGUIModule clickGUIModule = MODULES.get(ClickGUIModule.class).orElseThrow();
+      // Диагностика: если стиль меню после загрузки конфига не совпадает с тем,
+      // что записано в skycore/beta-local.json, это видно в логе без догадок.
+      Path configPath = config.path();
+      LOGGER.info("Skycore GUI style = '{}' (конфиг: {}, {})",
+              clickGUIModule.menuStyle().get(), configPath,
+              configPath != null && java.nio.file.Files.exists(configPath) ? "файл есть" : "файла нет");
       clickGUIModule.setOpenAction(() -> {
          // Workspace — основное меню: ветка по умолчанию (и всё, что не названо явно
          // внутри него) открывает его, а не старый экран.
-         if (clickGUIModule.menuStyle().is("Skycore")) {
+         if (clickGUIModule.menuStyle().is("Decide")) {
+            LOGGER.info("Skycore GUI: opening the Decide menu");
+            instance.setScreenAndShow(new DecideMenuScreen(MODULES, config, clickGUIModule));
+         } else if (clickGUIModule.menuStyle().is("Skycore")) {
             instance.setScreenAndShow(new RenderGuiHelper(MODULES, THEMES, config, clickGUIModule));
          } else if (clickGUIModule.menuStyle().is("Swerve")) {
             instance.setScreenAndShow(new MenuScreen(MODULES, config));
@@ -195,6 +206,9 @@ public final class SkycoreClient implements ClientModInitializer {
       }
 
       MODULES.tickEnabled();
+      // «Бегать с открытым GUI» у Decide-меню: экран не забирает клавиши движения,
+      // поэтому их состояние подставляется из GLFW на каждом клиентском такте.
+      DecideGuiMovement.tick(minecraft, MODULES.get(ClickGUIModule.class).orElse(null));
       EVENTS.post(new ClientTickEvent(minecraft));
    }
 

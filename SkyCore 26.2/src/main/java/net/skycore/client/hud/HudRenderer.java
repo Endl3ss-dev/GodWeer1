@@ -13,8 +13,10 @@ import net.minecraft.client.input.MouseButtonInfo;
 import net.minecraft.client.renderer.state.gui.GuiRenderState;
 import net.skycore.client.SkycoreClient;
 import net.skycore.client.config.ConfigManager;
+import net.skycore.client.gui.decide.DecideCloseAnimation;
 import net.skycore.client.module.ClientModule;
 import net.skycore.client.module.ModuleManager;
+import net.skycore.client.module.combat.SpearDamageIndicatorModule;
 import net.skycore.client.module.render.ClickGUIModule;
 import net.skycore.client.module.render.InterfaceModule;
 import net.skycore.client.util.BeginFrameHelper;
@@ -96,6 +98,24 @@ public final class HudRenderer {
          int guiScaledWidth = instance.getWindow().getGuiScaledWidth();
          int guiScaledHeight = instance.getWindow().getGuiScaledHeight();
          this.reprojectIfNeeded(guiScaledWidth, guiScaledHeight);
+         // Анимация закрытия Decide-меню живёт поверх HUD: снимок кадра уже снят,
+         // и шейпы рисуются независимо от того, включены ли элементы интерфейса.
+         if (DecideCloseAnimation.isActive()) {
+            GuiGraphicsExtractor closeExtractor = new GuiGraphicsExtractor(instance, guiRenderState,
+                    (int) Math.round(this.mouseX(instance)), (int) Math.round(this.mouseY(instance)));
+            CurrentGuiGraphicsExtractorHelper.enter2D(closeExtractor, deltaTracker);
+            BeginFrameHelper.beginFrame();
+            try {
+               DecideCloseAnimation.renderHud(guiScaledWidth, guiScaledHeight);
+               BeginFrameHelper.flush();
+            } catch (RuntimeException failure) {
+               // Эффект закрытия не должен утянуть за собой весь HUD-проход.
+               SkycoreClient.LOGGER.warn("Skycore Decide GUI: close animation frame failed", failure);
+               DecideCloseAnimation.cancel();
+            } finally {
+               CurrentGuiGraphicsExtractorHelper.exit2D();
+            }
+         }
          long nowNanos = System.nanoTime();
          float computedValue = clamp((float)(nowNanos - this.lastFrameAt) / 1.0E9F, 0.0F, 0.05F);
          this.lastFrameAt = nowNanos;
@@ -121,13 +141,14 @@ public final class HudRenderer {
          boolean armorHudEnabled = this.interfaceModule.isArmorHudEnabled();
          boolean targetHudEnabled = this.interfaceModule.isTargetHudEnabled();
          boolean notificationsEnabled = this.interfaceModule.isNotificationsEnabled();
+         boolean spearDamageEnabled = SpearDamageIndicatorModule.INSTANCE.shouldRender(instance, computedValue);
          if (notificationsEnabled) {
             this.interfaceModule.notifications().tick(instance.player);
          } else {
             this.interfaceModule.notifications().tick(null);
          }
 
-         if (watermarkEnabled || informationEnabled || hotkeysEnabled || bindsEnabled || hotbarEnabled || potionsEnabled || cooldownsEnabled || armorHudEnabled || targetHudEnabled || notificationsEnabled) {
+         if (watermarkEnabled || informationEnabled || hotkeysEnabled || bindsEnabled || hotbarEnabled || potionsEnabled || cooldownsEnabled || armorHudEnabled || targetHudEnabled || notificationsEnabled || spearDamageEnabled) {
             boolean condition = instance.gui.screen() instanceof ChatScreen;
             GuiGraphicsExtractor guiGraphicsExtractor = new GuiGraphicsExtractor(instance, guiRenderState, (int)Math.round(this.mouseX(instance)), (int)Math.round(this.mouseY(instance)));
             CurrentGuiGraphicsExtractorHelper.enter2D(guiGraphicsExtractor, deltaTracker);
@@ -178,6 +199,12 @@ public final class HudRenderer {
 
                if (notificationsEnabled) {
                   this.interfaceModule.notifications().render(value, condition, guiScaledWidth);
+               }
+
+               if (spearDamageEnabled) {
+                  BeginFrameHelper.setHudIconGlowColor(0);
+                  SpearDamageIndicatorModule.INSTANCE.renderHud(guiScaledWidth, guiScaledHeight);
+                  BeginFrameHelper.setHudIconGlowColor(color);
                }
 
                BeginFrameHelper.flush();

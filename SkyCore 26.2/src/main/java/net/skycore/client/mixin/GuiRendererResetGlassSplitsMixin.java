@@ -17,6 +17,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.render.GuiRenderer;
 import net.minecraft.client.renderer.state.gui.GuiElementRenderState;
 import net.minecraft.client.renderer.state.gui.GuiItemRenderState;
+import net.skycore.client.gui.decide.DecideBackdrop;
+import net.skycore.client.gui.decide.DecideCloseAnimation;
 import net.skycore.client.util.AcquireViewHelper;
 import net.skycore.client.util.GuiPipelines;
 import net.skycore.client.util.CaptureHelper;
@@ -83,8 +85,13 @@ public abstract class GuiRendererResetGlassSplitsMixin {
                operation.call(new Object[]{guiRenderer, supplier, renderTarget, gpuBufferSlice, index, value4});
             }
 
-            if (this.skycore$backdropKinds.getInt(value3) == 2) {
+            int kind = this.skycore$backdropKinds.getInt(value3);
+            if (kind == 2) {
                AcquireViewHelper.captureNow();
+            } else if (kind == 3) {
+               DecideBackdrop.captureSceneNow(renderTarget);
+            } else if (kind == 4) {
+               DecideCloseAnimation.captureNow(renderTarget);
             } else if (!RenderGuiHelper.stabilizeOpeningBlur() || !this.skycore$openingBackdropCaptured) {
                RunPassHelper.captureNow();
                this.skycore$openingBackdropCaptured = true;
@@ -147,6 +154,10 @@ public abstract class GuiRendererResetGlassSplitsMixin {
    private static int skycore$backdropKind(RenderPipeline renderPipeline) {
       if (renderPipeline == GuiPipelines.MATTE_BLUR_RECT) {
          return 2;
+      } else if (renderPipeline == GuiPipelines.DECIDE_GRAYSCALE) {
+         return 3;
+      } else if (renderPipeline == GuiPipelines.DECIDE_CAPTURE_MARKER) {
+         return 4;
       } else {
          return renderPipeline != GuiPipelines.BLUR_RECT && renderPipeline != GuiPipelines.GLASS_SHADOW ? 0 : 1;
       }

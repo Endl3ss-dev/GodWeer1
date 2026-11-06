@@ -94,5 +94,11 @@ public abstract class RenderPipelinesMixin {
       register(AtmospherePipelines.RAIN_STREAK);
       register(MotionBlurPipelines.MOTION_BLUR);
       register(MotionBlurPipelines.MOTION_BLUR_BLIT);
+      // Decide ClickGUI: фоновые эффекты, ч/б сцена и маркер захвата кадра.
+      // Без регистрации в общем реестре шейдеры не компилируются, и первый же кадр
+      // с включённым эффектом роняет игру — регистрация обязательна.
+      register(GuiPipelines.DECIDE_EFFECTS);
+      register(GuiPipelines.DECIDE_GRAYSCALE);
+      register(GuiPipelines.DECIDE_CAPTURE_MARKER);
    }
 }

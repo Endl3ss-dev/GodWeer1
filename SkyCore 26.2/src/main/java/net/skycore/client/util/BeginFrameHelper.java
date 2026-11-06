@@ -247,6 +247,13 @@ public final class BeginFrameHelper {
       return currentScissor();
    }
 
+   public static void customElement(GuiElementRenderState state) {
+      if (state != null && !hasEmptyScissor() && CurrentGuiGraphicsExtractorHelper.isIn2D()) {
+         FRAME_STATE.queued.add(state);
+         FRAME_STATE.pendingCount = FRAME_STATE.queued.size();
+      }
+   }
+
    public static void setBackdropBlurScale(float backdropBlurScale2) {
       float minimum = Math.min(1.0F, backdropBlurScale2);
       float maximum = Math.max(0.0F, minimum);

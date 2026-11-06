@@ -4,16 +4,20 @@ import com.mojang.authlib.GameProfile;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientLevel;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.core.Holder;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.entity.player.Player;
 import net.minecraft.world.item.ItemStack;
+import net.minecraft.world.item.enchantment.Enchantment;
+import net.minecraft.world.item.enchantment.ItemEnchantments;
 import net.skycore.client.config.FriendManager;
 import net.skycore.client.module.combat.AntiBotModule;
 import net.skycore.client.util.ChargedHelper;
 
 /**
- * Общая расчётная часть копья (1.21.11) для {@code Spear Dash} и {@code Spear Exploit}.
+ * Общая расчётная часть копья (1.21.11 / 26.2) для модулей {@code Extended Reach},
+ * {@code Instant Lunge}, {@code Spear Damage Indicator} и {@code Spear Mace Double Tap}.
  *
  * <p>Числа — из Minecraft Wiki (Spear, Lunge): импульс «Рывка» {@code 0.458 × N}
  * блоков/тик, урон заряда {@code floor(множитель × скорость сближения в бл/с)} плюс
@@ -22,12 +26,13 @@ import net.skycore.client.util.ChargedHelper;
  * <p>Совместимость с 26.2: имена предметов и зачарований ({@code Items.*_SPEAR},
  * {@code Enchantments.LUNGE}, {@code ResourceKey.create}) не используются — копьё
  * опознаётся по {@link ChargedHelper#kind(ItemStack)}, тир — по строке id, уровень
- * зачарования — перебором {@code stack.getEnchantments()} по пути. Так код не зависит
- * от того, как именно эти константы называются в вашей сборке.
+ * зачарования — через кэшированный {@link Holder} после первого обнаружения в мире.
  */
 public final class SpearHelper {
    public static final String KIND = "spear";
    public static final String LUNGE_PATH = "lunge";
+   public static final String DENSITY_PATH = "density";
+   public static final String BREACH_PATH = "breach";
    public static final double LUNGE_BLOCKS_PER_TICK = 0.458;
    public static final double CHARGE_DAMAGE_SPEED = 4.6;
    public static final double MIN_REACH = 2.05;
@@ -35,11 +40,16 @@ public final class SpearHelper {
    public static final double TICKS_PER_SECOND = 20.0;
    public static final float AIM_HEIGHT = 0.85F;
 
+   private static Object cachedEnchantWorld;
+   private static Holder<Enchantment> cachedLungeHolder;
+   private static Holder<Enchantment> cachedDensityHolder;
+   private static Holder<Enchantment> cachedBreachHolder;
+
    private SpearHelper() {
    }
 
    public static boolean isSpear(ItemStack stack) {
-      return !stack.isEmpty() && KIND.equals(ChargedHelper.kind(stack));
+      return stack != null && !stack.isEmpty() && KIND.equals(ChargedHelper.kind(stack));
    }
 
    /** Путь предмета без неймспейса, например {@code "netherite_spear"}. */
@@ -49,8 +59,78 @@ public final class SpearHelper {
       return colon >= 0 ? id.substring(colon + 1) : id;
    }
 
+   private static void syncEnchantWorld() {
+      ClientLevel level = Minecraft.getInstance().level;
+      if (level != cachedEnchantWorld) {
+         cachedEnchantWorld = level;
+         cachedLungeHolder = null;
+         cachedDensityHolder = null;
+         cachedBreachHolder = null;
+      }
+   }
+
+   public static void warmHotbarEnchantCache(LocalPlayer player) {
+      if (player == null) {
+         return;
+      }
+      syncEnchantWorld();
+      for (int i = 0; i < HOTBAR_SIZE; i++) {
+         ItemStack stack = player.getInventory().getItem(i);
+         if (!stack.isEmpty()) {
+            ItemEnchantments enchantments = stack.getEnchantments();
+            if (!enchantments.isEmpty()) {
+               captureHolders(enchantments);
+            }
+         }
+      }
+   }
+
+   private static void captureHolders(ItemEnchantments enchantments) {
+      for (var entry : enchantments.entrySet()) {
+         Holder<Enchantment> holder = entry.getKey();
+         var key = holder.unwrapKey();
+         if (key.isPresent()) {
+            String p = key.get().identifier().getPath();
+            if (LUNGE_PATH.equals(p)) {
+               cachedLungeHolder = holder;
+            } else if (DENSITY_PATH.equals(p)) {
+               cachedDensityHolder = holder;
+            } else if (BREACH_PATH.equals(p)) {
+               cachedBreachHolder = holder;
+            }
+         }
+      }
+   }
+
    public static int enchantLevel(ItemStack stack, String path) {
-      for (var entry : stack.getEnchantments().entrySet()) {
+      if (stack == null || stack.isEmpty()) {
+         return 0;
+      }
+      ItemEnchantments enchantments = stack.getEnchantments();
+      if (enchantments.isEmpty()) {
+         return 0;
+      }
+      syncEnchantWorld();
+      if (LUNGE_PATH.equals(path) && cachedLungeHolder != null) {
+         return enchantments.getLevel(cachedLungeHolder);
+      }
+      if (DENSITY_PATH.equals(path) && cachedDensityHolder != null) {
+         return enchantments.getLevel(cachedDensityHolder);
+      }
+      if (BREACH_PATH.equals(path) && cachedBreachHolder != null) {
+         return enchantments.getLevel(cachedBreachHolder);
+      }
+      captureHolders(enchantments);
+      if (LUNGE_PATH.equals(path) && cachedLungeHolder != null) {
+         return enchantments.getLevel(cachedLungeHolder);
+      }
+      if (DENSITY_PATH.equals(path) && cachedDensityHolder != null) {
+         return enchantments.getLevel(cachedDensityHolder);
+      }
+      if (BREACH_PATH.equals(path) && cachedBreachHolder != null) {
+         return enchantments.getLevel(cachedBreachHolder);
+      }
+      for (var entry : enchantments.entrySet()) {
          var key = entry.getKey().unwrapKey();
          if (key.isPresent() && path.equals(key.get().identifier().getPath())) {
             return entry.getIntValue();
@@ -62,6 +142,14 @@ public final class SpearHelper {
 
    public static int lungeLevel(ItemStack stack) {
       return enchantLevel(stack, LUNGE_PATH);
+   }
+
+   public static int densityLevel(ItemStack stack) {
+      return enchantLevel(stack, DENSITY_PATH);
+   }
+
+   public static int breachLevel(ItemStack stack) {
+      return enchantLevel(stack, BREACH_PATH);
    }
 
    /** Множитель заряда по тиру копья. */
