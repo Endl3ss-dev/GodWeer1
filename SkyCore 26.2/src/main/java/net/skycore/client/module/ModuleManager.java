@@ -68,9 +68,13 @@ import net.skycore.client.module.movement.NoFallModule;
 import net.skycore.client.module.movement.NoPushModule;
 import net.skycore.client.module.movement.NoWebModule;
 import net.skycore.client.module.movement.SpeedHVHModule;
+import net.skycore.client.module.movement.SpeedModule;
+import net.skycore.client.module.movement.SpeedV2Module;
+import net.skycore.client.module.movement.SpeedV3Module;
 import net.skycore.client.module.movement.SprintModule;
 import net.skycore.client.module.movement.SuperFireworkModule;
 import net.skycore.client.module.movement.TimerModule;
+import net.skycore.client.module.movement.VelocityModule;
 import net.skycore.client.module.movement.WebIgnoreModule;
 import net.skycore.client.module.player.DrinkUseModule;
 import net.skycore.client.module.player.AimingItemsModule;
@@ -290,11 +294,15 @@ public final class ModuleManager {
       this.trialRegister(SprintModule.INSTANCE);
       this.trialRegister(SuperFireworkModule.INSTANCE);
       this.trialRegister(SpeedHVHModule.INSTANCE);
+      this.trialRegister(SpeedModule.INSTANCE);
+      this.trialRegister(SpeedV2Module.INSTANCE);
+      this.trialRegister(SpeedV3Module.INSTANCE);
       this.trialRegister(NoPushModule.INSTANCE);
       this.trialRegister(NoWebModule.INSTANCE);
       this.trialRegister(NoFallModule.INSTANCE);
       this.trialRegister(JesusModule.INSTANCE);
       this.trialRegister(NoClipModule.INSTANCE);
+      this.trialRegister(VelocityModule.INSTANCE);
    }
 
    public synchronized Collection<ClientModule> enabled() {
