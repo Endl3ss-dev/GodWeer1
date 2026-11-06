@@ -35,6 +35,7 @@ public final class AcCommand extends ClientCommand {
       builder.then(literal("save").executes(context -> this.save()));
       builder.then(literal("auto").executes(context -> this.auto()));
       builder.then(literal("setup").executes(context -> this.setup()));
+      builder.then(literal("default").executes(context -> this.defaults()));
       builder.then(literal("apply").then(arg("family", StringArgumentType.word())
          .suggests((context, suggestions) -> {
             for (AcFamily family : AcFamily.values()) {
@@ -117,6 +118,15 @@ public final class AcCommand extends ClientCommand {
          ChatMessages.displayInfo(line);
       }
 
+      for (String warning : AutoBypass.INSTANCE.diagnose()) {
+         ChatMessages.displayInfo("! " + warning);
+      }
+
+      return 1;
+   }
+
+   private int defaults() {
+      ChatMessages.displayInfo(AutoBypass.INSTANCE.resetV3());
       return 1;
    }
 
@@ -133,7 +143,8 @@ public final class AcCommand extends ClientCommand {
       ChatMessages.displayInfo(".ac save — отчёт в файл run/skycore-ac-report.txt");
       ChatMessages.displayInfo(".ac auto — подобрать профиль под найденный AC");
       ChatMessages.displayInfo(".ac apply <grim|matrix|vulcan|...> — профиль вручную");
-      ChatMessages.displayInfo(".ac setup — текущие значения Speedv3");
+      ChatMessages.displayInfo(".ac setup — текущие значения Speedv3 + проверка настроек");
+      ChatMessages.displayInfo(".ac default — сбросить Speedv3 к значениям по умолчанию");
       ChatMessages.displayInfo(".ac reset — обнулить");
       return 1;
    }

@@ -154,6 +154,15 @@ public final class AutoBypass {
       return null;
    }
 
+   /** Сброс всех настроек Speedv3 к дефолтным значениям. */
+   public String resetV3() {
+      for (Setting<?> setting : SpeedV3Module.INSTANCE.getSettings()) {
+         setting.reset();
+      }
+
+      return "Настройки Speedv3 сброшены к значениям по умолчанию";
+   }
+
    public String currentSetup() {
       StringBuilder builder = new StringBuilder();
       builder.append("Speedv3: ").append(SpeedV3Module.INSTANCE.isEnabled() ? "вкл" : "выкл").append('\n');
@@ -162,7 +171,94 @@ public final class AutoBypass {
       }
 
       builder.append("Speed: ").append(SpeedModule.INSTANCE.isEnabled() ? "вкл" : "выкл")
+         .append(" (").append(describeMode(SpeedModule.INSTANCE)).append(')')
          .append(", Speedv2: ").append(SpeedV2Module.INSTANCE.isEnabled() ? "вкл" : "выкл").append('\n');
       return builder.toString();
+   }
+
+   private static String describeMode(net.skycore.client.module.ClientModule module) {
+      String mode = SpeedTelemetry.modeName(module);
+      return mode == null ? "режим не найден" : mode;
+   }
+
+   /**
+    * Проверка текущего состояния Speedv3: настройки, которые гарантированно режут скорость
+    * или ломают обход. Возвращает список предупреждений (пусто — всё в норме).
+    */
+   public List<String> diagnose() {
+      List<String> warnings = new ArrayList<>();
+      if (!SpeedV3Module.INSTANCE.isEnabled()) {
+         warnings.add("Speedv3 выключен — телеметрия показывает только другие модули");
+      }
+
+      if (this.numValue("Jump Factor", 1.0) < 0.99) {
+         warnings.add("Jump Factor " + this.fmt("Jump Factor") + " — прыжок слабее ванильного, высота и скорость режутся");
+      }
+
+      if (this.numValue("Sprint Mult", 1.0) < 0.995) {
+         warnings.add("Sprint Mult " + this.fmt("Sprint Mult") + " — гасит спринт-буст");
+      }
+
+      if (this.numValue("Bhop Boost", 1.0) < 0.995) {
+         warnings.add("Bhop Boost " + this.fmt("Bhop Boost") + " — первый воздушный тик не усиливается");
+      }
+
+      if (this.numValue("First Air Boost", 1.0) < 0.995) {
+         warnings.add("First Air Boost " + this.fmt("First Air Boost") + " — срез скорости на выходе с земли");
+      }
+
+      if (!this.boolValue("Exact Attributes", true)) {
+         warnings.add("Exact Attributes выкл — атрибуты движения считаются грубо, расхождение с предсказанием");
+      }
+
+      if (!this.boolValue("Smart Bhop", true)) {
+         warnings.add("Smart Bhop выкл — нет ровного цикла прыжков");
+      }
+
+      if (!this.boolValue("Yaw Damp", true)) {
+         warnings.add("Yaw Damp выкл — резкий поворот даёт скачок направления");
+      }
+
+      if (!this.boolValue("Micro Jitter", false) && this.numValue("Jitter Strength", 0.0) <= 0.0) {
+         warnings.add("джиттера нет — повторяемые значения легко ловятся статистикой");
+      }
+
+      if (this.numValue("Offset", 0.00045) > 0.0008) {
+         warnings.add("Offset " + this.fmt("Offset") + " — шире допуска Grim, будут сеты");
+      }
+
+      if (this.numValue("Strictness", 0.00085) > 0.0012) {
+         warnings.add("Strictness " + this.fmt("Strictness") + " — слишком мягкий конверт для Grim");
+      }
+
+      if (warnings.isEmpty()) {
+         warnings.add("настройки Speedv3 выглядят рабочими");
+      }
+
+      return warnings;
+   }
+
+   private double numValue(String settingName, double fallback) {
+      Setting<?> setting = this.find(settingName);
+      if (setting instanceof NumberSetting numberSetting) {
+         Double value = numberSetting.get();
+         return value == null ? fallback : value;
+      }
+
+      return fallback;
+   }
+
+   private boolean boolValue(String settingName, boolean fallback) {
+      Setting<?> setting = this.find(settingName);
+      if (setting instanceof BooleanSetting booleanSetting) {
+         Boolean value = booleanSetting.get();
+         return value == null ? fallback : value;
+      }
+
+      return fallback;
+   }
+
+   private String fmt(String settingName) {
+      return String.format(Locale.ROOT, "%.5f", this.numValue(settingName, 0.0));
    }
 }
