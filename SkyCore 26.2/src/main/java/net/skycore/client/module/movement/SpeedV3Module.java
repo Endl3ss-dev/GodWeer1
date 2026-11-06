@@ -1,21 +1,19 @@
 package net.skycore.client.module.movement;
 
-import java.util.concurrent.ThreadLocalRandom;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
-import net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket;
-import net.minecraft.tags.FluidTags;
+import net.minecraft.core.BlockPos;
+import net.minecraft.util.Mth;
 import net.minecraft.world.effect.MobEffectInstance;
 import net.minecraft.world.effect.MobEffects;
+import net.minecraft.world.level.block.Block;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.block.state.BlockState;
+import net.minecraft.world.phys.Vec2;
+import net.minecraft.world.phys.Vec3;
 import net.skycore.client.SkycoreClient;
-import net.skycore.client.event.PacketReceiveEvent;
-import net.skycore.client.event.PlayerInputEvent;
-import net.skycore.client.event.PlayerTickEndEvent;
 import net.skycore.client.event.PlayerTickStartEvent;
-import net.skycore.client.movement.speed.GrimSpeedBypass;
-import net.skycore.client.movement.speed.SpeedAction;
+import net.skycore.client.movement.speed.SpeedTimer;
 import net.skycore.client.module.ClientModule;
 import net.skycore.client.module.ModuleCategory;
 import net.skycore.client.setting.BooleanSetting;
@@ -23,237 +21,285 @@ import net.skycore.client.util.MovementHelper;
 import net.skycore.client.util.SliderSetting;
 
 /**
- * Speedv3: режим Nuclear [MetaHvH] как в Speed, плюс слой обхода Grim 2.3.66-2.3.71.
+ * Speedv3: Nuclear [MetaHvH] с расширенным слоем обхода Grim (PredictionEngine / BlockProperties).
  *
- * База (1:1 с Nuclear): в воздухе держит скорость 0.358, домноженную на множитель
- * амплификатора Speed (0 -> 1.263, 1 -> 1.453, 2+ -> 1.652); на земле авто-прыжок.
- * Не работает на элитре, в воде и под водой.
- *
- * Почему флагало: Grim предсказывает смещение по предыдущему тику, а MetaHvH
- * ставит сразу целевую скорость на первом же тике после отрыва от земли, без
- * разгона, с постоянным значением и без учёта сета/урона/скользких блоков.
- * Обход это и закрывает: разгон, потолок за тик, джиттер, декларация позиции,
- * пауза после сета, отказ от буста при уроне, коллизии и скользком полу.
+ * Логика режима: точные атрибуты движения (бафы/замедление/крауч/использование предмета/спринт),
+ * точный friction блока под ногами, раздельные ветки земли и воздуха, в воздухе скорость
+ * ДОБАВЛЯЕТСЯ к предсказанному переносу (motion * friction), а не перезаписывается,
+ * и держится в конверте Grim (softCap / hardCap) + yaw-демпфирование и микро-джиттер.
  */
 public final class SpeedV3Module extends ClientModule {
    public static final SpeedV3Module INSTANCE = new SpeedV3Module();
 
-   private final SliderSetting speed = this.add(new SliderSetting("Скорость", 0.358, 0.25, 0.6, 0.005));
    private final BooleanSetting autojump = this.add(new BooleanSetting("Авто-прыжок", true));
 
-   private final BooleanSetting bypass = this.add(new BooleanSetting("Обход Grim", true));
-   private final SliderSetting maxStep = this.add(new SliderSetting("Макс. скорость за тик", 0.42, 0.30, 0.60, 0.005));
-   private final SliderSetting rampTicks = this.add(new SliderSetting("Разгон, тиков", 3, 0, 10, 1));
-   private final SliderSetting jitter = this.add(new SliderSetting("Джиттер, %", 2.0, 0.0, 10.0, 0.5));
-   private final SliderSetting setbackCooldown = this.add(new SliderSetting("Пауза после сета, мс", 1200, 0, 5000, 100));
-   private final BooleanSetting positionPackets = this.add(new BooleanSetting("Позиционные пакеты", true));
-   private final BooleanSetting jumpPacket = this.add(new BooleanSetting("Пакет перед прыжком", true));
-   private final BooleanSetting stopOnHurt = this.add(new BooleanSetting("Не бустить при уроне", true));
-   private final BooleanSetting skipSlippery = this.add(new BooleanSetting("Не бустить на скользких блоках", true));
-   private final BooleanSetting skipCollision = this.add(new BooleanSetting("Не бустить при коллизии", false));
+   private final BooleanSetting grimSmartBhop = this.add(new BooleanSetting("Smart Bhop", true));
+   private final BooleanSetting grimPreserveY = this.add(new BooleanSetting("Preserve Y", true));
+   private final BooleanSetting grimMicroJitter = this.add(new BooleanSetting("Micro Jitter", false));
+   private final BooleanSetting grimYawDamp = this.add(new BooleanSetting("Yaw Damp", true));
+   private final BooleanSetting grimExactAttributes = this.add(new BooleanSetting("Exact Attributes", true));
 
-   private int airTicks;
-   private long cooldownUntil;
+   private final SliderSetting grimAirFactor = this.add(new SliderSetting("Air Factor", 1.0, 0.85, 1.08, 0.005));
+   private final SliderSetting grimGroundFactor = this.add(new SliderSetting("Ground Factor", 1.0, 0.90, 1.12, 0.005));
+   private final SliderSetting grimOffset = this.add(new SliderSetting("Offset", 0.00045, 0.0, 0.0025, 0.00005));
+   private final SliderSetting grimJumpFactor = this.add(new SliderSetting("Jump Factor", 1.0, 0.85, 1.15, 0.01));
+   private final SliderSetting grimMomentum = this.add(new SliderSetting("Momentum", 1.0, 0.92, 1.02, 0.005));
+   private final SliderSetting grimStrictness = this.add(new SliderSetting("Strictness", 0.00085, 0.0002, 0.0015, 0.00005));
+   private final SliderSetting grimInputScale = this.add(new SliderSetting("Input Scale", 1.0, 0.92, 1.05, 0.005));
+   private final SliderSetting grimFrictionMult = this.add(new SliderSetting("Friction Mult", 1.0, 0.97, 1.03, 0.005));
+   private final SliderSetting grimBhopBoost = this.add(new SliderSetting("Bhop Boost", 1.0, 0.95, 1.08, 0.005));
+   private final SliderSetting grimJitterStr = this.add(new SliderSetting("Jitter Strength", 0.000012, 0.0, 0.00008, 0.000002));
+   private final SliderSetting grimSprintMult = this.add(new SliderSetting("Sprint Mult", 1.0, 0.98, 1.04, 0.005));
+   private final SliderSetting grimFirstAirBoost = this.add(new SliderSetting("First Air Boost", 1.0, 0.97, 1.06, 0.005));
+
+   private int grimAirTicks;
+   private boolean grimWasOnGround;
+   private boolean justJumped;
+   private float grimLastYaw;
+   private double grimLastHx;
+   private double grimLastHz;
+   private double grimPredCarryX;
+   private double grimPredCarryZ;
 
    private SpeedV3Module() {
-      super("Speedv3", "Nuclear MetaHvH + обход Grim 2.3.66-2.3.71", ModuleCategory.MOVEMENT);
-      this.maxStep.visibleWhen(this.bypass::get);
-      this.rampTicks.visibleWhen(this.bypass::get);
-      this.jitter.visibleWhen(this.bypass::get);
-      this.setbackCooldown.visibleWhen(this.bypass::get);
-      this.positionPackets.visibleWhen(this.bypass::get);
-      this.jumpPacket.visibleWhen(this.bypass::get);
-      this.stopOnHurt.visibleWhen(this.bypass::get);
-      this.skipSlippery.visibleWhen(this.bypass::get);
-      this.skipCollision.visibleWhen(this.bypass::get);
-
+      super("Speedv3", "Nuclear MetaHvH + точный обход Grim (PredictionEngine)", ModuleCategory.MOVEMENT);
       SkycoreClient.events().subscribe(PlayerTickStartEvent.class, this::onTickStart);
-      SkycoreClient.events().subscribe(PlayerTickEndEvent.class, this::onTickEnd);
-      SkycoreClient.events().subscribe(PlayerInputEvent.class, this::onInput);
-      SkycoreClient.events().subscribe(PacketReceiveEvent.class, this::onPacketReceive);
    }
 
    @Override
    protected void onEnable() {
-      this.airTicks = 0;
-      this.cooldownUntil = 0L;
+      LocalPlayer player = Minecraft.getInstance().player;
+      this.grimAirTicks = 0;
+      this.grimWasOnGround = player != null && player.onGround();
+      this.justJumped = false;
+      this.grimLastYaw = player != null ? player.getYRot() : 0.0F;
    }
 
    @Override
    protected void onDisable() {
-      this.airTicks = 0;
-      this.cooldownUntil = 0L;
-   }
-
-   private float amplifierMultiplier(LocalPlayer player) {
-      MobEffectInstance effect = player.getEffect(MobEffects.SPEED);
-      if (effect == null) {
-         return 1.0F;
-      }
-
-      if (effect.getAmplifier() == 0) {
-         return 1.263F;
-      } else if (effect.getAmplifier() == 1) {
-         return 1.453F;
-      } else if (effect.getAmplifier() >= 2) {
-         return 1.652F;
-      }
-
-      return 1.0F;
+      SpeedTimer.clear();
+      this.grimAirTicks = 0;
+      this.justJumped = false;
    }
 
    private void onTickStart(PlayerTickStartEvent event) {
-      if (!this.isEnabled()) {
-         return;
-      }
-
-      LocalPlayer player = event.player();
-      if (player == null || player.getAbilities().flying) {
-         return;
-      }
-
-      if (player.onGround()) {
-         this.airTicks = 0;
-      } else {
-         this.airTicks++;
-      }
-
-      if (player.isFallFlying() || player.isInWater() || player.isEyeInFluid(FluidTags.WATER)) {
-         return;
-      }
-
-      if (player.onGround()) {
-         return;
-      }
-
-      float target = (float)(this.speed.get() * (double)this.amplifierMultiplier(player));
-      if (!this.bypass.get()) {
-         SpeedAction.setSpeed(target);
-         return;
-      }
-
-      if (!this.canBoost(player)) {
-         return;
-      }
-
-      float effective = this.rampedSpeed(target);
-      effective = this.applyJitter(effective);
-      SpeedAction.setSpeed(effective);
-
-      if (this.positionPackets.get()) {
-         GrimSpeedBypass.sendPosition(player);
+      if (this.isEnabled()) {
+         this.metaHvH();
       }
    }
 
-   private boolean canBoost(LocalPlayer player) {
-      long now = System.nanoTime();
-      if (now < this.cooldownUntil) {
-         return false;
-      }
-
-      if (this.stopOnHurt.get() && player.hurtTime > 0) {
-         return false;
-      }
-
-      if (this.skipCollision.get() && player.horizontalCollision) {
-         return false;
-      }
-
-      if (this.skipSlippery.get() && this.onSlipperyBlock(player)) {
-         return false;
-      }
-
-      return true;
-   }
-
-   private boolean onSlipperyBlock(LocalPlayer player) {
-      if (player.level() == null) {
-         return false;
-      }
-
-      BlockState state = player.level().getBlockState(player.blockPosition().below());
-      return state.is(Blocks.ICE)
-         || state.is(Blocks.PACKED_ICE)
-         || state.is(Blocks.BLUE_ICE)
-         || state.is(Blocks.FROSTED_ICE)
-         || state.is(Blocks.SLIME_BLOCK)
-         || state.is(Blocks.HONEY_BLOCK)
-         || state.is(Blocks.SOUL_SAND);
-   }
-
-   private float rampedSpeed(float target) {
-      int ticks = this.rampTicks.get().intValue();
-      float value = target;
-      if (ticks > 0 && this.airTicks <= ticks) {
-         float progress = (float)this.airTicks / (float)(ticks + 1);
-         value = target * progress;
-      }
-
-      float limit = this.maxStep.get().floatValue();
-      return Math.min(value, limit);
-   }
-
-   private float applyJitter(float value) {
-      double percent = this.jitter.get();
-      if (percent <= 0.0) {
-         return value;
-      }
-
-      double delta = ThreadLocalRandom.current().nextDouble(-percent, percent) / 100.0;
-      return (float)(value * (1.0 + delta));
-   }
-
-   private void onTickEnd(PlayerTickEndEvent event) {
-      if (!this.isEnabled() || !this.bypass.get() || !this.positionPackets.get()) {
-         return;
-      }
-
-      LocalPlayer player = event.player();
-      if (player == null || player.onGround()) {
-         return;
-      }
-
-      if (!player.isFallFlying() && !player.isInWater() && this.canBoost(player)) {
-         GrimSpeedBypass.sendPosition(player);
-      }
-   }
-
-   private void onInput(PlayerInputEvent event) {
-      if (!this.isEnabled() || !this.autojump.get()) {
-         return;
-      }
-
+   private void metaHvH() {
       LocalPlayer player = Minecraft.getInstance().player;
-      if (player == null || !player.onGround() || !MovementHelper.isMoving()) {
+      if (player == null || player.level() == null || player.input == null) {
          return;
       }
 
-      if (player.input == null || player.input.keyPresses.jump()) {
+      if (player.isFallFlying()
+         || player.isInWater()
+         || player.isInLava()
+         || player.getAbilities().flying
+         || !MovementHelper.isMoving()) {
+         this.grimAirTicks = 0;
          return;
       }
 
-      if (this.bypass.get()) {
-         long now = System.nanoTime();
-         if (now < this.cooldownUntil || (this.stopOnHurt.get() && player.hurtTime > 0)) {
-            return;
+      boolean onGround = player.onGround();
+      float yaw = player.getYRot();
+      Vec3 motion = player.getDeltaMovement();
+      double mx = motion.x;
+      double my = motion.y;
+      double mz = motion.z;
+
+      float moveAttr = 0.1F;
+      if (this.grimExactAttributes.get()) {
+         MobEffectInstance speed = player.getEffect(MobEffects.SPEED);
+         if (speed != null) {
+            int amp = speed.getAmplifier();
+            moveAttr *= 1.0F + 0.2F * (float)(amp + 1);
          }
 
-         if (this.jumpPacket.get()) {
-            GrimSpeedBypass.sendStatus(player);
+         MobEffectInstance slowness = player.getEffect(MobEffects.SLOWNESS);
+         if (slowness != null) {
+            int amp = slowness.getAmplifier();
+            moveAttr *= Math.max(0.0F, 1.0F - 0.15F * (float)(amp + 1));
+         }
+
+         if (player.isShiftKeyDown()) {
+            moveAttr *= 0.3F;
+         }
+
+         if (player.isUsingItem()) {
+            moveAttr *= 0.2F;
+         }
+      } else {
+         MobEffectInstance speed = player.getEffect(MobEffects.SPEED);
+         if (speed != null) {
+            int amp = speed.getAmplifier();
+            moveAttr *= 1.0F + 0.2F * (float)(amp + 1);
          }
       }
 
-      player.jumpFromGround();
+      boolean sprinting = player.isSprinting();
+      if (sprinting) {
+         moveAttr += moveAttr * 0.3F * this.grimSprintMult.get().floatValue();
+      }
+
+      Vec2 move = player.input.getMoveVector();
+      float forward = move.y;
+      float strafe = move.x;
+      float inputLen = Mth.sqrt(forward * forward + strafe * strafe);
+      if (inputLen > 1.0F) {
+         forward /= inputLen;
+         strafe /= inputLen;
+      }
+
+      forward *= this.grimInputScale.get().floatValue();
+      strafe *= this.grimInputScale.get().floatValue();
+
+      float yawRad = yaw * 0.017453292F;
+      float sin = Mth.sin(yawRad);
+      float cos = Mth.cos(yawRad);
+      double inputX = (double)strafe * (double)cos - (double)forward * (double)sin;
+      double inputZ = (double)forward * (double)cos + (double)strafe * (double)sin;
+      double inputHyp = Math.sqrt(inputX * inputX + inputZ * inputZ);
+      if (inputHyp > 1.0) {
+         inputX /= inputHyp;
+         inputZ /= inputHyp;
+      }
+
+      float blockFriction = 0.6F;
+      BlockPos under = BlockPos.containing(
+         Mth.floor(player.getX()),
+         Mth.floor(player.getBoundingBox().minY) - 1,
+         Mth.floor(player.getZ()));
+      BlockState state = player.level().getBlockState(under);
+      if (state != null) {
+         Block block = state.getBlock();
+         if (block == Blocks.ICE || block == Blocks.PACKED_ICE) {
+            blockFriction = 0.98F;
+         } else {
+            blockFriction = block.getFriction();
+         }
+      }
+
+      float tickFriction = (onGround ? blockFriction * 0.91F : 0.91F) * this.grimFrictionMult.get().floatValue();
+
+      if (onGround) {
+         this.grimAirTicks = 0;
+         this.justJumped = false;
+      } else {
+         this.grimAirTicks++;
+      }
+
+      this.grimWasOnGround = onGround;
+
+      double oldHyp = Math.sqrt(mx * mx + mz * mz);
+
+      if (onGround) {
+         float f = blockFriction;
+         float groundAccel = (float)((double)(moveAttr * (0.21600002F / (f * f * f)) * this.grimGroundFactor.get().floatValue())
+            + this.grimOffset.get());
+         double keep = oldHyp * (0.6 * this.grimMomentum.get());
+         double tx = inputX * (double)groundAccel + (oldHyp > 1.0E-8 ? mx * keep / oldHyp : 0.0);
+         double tz = inputZ * (double)groundAccel + (oldHyp > 1.0E-8 ? mz * keep / oldHyp : 0.0);
+         double hyp = Math.sqrt(tx * tx + tz * tz);
+         float maxGround = (float)((double)(moveAttr * 1.3F * this.grimGroundFactor.get().floatValue()) + 0.02);
+         if (hyp > (double)maxGround) {
+            tx = tx / hyp * (double)maxGround;
+            tz = tz / hyp * (double)maxGround;
+         }
+
+         this.applyHorizontal(player, tx, tz);
+         if ((this.autojump.get() || this.grimSmartBhop.get())
+            && (player.input.keyPresses.jump() || this.grimSmartBhop.get())) {
+            this.doVanillaJump(player, yaw);
+            this.justJumped = true;
+         }
+      } else {
+         float airBase = sprinting ? 0.025999999F : 0.02F;
+         float airAccel = (float)((double)(airBase * (moveAttr / 0.1F) * this.grimAirFactor.get().floatValue())
+            + this.grimOffset.get());
+         if (this.grimAirTicks <= 1 || this.justJumped) {
+            airAccel = (float)((double)airAccel * this.grimFirstAirBoost.get() * this.grimBhopBoost.get());
+            this.justJumped = false;
+         }
+
+         double predCarryX = mx * (double)tickFriction;
+         double predCarryZ = mz * (double)tickFriction;
+         this.grimPredCarryX = predCarryX;
+         this.grimPredCarryZ = predCarryZ;
+
+         double nx = predCarryX + inputX * (double)airAccel;
+         double nz = predCarryZ + inputZ * (double)airAccel;
+         nx *= this.grimMomentum.get();
+         nz *= this.grimMomentum.get();
+
+         double hyp = Math.sqrt(nx * nx + nz * nz);
+         double predictedMax = Math.sqrt(predCarryX * predCarryX + predCarryZ * predCarryZ) + (double)airAccel + 3.0E-4;
+         double softCap = predictedMax + this.grimStrictness.get();
+         double hardCap = predictedMax + this.grimStrictness.get() * 1.8 + 4.0E-4;
+         if (hyp > softCap) {
+            double scale = softCap / hyp;
+            nx = nx * 0.65 + nx * scale * 0.35;
+            nz = nz * 0.65 + nz * scale * 0.35;
+            hyp = Math.sqrt(nx * nx + nz * nz);
+         }
+
+         if (hyp > hardCap) {
+            nx = nx / hyp * hardCap;
+            nz = nz / hyp * hardCap;
+         }
+
+         if (this.grimYawDamp.get()) {
+            float yawDelta = Math.abs(Mth.wrapDegrees(yaw - this.grimLastYaw));
+            if (yawDelta > 25.0F && this.grimAirTicks > 2) {
+               double damp = 1.0 - Math.min(0.12, (double)yawDelta / 800.0);
+               nx *= damp;
+               nz *= damp;
+            }
+         }
+
+         if (this.grimMicroJitter.get() && this.grimAirTicks > 1) {
+            double jitter = this.grimJitterStr.get();
+            nx += (Math.random() - 0.5) * jitter;
+            nz += (Math.random() - 0.5) * jitter;
+         }
+
+         if (this.grimPreserveY.get()) {
+            player.setDeltaMovement(nx, my, nz);
+         } else {
+            player.setDeltaMovement(nx, my, nz);
+         }
+
+         this.grimLastHx = nx;
+         this.grimLastHz = nz;
+      }
+
+      this.grimLastYaw = yaw;
    }
 
-   private void onPacketReceive(PacketReceiveEvent event) {
-      if (!this.isEnabled() || !this.bypass.get() || event.isCancelled()) {
-         return;
+   private void doVanillaJump(LocalPlayer player, float yaw) {
+      float jumpPower = 0.42F;
+      MobEffectInstance jump = player.getEffect(MobEffects.JUMP_BOOST);
+      if (jump != null) {
+         jumpPower += 0.1F * (float)(jump.getAmplifier() + 1);
       }
 
-      if (event.getPacket() instanceof ClientboundPlayerPositionPacket) {
-         this.cooldownUntil = System.nanoTime() + this.setbackCooldown.get().longValue() * 1000000L;
-         this.airTicks = 0;
+      jumpPower *= this.grimJumpFactor.get().floatValue();
+      Vec3 motion = player.getDeltaMovement();
+      double x = motion.x;
+      double z = motion.z;
+      if (player.isSprinting()) {
+         float yawRad = yaw * 0.017453292F;
+         float boost = 0.2F * this.grimJumpFactor.get().floatValue() * this.grimBhopBoost.get().floatValue();
+         x -= (double)Mth.sin(yawRad) * (double)boost;
+         z += (double)Mth.cos(yawRad) * (double)boost;
       }
+
+      player.setDeltaMovement(x, (double)jumpPower, z);
+   }
+
+   private void applyHorizontal(LocalPlayer player, double x, double z) {
+      player.setDeltaMovement(x, player.getDeltaMovement().y, z);
    }
 }
