@@ -32,7 +32,6 @@ import net.skycore.client.util.SliderSetting;
  * Имя режима = клиент-источник + его собственный режим.
  */
 public final class SpeedModule extends ClientModule {
-   public static final SpeedModule INSTANCE = new SpeedModule();
 
    public static final String NUCLEAR_COLLISION = "Nuclear [Collision]";
    public static final String NUCLEAR_MATRIX = "Nuclear [Matrix]";
@@ -87,6 +86,8 @@ public final class SpeedModule extends ClientModule {
       PRIVATE_HVH, PRIVATE_ENTITY, PRIVATE_SP_DUEL, PRIVATE_NCP, PRIVATE_MATRIX, PRIVATE_AAC,
       WILD_VANILLA, WILD_ST_DUEL, WILD_HW, WILD_ARES_ENTITY, WILD_GRIM_ENTITY, WILD_TARGET_STRAFE
    };
+
+   public static final SpeedModule INSTANCE = new SpeedModule();
 
    private final ModeSetting mode = this.add(new ModeSetting("Режим", NUCLEAR_COLLISION, MODES));
 
