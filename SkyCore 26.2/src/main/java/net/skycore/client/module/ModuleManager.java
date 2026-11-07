@@ -72,6 +72,7 @@ import net.skycore.client.module.movement.SpeedModule;
 import net.skycore.client.module.movement.SpeedV2Module;
 import net.skycore.client.module.movement.SpeedV3Module;
 import net.skycore.client.module.movement.SpeedV4Module;
+import net.skycore.client.module.movement.SpeedV5Module;
 import net.skycore.client.module.movement.SprintModule;
 import net.skycore.client.module.movement.SuperFireworkModule;
 import net.skycore.client.module.movement.TimerModule;
@@ -299,6 +300,7 @@ public final class ModuleManager {
       this.trialRegister(SpeedV2Module.INSTANCE);
       this.trialRegister(SpeedV3Module.INSTANCE);
       this.trialRegister(SpeedV4Module.INSTANCE);
+      this.trialRegister(SpeedV5Module.INSTANCE);
       this.trialRegister(NoPushModule.INSTANCE);
       this.trialRegister(NoWebModule.INSTANCE);
       this.trialRegister(NoFallModule.INSTANCE);

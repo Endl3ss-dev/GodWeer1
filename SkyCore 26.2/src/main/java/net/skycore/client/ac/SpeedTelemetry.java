@@ -11,6 +11,7 @@ import net.skycore.client.module.movement.SpeedModule;
 import net.skycore.client.module.movement.SpeedV2Module;
 import net.skycore.client.module.movement.SpeedV3Module;
 import net.skycore.client.module.movement.SpeedV4Module;
+import net.skycore.client.module.movement.SpeedV5Module;
 import net.skycore.client.setting.ModeSetting;
 import net.skycore.client.setting.Setting;
 
@@ -104,6 +105,10 @@ public final class SpeedTelemetry {
    }
 
    private String label() {
+      if (SpeedV5Module.INSTANCE.isEnabled()) {
+         return "Speed v5 (Old Grim)";
+      }
+
       if (SpeedV4Module.INSTANCE.isEnabled()) {
          return "Speed v4 (Matrix Smooth Silent)";
       }
