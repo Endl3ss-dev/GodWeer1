@@ -17,58 +17,62 @@ import net.skycore.client.setting.BooleanSetting;
 import net.skycore.client.util.SliderSetting;
 
 /**
- * Speed v4 — порт Nuclear «Speed / Matrix Smooth Silent»
- * (nuclear/module/impl/movement/Speed.java, вариация с плавным трением вместо жёсткого спуфа).
+ * Speed v4 — порт Nuclear «Speed / Old Grim Bypass»
+ * (nuclear/module/impl/movement/Speed.java, вариация под старый Grim).
  *
- * В отличие от Matrix Silent здесь ничего не подменяется в наземном трении и не форсируется
- * таймер на всём прыжке: на земле — обычный авто-прыжок с Hop Y, в воздухе горизонтальная
- * скорость ставится один раз в первый тик после отрыва (с лёгким бустом и tiny-таймером),
- * а дальше Smooth Friction не дописывает скорость, а МЯГКО СТЯГИВАЕТ её к целевой, если
- * фактический модуль больше цели (диагональный ввод даёт speed * sqrt(2), вот этот хвост
- * и срезается). За счёт этого движение выглядит как ванильное и не высовывается за
- * предсказание сервера.
+ * Это полная замена предыдущей ревизии модуля («Matrix Smooth Silent» с Hop Y 0.405,
+ * мягким стягиванием скорости и кулдауном в 6 тиков) — от неё не осталось ни настроек,
+ * ни логики. Отличие от братьев по семейству Matrix: старый Grim не прощает ни длинного
+ * окна буста, ни тем более продолжения буста после отката, поэтому всё короче и мягче:
+ * hop ровно на ванильной Y (0.42 — «точный ванильный hop», к нему Grim не придирается),
+ * буст только в два первых воздушных тика (+7 % и +2 %), дальше окно базовой скорости
+ * (тики 3…5), затем самостоятельное торможение (0.97 на тиках 6…9) и почти ваниль с
+ * принудительным трением 0.91 после 9-го тика. setback-кулдаун длиннее, чем у Matrix-версий:
+ * 8 тиков на скорости 0.21 («почти полная ваниль»).
  *
  * Тайминг: PlayerTickStartEvent в SkyCore снимается в хвосте LocalPlayer#tick (после
- * travel/move), поэтому прыжок на земле в этом тике ещё не переводит игрока в воздух —
- * буст стартанёт на следующем тике с airTicks == 1, ровно как в источнике.
+ * travel/move), поэтому прыжок на земле в этом же тике игрока в воздух не переводит —
+ * окно буста начинается следующим тиком с airTicks == 1, ровно как в источнике.
  *
  * Отличия от источника (адаптация под 26.2 и архитектуру SkyCore):
- * - mc.timer.timerSpeed → {@link SpeedTimer} (тот же DeltaTracker-хук, что у Timer-мода).
- *   Нейтральное 1.0 таймер не перехватывает, а освобождает: у источника запись
- *   timerSpeed = 1.0 на каждом тике глушила Timer-модуль;
- * - setback-кулдаун подключён к настоящему источнику: PacketReceiveEvent +
- *   ClientboundPlayerPositionPacket (сет сервера = откат позиции). В источнике стоял
- *   комментарий «пока без packet detect» и только public-метод;
- * - во время кулдауна setSpeed(0.23) вызывается только пока игрок реально движется,
- *   иначе на месте он обнулил бы инерцию ровно в тот момент, когда её нужно сохранить;
+ * - «принудительный friction» в источнике был мёртвым кодом: множитель 0.91 применялся к
+ *   deltaMovement ДО MoveUtil.setSpeed(...), а setSpeed перезаписывает x и z целиком. Здесь
+ *   трение применено после setSpeed — так, как задумывалось, и вынесено в `Air Friction`;
+ * - mc.timer.timerSpeed → {@link SpeedTimer} (тот же DeltaTracker-хук, что у Timer-мода);
+ *   нейтральное 1.0 таймер не перехватывает, а освобождает, иначе модуль глушил Timer;
+ * - onSetback() подключён к PacketReceiveEvent + ClientboundPlayerPositionPacket (сет сервера
+ *   = откат позиции). В источнике стояло «пока можно вручную или потом привяжем к пакету»;
+ * - в кулдауне setSpeed(0.21) вызывается только пока игрок реально движется: на месте он
+ *   обнулил бы инерцию ровно там, где её нужно удержать;
  * - MobEffects.MOVEMENT_SPEED / MOVEMENT_SLOWDOWN → MobEffects.SPEED / SLOWNESS (имена 26.2),
- *   hasEffect + getEffect заменены одним getEffect с проверкой на null (как в остальном коде
- *   SkyCore);
- * - lastMotionX / lastMotionZ из источника удалены — поля только записывались и ни на что
- *   не влияли;
- * - длительность кулдауна, «ванильная» скорость в кулдауне и порог Smooth Friction вынесены
- *   в настройки, дефолты совпадают с источником (6 тиков, 0.23, 0.02).
+ *   hasEffect + getEffect → один getEffect с проверкой на null;
+ * - Hop Y в источнике 0.41999998688697815 — это float 0.42f, расширенный до double; в
+ *   SkyCore слайдер живёт в double и шаг 0.0001, так что значение ровно 0.42;
+ * - длительность кулдауна, «ванильная» скорость в кулдауне и трение за окном вынесены в
+ *   настройки, дефолты совпадают с источником (8 тиков, 0.21, 0.91).
  */
 public final class SpeedV4Module extends ClientModule {
    public static final SpeedV4Module INSTANCE = new SpeedV4Module();
 
-   private final SliderSetting speed = this.add(new SliderSetting("Speed", 0.322, 0.26, 0.42, 0.001));
-   private final SliderSetting hopY = this.add(new SliderSetting("Hop Y", 0.405, 0.38, 0.42, 0.001));
-   private final SliderSetting timerBoost = this.add(new SliderSetting("Timer", 1.0, 1.0, 1.08, 0.001));
+   private final SliderSetting speed = this.add(new SliderSetting("Speed", 0.319, 0.27, 0.38, 0.001));
+   private final SliderSetting hopY = this.add(new SliderSetting("Hop Y", 0.41999998688697815, 0.40, 0.42, 0.0001));
+   private final SliderSetting timer = this.add(new SliderSetting("Timer", 1.0, 1.0, 1.06, 0.001));
    private final BooleanSetting autojump = this.add(new BooleanSetting("Авто-прыжок", true));
    private final BooleanSetting damageBoost = this.add(new BooleanSetting("Damage Boost", true));
-   private final BooleanSetting smooth = this.add(new BooleanSetting("Smooth Friction", true));
-   private final SliderSetting smoothEpsilon = this.add(new SliderSetting("Smooth Epsilon", 0.02, 0.0, 0.1, 0.001));
-   private final SliderSetting setbackCooldown = this.add(new SliderSetting("Setback Cooldown", 6, 0, 12, 1));
-   private final SliderSetting setbackSpeed = this.add(new SliderSetting("Setback Speed", 0.23, 0.10, 0.40, 0.005));
+   private final BooleanSetting grimMode = this.add(new BooleanSetting("Grim Mode", true));
+   private final SliderSetting airFriction = this.add(new SliderSetting("Air Friction", 0.91, 0.85, 1.0, 0.001));
+   private final SliderSetting setbackCooldown = this.add(new SliderSetting("Setback Cooldown", 8, 0, 16, 1));
+   private final SliderSetting setbackSpeed = this.add(new SliderSetting("Setback Speed", 0.21, 0.10, 0.40, 0.005));
 
    private int airTicks;
+   private int groundTicks;
    private int setbackCool;
+   private boolean hopped;
 
    private SpeedV4Module() {
-      super("Speed v4", "Nuclear Matrix Smooth Silent: мягкое трение, первый тик буста, setback-кулдаун",
+      super("Speed v4", "Nuclear Old Grim: ванильный hop, короткое окно буста, длинный setback-кулдаун",
          ModuleCategory.MOVEMENT);
-      this.smoothEpsilon.visibleWhen(this.smooth::get);
+      this.airFriction.visibleWhen(this.grimMode::get);
       this.setbackSpeed.visibleWhen(() -> this.setbackCooldown.get() > 0.0);
 
       SkycoreClient.events().subscribe(PlayerTickStartEvent.class, this::onTickStart);
@@ -78,13 +82,17 @@ public final class SpeedV4Module extends ClientModule {
    @Override
    protected void onEnable() {
       this.airTicks = 0;
+      this.groundTicks = 0;
       this.setbackCool = 0;
+      this.hopped = false;
    }
 
    @Override
    protected void onDisable() {
-      this.reset();
+      this.resetTimer();
+      this.airTicks = 0;
       this.setbackCool = 0;
+      this.hopped = false;
    }
 
    private void onTickStart(PlayerTickStartEvent event) {
@@ -96,7 +104,7 @@ public final class SpeedV4Module extends ClientModule {
 
    private void tick(LocalPlayer player) {
       if (player.level() == null || player.getAbilities().flying) {
-         this.reset();
+         this.resetTimer();
          return;
       }
 
@@ -106,7 +114,8 @@ public final class SpeedV4Module extends ClientModule {
          || player.onClimbable()
          || player.isEyeInFluid(FluidTags.WATER)
          || player.isEyeInFluid(FluidTags.LAVA)) {
-         this.reset();
+         this.resetTimer();
+         this.airTicks = 0;
          return;
       }
 
@@ -123,59 +132,76 @@ public final class SpeedV4Module extends ClientModule {
       boolean onGround = player.onGround();
       if (onGround) {
          this.airTicks = 0;
+         this.groundTicks++;
+         this.hopped = false;
 
-         if (this.autojump.get() && SpeedAction.isMoving()) {
+         if (this.autojump.get() && SpeedAction.isMoving() && this.groundTicks >= 1) {
             player.jumpFromGround();
             Vec3 motion = player.getDeltaMovement();
             player.setDeltaMovement(motion.x, this.hopY.get().floatValue(), motion.z);
+            this.hopped = true;
          }
       } else {
          this.airTicks++;
+         this.groundTicks = 0;
       }
 
       if (!onGround && SpeedAction.isMoving()) {
          float base = this.speed.get().floatValue();
-         float apply = base;
+         float apply = 0.0F;
+         float timerValue = 1.0F;
+         boolean beyondWindow = false;
 
-         if (this.airTicks == 1) {
-            apply = base * 1.06F;
-            this.applyTimer(this.timerBoost.get().floatValue());
+         if (this.grimMode.get()) {
+            if (this.airTicks == 1 && this.hopped) {
+               apply = base * 1.07F;
+               timerValue = this.timer.get().floatValue();
+            } else if (this.airTicks == 2) {
+               apply = base * 1.02F;
+            } else if (this.airTicks <= 5) {
+               apply = base;
+            } else if (this.airTicks <= 9) {
+               apply = base * 0.97F;
+            } else {
+               apply = base * 0.89F;
+               beyondWindow = true;
+            }
          } else {
-            this.resetTimer();
+            apply = base;
          }
 
-         if (this.damageBoost.get() && player.hurtTime > 0 && player.hurtTime < 7) {
-            apply *= 1.14F;
+         if (this.damageBoost.get() && player.hurtTime >= 1 && player.hurtTime <= 5) {
+            apply *= 1.13F;
          }
 
          MobEffectInstance speedEffect = player.getEffect(MobEffects.SPEED);
          if (speedEffect != null) {
-            apply *= 1.0F + 0.05F * (float)(speedEffect.getAmplifier() + 1);
+            apply *= 1.0F + 0.045F * (float)(speedEffect.getAmplifier() + 1);
          }
 
          if (player.getEffect(MobEffects.SLOWNESS) != null) {
-            apply *= 0.86F;
+            apply *= 0.87F;
          }
 
-         SpeedAction.setSpeed(apply);
+         if (apply > 0.0F) {
+            SpeedAction.setSpeed(apply);
 
-         if (this.smooth.get() && this.airTicks > 2) {
-            Vec3 motion = player.getDeltaMovement();
-            double current = Math.sqrt(motion.x * motion.x + motion.z * motion.z);
-            double epsilon = this.smoothEpsilon.get();
-
-            if (current > (double)apply + epsilon) {
-               double factor = (double)apply / current;
-               player.setDeltaMovement(motion.x * factor, motion.y, motion.z * factor);
+            // В источнике это стояло ПЕРЕД setSpeed и потому не работало — см. шапку класса.
+            if (beyondWindow) {
+               Vec3 motion = player.getDeltaMovement();
+               double friction = this.airFriction.get();
+               player.setDeltaMovement(motion.x * friction, motion.y, motion.z * friction);
             }
          }
+
+         this.applyTimer(timerValue);
       } else {
          this.resetTimer();
       }
    }
 
    /**
-    * Нейтральное 1.0 таймер не перехватывает: источник писал timerSpeed = 1.0 на каждом тике
+    * Нейтральное 1.0 таймер не перехватывает: источник писал timerSpeed = tmr на каждом тике
     * и тем самым глушил Timer-модуль, здесь в этом случае скорость просто освобождается.
     */
    private void applyTimer(float multiplier) {
@@ -190,22 +216,18 @@ public final class SpeedV4Module extends ClientModule {
       SpeedTimer.clear();
    }
 
-   private void reset() {
-      this.resetTimer();
-      this.airTicks = 0;
-   }
-
-   /** Сет сервера (ClientboundPlayerPositionPacket) — откат позиции: тики почти ваниля. */
+   /** Сет сервера (ClientboundPlayerPositionPacket) — старый Grim злой на продолжение буста. */
    private void onPacketReceive(PacketReceiveEvent event) {
       if (this.isEnabled() && !event.isCancelled() && event.getPacket() instanceof ClientboundPlayerPositionPacket) {
-         this.notifySetback();
+         this.onSetback();
       }
    }
 
-   /** Можно вызвать вручную (например, из макроса или команды), если сет пойман вне пакетов. */
-   public void notifySetback() {
+   /** Можно вызвать и вручную, если сет пойман вне пакетов. */
+   public void onSetback() {
       this.setbackCool = this.setbackCooldown.get().intValue();
       this.airTicks = 0;
+      this.hopped = false;
       this.resetTimer();
    }
 }
