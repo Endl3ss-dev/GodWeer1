@@ -63,7 +63,7 @@ public final class MenuAnim {
     public static final int SCROLL_BAR = 24;
     public static final int SCROLL_SIZE = 40;
 
-    /** Контекст прокрутки окна настроек модуля ({@link ModulePopup}). */
+    /** Контекст прокрутки выдвижной панели настроек ({@code RenderGuiHelper}). */
     public static final int POPUP_SCROLL = 7;
 
     public static final int SIZE = SCROLL_BASE + SCROLL_SIZE;

@@ -101,23 +101,37 @@ public final class TriggerBotModule extends ClientModule {
             && instance.gameMode != null
             && instance.gui.screen() == null
             && player.isAlive()
-            && !player.isSpectator()
-            && instance.hitResult instanceof EntityHitResult entityHitResult
-            && entityHitResult.getEntity() instanceof LivingEntity entity
-            && this.isValidTarget(player, entity)
-            && !(entityHitResult.getLocation().distanceToSqr(player.getEyePosition()) > 9.0)
-            && this.canAttack(player, instance)) {
-            if (this.breakShield.get() && entity instanceof Player player2 && player2.isBlocking()) {
-               this.breakShieldPlayer(instance, player, player2);
-            }
+            && !player.isSpectator()) {
+            if (instance.hitResult instanceof EntityHitResult entityHitResult
+               && entityHitResult.getEntity() instanceof LivingEntity entity
+               && this.isValidTarget(player, entity)
+               && !(entityHitResult.getLocation().distanceToSqr(player.getEyePosition()) > 9.0)
+               && this.canAttack(player, instance)) {
+               if (this.breakShield.get() && entity instanceof Player player2 && player2.isBlocking()) {
+                  this.breakShieldPlayer(instance, player, player2);
+               }
 
-            if (player.isUsingItem() && (player.getUseItem().is(Items.SHIELD) || player.isBlocking())) {
-               instance.gameMode.releaseUsingItem(player);
-            }
+               if (player.isUsingItem() && (player.getUseItem().is(Items.SHIELD) || player.isBlocking())) {
+                  instance.gameMode.releaseUsingItem(player);
+               }
 
-            instance.gameMode.attack(player, entity);
-            player.swing(InteractionHand.MAIN_HAND);
-            this.lastAttackTime = System.currentTimeMillis();
+               instance.gameMode.attack(player, entity);
+               player.swing(InteractionHand.MAIN_HAND);
+               this.lastAttackTime = System.currentTimeMillis();
+            } else if (!(instance.hitResult instanceof EntityHitResult)
+               && ExtendedReachModule.INSTANCE.canTriggerbotAttack()
+               && this.canAttack(player, instance)) {
+               LivingEntity extendedTarget = ExtendedReachModule.INSTANCE.findExtendedTarget(instance, player);
+               if (extendedTarget != null && this.isValidTarget(player, extendedTarget)) {
+                  if (player.isUsingItem() && (player.getUseItem().is(Items.SHIELD) || player.isBlocking())) {
+                     instance.gameMode.releaseUsingItem(player);
+                  }
+
+                  if (ExtendedReachModule.INSTANCE.tryTriggerbotAttack(instance, player)) {
+                     this.lastAttackTime = System.currentTimeMillis();
+                  }
+               }
+            }
          }
       }
    }

@@ -107,7 +107,25 @@ public final class RenderGuiHelper extends Screen implements StringBufferHelper 
    private final List<TargetHelper> regions = new ArrayList<>();
    private int cosmeticPreviewRight;
    private NumberSetting activeSlider;
+   // [+] ADD: выдвижные настройки модуля (панель справа от списка).
+   // Состояние — множество раскрытых модулей плюс анимация панели;
+   // высота карточек в списке от этого не зависит, поэтому вёрстка колонок
+   // (moduleColumns) остаётся стабильной.
+   private final java.util.Set<ClientModule> expandedModules = java.util.Collections.newSetFromMap(new IdentityHashMap<>());
+   private ClientModule settingsPanelModule;
+   private float settingsPanelScroll;
+   private float settingsPanelScrollTarget;
+   private float settingsPanelMaxScroll;
+   private float settingsPanelX;
+   private float settingsPanelY;
+   private float settingsPanelW;
+   private float settingsPanelH;
+   private float settingsPanelContentX;
+   private float settingsPanelContentY;
+   private float settingsPanelContentW;
+   private float settingsPanelContentH;
    private final EntriesHelper cosmetica;
+
    private boolean navPressActive;
    private static final Identifier AVATAR = Identifier.parse("skycore:textures/main/avatar.png");
    private static final long CONFIG_CACHE_MS = 750L;
@@ -231,28 +249,54 @@ public final class RenderGuiHelper extends Screen implements StringBufferHelper 
       this.targetScroll = clamp(this.targetScroll, 0.0F, this.maxScroll);
    }
 
+   /**
+    * [+] EDIT: карточка модуля теперь содержит только заголовок (имя, описание,
+    * бинд, тумблер). Настройки переехали в выдвижную панель, поэтому высота
+    * перестала зависеть от их количества — список стал компактным и ровным.
+    */
    private float moduleRawHeight(ClientModule clientModule, boolean condition) {
+      return this.moduleHeaderRawHeight(clientModule);
+   }
+
+   /**
+    * [+] ADD: полная высота блока настроек модуля для выдвижной панели.
+    * Повторяет прежнюю арифметику карточки: 32 px отступ + сами элементы
+    * + 12 px между ними + 28 px на каждую строку цветов темы у Interface.
+    */
+   private float settingsBlockHeight(ClientModule clientModule, float scale) {
       var settings = this.visibleSettings(clientModule);
-      int value = this.isInterface(clientModule) ? 6 : 0;
-      int computedValue = settings.size() + value;
-      float result = this.moduleHeaderRawHeight(clientModule);
-      if (computedValue == 0) {
-         return result;
+      int themeRows = this.isInterface(clientModule) ? 6 : 0;
+      int total = settings.size() + themeRows;
+      if (total == 0) {
+         return 0.0F;
       }
 
       float height = 32.0F;
 
       for (Setting setting : settings) {
-         height += condition ? this.settingRawHeight(setting) : this.elementFor(setting).rawHeight();
+         height += this.settingRawHeight(setting);
       }
 
-      height += value * 28.0F;
-      height += Math.max(0, computedValue - 1) * 12.0F;
-      return result + 1.0F + height;
+      height += themeRows * 28.0F;
+      height += Math.max(0, total - 1) * 12.0F;
+      return height * scale;
    }
 
    private int togglerOffColor() {
       return this.fieldColor();
+   }
+
+   /** [+] ADD: типы регионов, которые принадлежат контролам настроек (а не карточкам/навигации). */
+   private static boolean isSettingRegion(GuiActionType guiActionType) {
+      return guiActionType == GuiActionType.BOOLEAN
+         || guiActionType == GuiActionType.NUMBER
+         || guiActionType == GuiActionType.MODE
+         || guiActionType == GuiActionType.MULTI
+         || guiActionType == GuiActionType.STRING
+         || guiActionType == GuiActionType.COLOR
+         || guiActionType == GuiActionType.BUTTON
+         || guiActionType == GuiActionType.THEME_SLOT
+         || guiActionType == GuiActionType.THEME_ACCENT;
    }
 
    private static boolean isFixedHeaderRegion(GuiActionType guiActionType) {
@@ -1123,6 +1167,18 @@ public final class RenderGuiHelper extends Screen implements StringBufferHelper 
             }
 
             this.renderGui(this.currentScale(), value);
+            // [+] ADD: панель настроек рисуется после сетки модулей, но до пикера —
+            // так пикер (если открыт из панели) окажется сверху.
+            if (this.settingsPanelModule != null && this.selectedView.category != null) {
+               float open = clamp(value, 0.0F, 1.0F);
+               float scale = this.currentScale() * (0.92F + 0.08F * open);
+               float panelH0 = 704.0F * scale;
+               float listX = (this.width - 992.0F * scale) * 0.5F + 8.0F * scale;
+               float listY = (this.height - panelH0) * 0.5F + (1.0F - open) * 22.0F * this.currentScale()
+                  + 54.0F * scale;
+               this.renderSettingsPanel(listX, listY, scale, value);
+            }
+
             if (this.pickerTarget != null) {
                float color = Math.min(this.pickerAnimation(), value);
                if (color > 0.001F) {
@@ -1298,6 +1354,22 @@ public final class RenderGuiHelper extends Screen implements StringBufferHelper 
             return false;
          }
 
+         // [+] ADD: клик по настройке из панели принимается только если он
+         // попал в видимое окно содержимого. Иначе прокрученные за границу
+         // контролы ловили бы клики «сквозь» заголовок и края панели.
+         if (this.settingsPanelModule != null
+            && isSettingRegion(region.kind())
+            && contains(x, y, this.settingsPanelContentX, this.settingsPanelContentY,
+               this.settingsPanelContentW, this.settingsPanelContentH)) {
+            // внутри окна — обычная обработка ниже
+         } else if (this.settingsPanelModule != null
+            && isSettingRegion(region.kind())
+            && contains(x, y, this.settingsPanelX, this.settingsPanelY,
+               this.settingsPanelW, this.settingsPanelH)) {
+            // клик по панели, но вне окна содержимого (заголовок/отступы) — гасим
+            return true;
+         }
+
          switch (region.kind()) {
             case LANGUAGE:
                if (value == 0) {
@@ -1322,8 +1394,44 @@ public final class RenderGuiHelper extends Screen implements StringBufferHelper 
             case MODULE:
             case EXPAND:
                ClientModule clientModule = (ClientModule)region.target();
+               // [+] EDIT: ПКМ по модулю больше не только биндит клавишу —
+               // она выдвигает панель настроек (как просил пользователь).
+               // Бинд по-прежнему доступен кликом по чипу клавиши (KEYBIND).
+               if ("__panel__".equals(region.value())) {
+                  // [+] ADD: клик по самой панели гасим, чтобы он не проваливался
+                  // в карточки модулей, лежащие под ней.
+                  return true;
+               }
+
+               if ("\u00d7".equals(region.value())) {
+                  // [+] ADD: крестик закрывает панель.
+                  if (value == 0) {
+                     this.expandedModules.remove(clientModule);
+                     if (this.settingsPanelModule == clientModule) {
+                        this.settingsPanelModule = null;
+                     }
+                  }
+
+                  return true;
+               }
+
+               // [+] ADD: тумблер в карточке — отдельный регион, реагирует только
+               // на ЛКМ; ПКМ по нему тоже выдвигает настройки, как по всей карточке.
+               if ("__toggle__".equals(region.value())) {
+                  if (value == 0) {
+                     clientModule.toggle();
+                     this.config.save();
+                  } else if (value == 2) {
+                     this.toggleSettingsPanel(clientModule);
+                  }
+
+                  return true;
+               }
+
                if (value == 2) {
-                  this.bindingModule = clientModule;
+                  // [+] EDIT: ПКМ по карточке выдвигает/задвигает панель настроек.
+                  // Биндинг клавиши остался на чипе клавиши (KEYBIND).
+                  this.toggleSettingsPanel(clientModule);
                } else if (value == 0) {
                   clientModule.toggle();
                   this.config.save();
@@ -1403,7 +1511,7 @@ public final class RenderGuiHelper extends Screen implements StringBufferHelper 
 
                return true;
             case KEYBIND:
-               if (value == 0) {
+               if (value == 0 || value == 2) {
                   if (region.target() instanceof ClientModule clientModule2) {
                      this.bindingModule = clientModule2;
                   } else {
@@ -1989,6 +2097,17 @@ public final class RenderGuiHelper extends Screen implements StringBufferHelper 
       float computedValue4 = computedValue2 + 54.0F * value5;
       float intermediate = 976.0F * value5;
       float intermediate2 = 642.0F * value5;
+      // [+] ADD: колесо внутри выдвижной панели прокручивает её настройки,
+      // а не список модулей под ней.
+      if (this.settingsPanelModule != null
+         && contains(value, value2, this.settingsPanelX, this.settingsPanelY,
+            this.settingsPanelW, this.settingsPanelH)) {
+         this.settingsPanelScrollTarget = clamp(
+            this.settingsPanelScrollTarget - (float)value4 * 40.0F * value5,
+            0.0F, Math.max(0.0F, this.settingsPanelMaxScroll));
+         return true;
+      }
+
       if (contains(value, value2, computedValue3, computedValue4, intermediate, intermediate2)) {
          this.targetScroll = clamp(this.targetScroll - (float)value4 * 52.0F * value5, 0.0F, this.maxScroll);
          return true;
@@ -2156,48 +2275,249 @@ public final class RenderGuiHelper extends Screen implements StringBufferHelper 
          mixColor(this.tertiaryColor(), this.secondaryColor(), color3)
       );
       float value2 = this.moduleHeaderRawHeight(clientModule);
+      // [+] EDIT: порядок регионов важен — findRegion перебирает список с конца.
+      // Регистрируем сначала карточку (ЛКМ = включить/выключить, ПКМ = выдвинуть
+      // настройки), затем чип клавиши, и только потом тумблер: иначе тумблер
+      // перекрывал бы карточку и ПКМ по правому краю не открывала бы панель.
       this.regions.add(new TargetHelper(GuiActionType.MODULE, clientModule, (String)null, coordinate, coordinate2, coordinate3, value2 * color, null));
       this.regions.add(new TargetHelper(GuiActionType.KEYBIND, clientModule, (String)null, computedValue6, color6, maximum, color5, null));
-      this.regions.add(new TargetHelper(GuiActionType.MODULE, clientModule, (String)null, computedValue3, computedValue4 - 4.0F * color, computedValue, 20.0F * color, null));
+      this.regions.add(new TargetHelper(GuiActionType.EXPAND, clientModule, "__toggle__", computedValue3, computedValue4 - 4.0F * color, computedValue, 20.0F * color, null));
+      // [+] ADD: настройки больше не рисуются внутри карточки — они уходят
+      // в выдвижную панель (см. renderSettingsPanel). В самой карточке
+      // остаётся только индикатор «есть настройки» и подсветка активной.
       var settings = this.visibleSettings(clientModule);
-      int value3 = this.isInterface(clientModule) ? 6 : 0;
-      if (!settings.isEmpty() || value3 != 0) {
-         float computedValue11 = coordinate2 + value2 * color;
-         BeginFrameHelper.rect(coordinate + color, computedValue11, coordinate3 - 2.0F * color, Math.max(0.5F, color)).color(alpha(this.fieldColor(), color2)).draw();
-         float color14 = coordinate + 16.0F * color;
-         float color15 = coordinate3 - 32.0F * color;
-         float color16 = computedValue11 + 17.0F * color;
+      if (!settings.isEmpty() || this.isInterface(clientModule)) {
+         this.renderExpandIndicator(clientModule, coordinate, coordinate2, coordinate3, color, color2, value2);
+      }
+   }
 
-         for (int value4 = 0; value4 < settings.size(); value4++) {
-            Setting setting = (Setting)settings.get(value4);
-            float computedValue12 = this.settingRawHeight(setting) * color;
-            BeginFrameHelper.pushScissor(color14, color16 - 8.0F * color, color15, computedValue12 + 8.0F * color);
+   /**
+    * [+] ADD: индикатор выдвижения в правом нижнем углу карточки модуля.
+    * Три точки + поворот на 45°, когда панель настроек открыта: пользователь
+    * видит, у каких модулей вообще есть что раскрывать, ещё до клика.
+    */
+   private void renderExpandIndicator(
+      ClientModule clientModule, float x, float y, float w, float scale, float alphaScale, float headerHeight
+   ) {
+      // Точки ставим в правый нижний угол карточки: тумблер занимает
+      // y+17..y+29, описание начинается с y+38, поэтому нижняя кромка
+      // (headerHeight - 10) свободна и на неё ничего не наезжает.
+      float cx = x + w - 12.0F * scale;
+      float cy = y + headerHeight - 10.0F * scale;
+      float openness = this.settingsPanelOpenness(clientModule);
+      float dot = 2.0F * scale;
+      float gap = 4.0F * scale;
+      int tint = mixColor(this.tertiaryColor(), this.accentColor(), Math.max(openness, 0.0F));
+      // три точки в линию; при раскрытии панели они «сжимаются» в акцентную полоску
+      for (int index = -1; index <= 1; index++) {
+         float offset = index * gap * (1.0F - openness * 0.55F);
+         BeginFrameHelper.rect(cx + offset - dot * 0.5F, cy - dot * 0.5F, dot, dot)
+            .color(alpha(tint, alphaScale))
+            .radius(512.0F * scale)
+            .draw();
+      }
+   }
 
-            try {
-               this.elementFor(setting).render(this, color14, color16, color15, color, color2, null, color3);
-            } finally {
-               BeginFrameHelper.popScissor();
-            }
+   /**
+    * [+] ADD: «раскрытость» модуля в диапазоне 0..1 — плавное значение для
+    * анимаций панели и индикатора. Отдельная от высот карточек, поэтому
+    * вёрстка списка не «дёргается» при раскрытии.
+    */
+   private float settingsPanelOpenness(ClientModule clientModule) {
+      if (clientModule == null) {
+         return 0.0F;
+      }
+      boolean expanded = this.expandedModules.contains(clientModule);
+      return this.motionNamed("module-expand:" + clientModule.getName(), expanded ? 1.0F : 0.0F);
+   }
 
-            color16 += computedValue12;
-            int computedValue13 = value4 >= settings.size() - 1 && value3 <= 0 ? 0 : 1;
-            if (computedValue13 != 0) {
-               color16 += 12.0F * color;
+   // =====================================================================
+   // [+] ADD: выдвижная панель настроек модуля.
+   //
+   // Идея: список модулей остаётся слева и никогда не «раздувается» —
+   // настройки выезжают отдельной карточкой-шторкой справа от списка,
+   // поверх сетки модулей, с собственной прокруткой. Одновременно открыт
+   // только один модуль (аккордеон), поэтому панель всегда одна.
+   // =====================================================================
+
+   /** [+] ADD: открывает/закрывает панель настроек для модуля. */
+   private void toggleSettingsPanel(ClientModule clientModule) {
+      if (clientModule == null) {
+         return;
+      }
+
+      if (this.expandedModules.contains(clientModule)) {
+         this.expandedModules.remove(clientModule);
+         if (this.settingsPanelModule == clientModule) {
+            this.settingsPanelModule = null;
+            this.settingsPanelScroll = 0.0F;
+            this.settingsPanelScrollTarget = 0.0F;
+         }
+      } else {
+         this.expandedModules.clear();
+         this.expandedModules.add(clientModule);
+         this.settingsPanelModule = clientModule;
+         this.settingsPanelScroll = 0.0F;
+         this.settingsPanelScrollTarget = 0.0F;
+         this.settingsPanelMaxScroll = 0.0F;
+      }
+   }
+
+   /**
+    * [+] ADD: рисует выдвижную панель настроек.
+    *
+    * <p>Геометрия: панель прижата к правому краю области модулей и выезжает
+    * слева направо (translate по X), поэтому визуально «выдвигается» из-под
+    * карточки. Ширина — 384 px в единицах GUI, высота ограничена областью
+    * прокрутки; содержимое обрезается scissor'ом и скроллится отдельно.
+    */
+   private void renderSettingsPanel(float listX, float listY, float scale, float alphaScale) {
+      ClientModule clientModule = this.settingsPanelModule;
+      if (clientModule == null) {
+         return;
+      }
+
+      float openness = this.settingsPanelOpenness(clientModule);
+      if (openness <= 0.001F) {
+         if (!this.expandedModules.contains(clientModule)) {
+            this.settingsPanelModule = null;
+         }
+
+         return;
+      }
+
+      float panelW = Math.min(384.0F * scale, 976.0F * scale - 24.0F);
+      float panelX = listX + 976.0F * scale - panelW;
+      // Выезд справа налево: при openness=0 панель полностью за правым краем.
+      float slide = (1.0F - openness) * (panelW + 24.0F * scale);
+      panelX += slide;
+
+      float areaH = 642.0F * scale;
+      float blockH = this.settingsBlockHeight(clientModule, scale);
+      float panelH = Math.min(Math.max(blockH + 96.0F * scale, 132.0F * scale), areaH);
+      float panelY = listY;
+
+      this.settingsPanelX = panelX;
+      this.settingsPanelY = panelY;
+      this.settingsPanelW = panelW;
+      this.settingsPanelH = panelH;
+
+      float fade = alphaScale * openness;
+      BeginFrameHelper.rect(panelX, panelY, panelW, panelH)
+         .color(alpha(this.guiBaseColor(true), fade))
+         .radius(18.0F * scale)
+         .blur(36.0F * scale, fade)
+         .draw();
+      BeginFrameHelper.rect(panelX, panelY, panelW, panelH)
+         .color(alpha(this.elevatedColor(), fade * 0.35F))
+         .radius(18.0F * scale)
+         .draw();
+      if (this.transparentStyle()) {
+         BeginFrameHelper.rect(panelX, panelY, panelW, panelH)
+            .color(0)
+            .border(Math.max(0.5F, scale), alpha(this.fieldColor(), fade * 0.6F))
+            .radius(18.0F * scale)
+            .draw();
+      }
+
+      // [+] ADD: подложка-перехватчик. Регистрируется ДО кнопок панели,
+      // потому что findRegion перебирает список с конца: кто добавлен позже,
+      // тот и получает клик. Иначе панель «съедала» бы свои же контролы.
+      this.regions.add(new TargetHelper(GuiActionType.EXPAND, clientModule, "__panel__",
+         panelX, panelY, panelW, panelH, null));
+
+      // Заголовок панели: имя модуля + крестик закрытия.
+      float pad = 16.0F * scale;
+      float headerH = 44.0F * scale;
+      this.text(panelX + pad, panelY + 15.0F * scale, 13.0F, this.localize(clientModule.getName()),
+         this.primaryColor(), 600, scale, fade);
+      int stateColor = clientModule.isEnabled() ? this.accentColor() : this.tertiaryColor();
+      BeginFrameHelper.rect(panelX + pad, panelY + headerH - 6.0F * scale, 24.0F * scale, 2.0F * scale)
+         .color(alpha(stateColor, fade))
+         .radius(512.0F * scale)
+         .draw();
+      float closeX = panelX + panelW - pad - 18.0F * scale;
+      BeginFrameHelper.rect(closeX, panelY + 13.0F * scale, 18.0F * scale, 18.0F * scale)
+         .color(alpha(this.surfaceColor(), fade))
+         .radius(9.0F * scale)
+         .draw();
+      this.text(closeX + 6.0F * scale, panelY + 17.0F * scale, 11.0F, "\u00d7",
+         this.secondaryColor(), 500, scale, fade);
+      this.regions.add(new TargetHelper(GuiActionType.EXPAND, clientModule, "\u00d7",
+         closeX, panelY + 13.0F * scale, 18.0F * scale, 18.0F * scale, null));
+
+      float contentX = panelX + pad;
+      float contentY = panelY + headerH;
+      float contentW = panelW - pad * 2.0F;
+      float contentH = panelH - headerH - pad;
+      // [+] ADD: запоминаем окно содержимого — по нему отсекаются клики
+      // в настройки, прокрученные за пределы панели (scissor режет пиксели,
+      // но не hit-регионы, поэтому фильтруем вручную).
+      this.settingsPanelContentX = contentX;
+      this.settingsPanelContentY = contentY;
+      this.settingsPanelContentW = contentW;
+      this.settingsPanelContentH = contentH;
+
+      var settings = this.visibleSettings(clientModule);
+      int themeRows = this.isInterface(clientModule) ? 6 : 0;
+      int total = settings.size() + themeRows;
+      float innerHeight = Math.max(0.0F, blockH - 32.0F * scale);
+      this.settingsPanelMaxScroll = Math.max(0.0F, innerHeight - contentH + 8.0F * scale);
+      this.settingsPanelScroll = this.settingsPanelScroll
+         + (this.settingsPanelScrollTarget - this.settingsPanelScroll) * (1.0F - (float)Math.pow(8.0E-4F, this.animationDelta));
+      if (Math.abs(this.settingsPanelScrollTarget - this.settingsPanelScroll) < 0.02F) {
+         this.settingsPanelScroll = this.settingsPanelScrollTarget;
+      }
+
+      BeginFrameHelper.pushScissor(contentX, contentY, contentW, contentH);
+
+      try {
+         float rowY = contentY - this.settingsPanelScroll;
+
+         for (int index = 0; index < settings.size(); index++) {
+            Setting setting = (Setting)settings.get(index);
+            float rowH = this.settingRawHeight(setting) * scale;
+            this.elementFor(setting).render(this, contentX, rowY, contentW, scale, fade, null, 1.0F);
+            rowY += rowH;
+            boolean last = index >= settings.size() - 1 && themeRows == 0;
+            if (!last) {
+               rowY += 12.0F * scale;
             }
          }
 
-         if (value3 > 0) {
-            String[] stringValues = new String[]{"Accent", "Text", "Secondary", "Tertiary", "HUD Background", "GUI Background"};
+         if (themeRows > 0) {
+            String[] labels = new String[]{"Accent", "Text", "Secondary", "Tertiary", "HUD Background", "GUI Background"};
 
-            for (int value5 = 1; value5 <= 6; value5++) {
-               this.renderThemeColorRow(value5, stringValues[value5 - 1], color14, color16, color15, color, color2, color3);
-               color16 += 28.0F * color;
-               if (value5 < 6) {
-                  color16 += 12.0F * color;
+            for (int slot = 1; slot <= themeRows; slot++) {
+               this.renderThemeColorRow(slot, labels[slot - 1], contentX, rowY, contentW, scale, fade, 1.0F);
+               rowY += 28.0F * scale;
+               if (slot < themeRows) {
+                  rowY += 12.0F * scale;
                }
             }
          }
+
+         // Пустое состояние: у модуля нет настроек вовсе.
+         if (total == 0) {
+            this.text(contentX, contentY + 8.0F * scale, 11.0F,
+               this.localize("У этого модуля нет настроек"), this.tertiaryColor(), 500, scale, fade);
+         }
+      } finally {
+         BeginFrameHelper.popScissor();
       }
+
+      // Свой скроллбар — отличается от списка модулей, чтобы не путался.
+      if (this.settingsPanelMaxScroll > 0.5F) {
+         float barX = panelX + panelW - 6.0F * scale;
+         float barH = contentH;
+         float thumbH = Math.max(24.0F * scale, barH * (contentH / (contentH + this.settingsPanelMaxScroll)));
+         float progress = clamp(this.settingsPanelScroll / this.settingsPanelMaxScroll, 0.0F, 1.0F);
+         BeginFrameHelper.rect(barX, contentY + (barH - thumbH) * progress, 2.0F * scale, thumbH)
+            .color(alpha(this.elevatedColor(), fade))
+            .radius(512.0F * scale)
+            .draw();
+      }
+
    }
 
    private static float smoothstep(float progress) {

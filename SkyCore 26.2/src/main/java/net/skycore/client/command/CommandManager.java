@@ -7,6 +7,7 @@ import java.util.List;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.multiplayer.ClientPacketListener;
 import net.minecraft.client.multiplayer.ClientSuggestionProvider;
+import net.skycore.client.ac.AntiCheatDetector;
 import net.skycore.client.util.SendDonationHelper;
 
 public final class CommandManager {
@@ -48,6 +49,8 @@ public final class CommandManager {
 
    public CommandManager() {
       this.commands = new ArrayList<>();
+      this.registerCommand(new AcCommand());
+      AntiCheatDetector.INSTANCE.init();
       this.registerCommand(new HelpCommand(this));
       this.registerCommand(new BindCommand());
       this.registerCommand(new CfgCommand());
