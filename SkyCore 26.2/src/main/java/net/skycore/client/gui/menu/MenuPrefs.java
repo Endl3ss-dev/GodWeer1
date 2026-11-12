@@ -2,6 +2,8 @@ package net.skycore.client.gui.menu;
 
 import com.google.gson.Gson;
 import com.google.gson.GsonBuilder;
+import com.google.gson.JsonArray;
+import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.google.gson.JsonParser;
 
@@ -57,6 +59,59 @@ public final class MenuPrefs {
     /** Индекс выбранной палитры (см. {@link MenuPalette}). */
     public static int palette = 0;
 
+    /**
+     * Последние выбранные цвета (порт {@code Setting.Colour.PRESETS} из Arcanic).
+     *
+     * <p>В источнике список жил в статике настройки и терялся при перезапуске; здесь
+     * он сохраняется вместе с остальными настройками меню — отдельный файл для этого
+     * заводить не нужно. Значение — ARGB без альфы в старшем байте у сравнимых цветов,
+     * как в источнике.
+     */
+    public static final int RECENT_MAX = 10;
+
+    private static final int[] RECENT = {
+            0xFFFFFFFF, 0xFF111318, 0xFF8B5CF6, 0xFFC084FC, 0xFFF472B6,
+            0xFFF43F5E, 0xFFFB923C, 0xFFFACC15, 0xFF4ADE80, 0xFF22D3EE,
+    };
+
+    private static int recentCount = RECENT.length;
+
+    /** Копия списка последних цветов (для отрисовки и кликов). */
+    public static int[] recents() {
+        return RECENT;
+    }
+
+    public static int recentCount() {
+        return recentCount;
+    }
+
+    /**
+     * Добавляет цвет в начало списка последних (без дублей, максимум {@link #RECENT_MAX}).
+     * Возвращает {@code true}, если список изменился и его нужно сохранить.
+     */
+    public static boolean rememberColour(int colour) {
+        int rgb = colour & 0xFFFFFF;
+        int found = -1;
+        for (int i = 0; i < recentCount; i++) {
+            if ((RECENT[i] & 0xFFFFFF) == rgb) {
+                found = i;
+                break;
+            }
+        }
+        if (found == 0) {
+            return false;
+        }
+        int start = found > 0 ? found : Math.min(recentCount, RECENT_MAX - 1);
+        for (int i = start; i > 0; i--) {
+            RECENT[i] = RECENT[i - 1];
+        }
+        RECENT[0] = colour | 0xFF000000;
+        if (found < 0 && recentCount < RECENT_MAX) {
+            recentCount++;
+        }
+        return true;
+    }
+
     private static final String DIRECTORY = "skycore";
     private static final String FILE_NAME = "clickgui-menu.json";
     private static final Gson GSON = new GsonBuilder().setPrettyPrinting().create();
@@ -104,6 +159,7 @@ public final class MenuPrefs {
             animSpeed = clamp(number(json, "animSpeed", animSpeed), 0.5F, 2.0F);
             scale = clamp(number(json, "scale", scale), 70.0F, 130.0F);
             palette = Math.floorMod((int) number(json, "palette", palette), MenuPalette.PALETTES.length);
+            loadRecents(json);
         } catch (IOException | RuntimeException failure) {
             SkycoreClient.LOGGER.warn("Failed to read menu preferences from {}, using defaults", path, failure);
         }
@@ -126,6 +182,7 @@ public final class MenuPrefs {
         json.addProperty("animSpeed", animSpeed);
         json.addProperty("scale", scale);
         json.addProperty("palette", palette);
+        saveRecents(json);
 
         Path path = file();
         try {
@@ -137,6 +194,38 @@ public final class MenuPrefs {
         } catch (IOException failure) {
             SkycoreClient.LOGGER.warn("Failed to write menu preferences to {}", path, failure);
         }
+    }
+
+    /** Читает список последних цветов. Битые элементы пропускаются, список не обнуляется. */
+    private static void loadRecents(JsonObject json) {
+        if (!json.has("recentColours") || !json.get("recentColours").isJsonArray()) {
+            return;
+        }
+        JsonArray array = json.getAsJsonArray("recentColours");
+        int count = 0;
+        for (JsonElement element : array) {
+            if (count >= RECENT_MAX) {
+                break;
+            }
+            if (element == null || !element.isJsonPrimitive()) {
+                continue;
+            }
+            try {
+                RECENT[count++] = element.getAsInt() | 0xFF000000;
+            } catch (RuntimeException failure) {
+                // нечисловое значение в файле — пропускаем, остальное читаем дальше
+            }
+        }
+        recentCount = count;
+    }
+
+    /** Пишет только реально занятые слоты, чтобы файл не разрастался нулями. */
+    private static void saveRecents(JsonObject json) {
+        JsonArray array = new JsonArray();
+        for (int i = 0; i < recentCount; i++) {
+            array.add(RECENT[i]);
+        }
+        json.add("recentColours", array);
     }
 
     private static boolean bool(JsonObject json, String key, boolean fallback) {

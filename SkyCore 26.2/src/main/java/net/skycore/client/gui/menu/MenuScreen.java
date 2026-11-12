@@ -1,5 +1,6 @@
 package net.skycore.client.gui.menu;
 
+import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.GuiGraphicsExtractor;
 import net.minecraft.client.gui.screens.Screen;
 import net.minecraft.client.input.CharacterEvent;
@@ -26,6 +27,7 @@ import net.skycore.client.util.BeginFrameHelper;
 import net.skycore.client.util.CurrentGuiGraphicsExtractorHelper;
 import net.skycore.client.util.IconGlyphs;
 import net.skycore.client.util.LegacyIconGlyphs;
+import net.skycore.client.util.SelectAndSaveHelper;
 
 import java.awt.Color;
 import org.lwjgl.glfw.GLFW;
@@ -78,6 +80,13 @@ public final class MenuScreen extends Screen {
             ModuleCategory.MISC,
     };
 
+    /**
+     * Русские подписи вкладок категорий.
+     *
+     * <p>В источнике вкладки брались из {@code Category.title} и прогонялись через
+     * {@code Lang.tr}; здесь исходник — эти строки, а перевод даёт
+     * {@link SelectAndSaveHelper#text(String)} ({@code Translations}).
+     */
     private static final String[] TAB_TITLES = {
             "Бой",
             "Движение",
@@ -85,6 +94,10 @@ public final class MenuScreen extends Screen {
             "Игрок",
             "Утилиты",
     };
+
+    /** Буфер локализованных подписей вкладок: заполняется в {@link #tabLabels()}, без аллокаций. */
+    private static final String[] TAB_LOCALIZED = new String[TABS.length];
+
 
     /** Сколько настроек резервируется на модуль в упакованном индексе анимаций. */
     static final int SET_PER_MODULE = 32;
@@ -125,6 +138,12 @@ public final class MenuScreen extends Screen {
     static final int ACT_PICKER_ALPHA = 37;
     static final int ACT_PICKER_HEX = 38;
     static final int ACT_PICKER_CLOSE = 39;
+    /** Переключатель формата поля значения: 0 — HEX, 1 — RGB (порт {@code ColourPicker}). */
+    static final int ACT_PICKER_FORMAT = 40;
+    /** Клик по одному из последних цветов; payload — индекс в {@link MenuPrefs#recents()}. */
+    static final int ACT_PICKER_RECENT = 41;
+    /** Открыть редактор HUD (порт кнопки редактора из Arcanic). */
+    static final int ACT_HUD_EDITOR = 42;
 
     // ---- идентификаторы наведения (целые числа — без строк в кадре)
     private static final int HOT_THEME = 1;
@@ -241,6 +260,8 @@ public final class MenuScreen extends Screen {
     private float pickerValue;
     private float pickerAlpha;
     private boolean pickerHexFocused;
+    /** Формат поля значения: {@code false} — HEX, {@code true} — RGB (как в источнике). */
+    private boolean pickerRgbMode;
     private String pickerHex = "";
     private float pickerX;
     private float pickerY;
@@ -672,7 +693,7 @@ public final class MenuScreen extends Screen {
     }
 
     private void header(float x, float y, float w, float h) {
-        String[] labels = page == Page.MODULES ? TAB_TITLES : new String[]{"Настройки"};
+        String[] labels = page == Page.MODULES ? tabLabels() : new String[]{SelectAndSaveHelper.text("Настройки")};
         int active = -1;
         if (page == Page.MODULES && this.search.isEmpty()) {
             for (int i = 0; i < TABS.length; i++) {
@@ -772,7 +793,7 @@ public final class MenuScreen extends Screen {
                 MenuDraw.mix(MenuPalette.dim(), accText(), focus));
 
         boolean empty = this.search.isEmpty();
-        String text = empty ? "Поиск" : this.search;
+        String text = empty ? SelectAndSaveHelper.text("Поиск") : this.search;
         float fontSize = S(12);
         MenuDraw.text(MenuDraw.ellipsize(text, Weight.MEDIUM, fontSize, w - S(66)), x + S(30),
                 y + (h - MenuText.lineHeight(Weight.MEDIUM, fontSize)) * 0.5F,
@@ -852,14 +873,28 @@ public final class MenuScreen extends Screen {
         }
     }
 
+    /**
+     * Подписи вкладок после локализации.
+     *
+     * <p>Считаются на кадр, а не кэшируются: переключатель языка
+     * ({@code SelectAndSaveHelper.toggle}) работает в рантайме, и закэшированные
+     * подписи остались бы на прежнем языке до перезапуска.
+     */
+    private static String[] tabLabels() {
+        for (int i = 0; i < TABS.length; i++) {
+            TAB_LOCALIZED[i] = SelectAndSaveHelper.text(TAB_TITLES[i]);
+        }
+        return TAB_LOCALIZED;
+    }
+
     /** Returns the localized ClickGUI tab title for a module category. */
     private static String categoryTitle(ModuleCategory moduleCategory) {
         for (int i = 0; i < TABS.length; i++) {
             if (TABS[i] == moduleCategory) {
-                return TAB_TITLES[i];
+                return tabLabels()[i];
             }
         }
-        return moduleCategory.displayName();
+        return SelectAndSaveHelper.text(moduleCategory.displayName());
     }
 
     private static boolean containsIgnoreCase(String text, String query) {
@@ -906,14 +941,21 @@ public final class MenuScreen extends Screen {
             float centreY = this.top + (this.bottom - this.top) * 0.5F - S(30);
             MenuDraw.iconCsCentered(IconGlyphs.SEARCH, centreX - S(14), centreY, S(28), S(28), S(24),
                     MenuPalette.dim());
-            MenuDraw.textCenter("Ничего не найдено", centreX,
+            MenuDraw.textCenter(SelectAndSaveHelper.text("Ничего не найдено"), centreX,
                     centreY + S(36), Weight.SEMIBOLD, S(14), MenuPalette.text());
-            MenuDraw.textCenter("Попробуй другое слово", centreX, centreY + S(56),
+            MenuDraw.textCenter(SelectAndSaveHelper.text("Попробуй другое слово"), centreX, centreY + S(56),
                     Weight.MEDIUM, S(11), MenuPalette.dim());
             MenuDraw.fade = keep;
             return;
         }
 
+        // Две колонки — как в источнике на практике.
+        //
+        // В Arcanic стоит `cols = cw0 >= S(1100) ? 3 : 2`, но панель там ограничена
+        // S(1010), а контент — pw - 2*S(36): cw0 максимум S(938) при u = 1 и всегда
+        // меньше S(1100) при любом масштабе. То есть третья колонка в источнике —
+        // недостижимая ветка, и порт её сознательно не воспроизводит: с ней карточки
+        // поехали бы в три колонки там, где оригинал показывал две.
         float gap = S(10);
         int columns = 2;
         float columnWidth = (this.cw0 - gap * (columns - 1)) / columns;
@@ -960,10 +1002,30 @@ public final class MenuScreen extends Screen {
         scrollbar(this.cx0 + this.cw0 + S(10), this.top, this.bottom, total, scrollAmount, context);
     }
 
+    /**
+     * Высота карточки модуля.
+     *
+     * <p>В источнике ({@code ArcanicMenu.headH}) это {@code S(58)}; в порте стояло
+     * {@code S(52)}, из-за чего две строки текста (название и описание) прижимались
+     * к краям, а кнопки справа выходили почти вплотную к границе. Возвращаем значение
+     * источника — вместе с ним совпадают и все внутренние отступы.
+     */
     private float headHeight() {
-        return S(52);
+        return S(58);
     }
 
+    /**
+     * Карточка модуля.
+     *
+     * <p>Геометрия приведена к источнику ({@code ArcanicMenu.card}): отступ {@code S(18)},
+     * радиус {@code S(12)}, название {@code S(15)}, описание {@code S(12)} со сдвигом
+     * {@code S(20)}, тумблер {@code S(34)} и клавиша высотой {@code S(24)} с кнопкой
+     * раскрытия {@code kh * 1.2}. В исходном порте были свои числа (14/10/13/10/30/22),
+     * из-за чего карточки выглядели мельче и «плотнее» оригинала.
+     *
+     * <p>Разметка наведения и кликов сохранена в форме SkyCore: {@code int}-индексы
+     * анимаций, регионы в упакованных массивах, без строк в кадре.
+     */
     private void card(ClientModule module, float x, float y, float w, float h, float scrollAmount, int index) {
         // y приходит без прокрутки (так же считаются регионы), рисуем со сдвигом.
         float unscrolledY = y;
@@ -983,9 +1045,10 @@ public final class MenuScreen extends Screen {
             return;
         }
 
-        float pad = S(14);
-        float radius = S(10);
+        float pad = S(18);
+        float radius = S(12);
         int mi = moduleIndex(module);
+        int base = MenuAnim.MODULE_BASE + mi * MenuAnim.MOD_STRIDE;
 
         boolean hovered = !blocked() && this.my >= this.top && this.my < this.bottom
                 && hover(x, y, w, h);
@@ -995,57 +1058,58 @@ public final class MenuScreen extends Screen {
 
         float keep = MenuDraw.fade;
         MenuDraw.fade = keep * appear;
-        float offsetY = (1.0F - appear) * S(7);
+        float offsetY = (1.0F - appear) * S(8);
 
-        float hoverAmount = an(MenuAnim.MODULE_BASE + mi * MenuAnim.MOD_STRIDE + MenuAnim.MOD_HOVER,
-                hovered ? 1.0F : 0.0F, 18.0F);
-        float on = tw(MenuAnim.MODULE_BASE + mi * MenuAnim.MOD_STRIDE + MenuAnim.MOD_ON,
-                module.isEnabled() ? 1.0F : 0.0F, 180);
-        float selected = tw(MenuAnim.MODULE_BASE + mi * MenuAnim.MOD_STRIDE + MenuAnim.MOD_SELECTED,
-                this.popMod == module ? 1.0F : 0.0F, 200);
+        float hoverAmount = an(base + MenuAnim.MOD_HOVER, hovered ? 1.0F : 0.0F, 18.0F);
+        float on = tw(base + MenuAnim.MOD_ON, module.isEnabled() ? 1.0F : 0.0F, 180);
+        float selected = tw(base + MenuAnim.MOD_SELECTED, this.popMod == module ? 1.0F : 0.0F, 200);
 
         MenuDraw.round(x, y + offsetY, w, h, radius,
                 MenuDraw.mix(plate(), light() ? 0xFFFFFFFF
                         : MenuDraw.mix(MenuPalette.bg() | 0xFF000000, 0xFFFFFFFF, 0.055F), hoverAmount));
         MenuDraw.outline(x, y + offsetY, w, h, radius,
-                MenuDraw.mix(MenuDraw.a(MenuPalette.text(), light() ? 14 : 16),
-                        MenuDraw.a(MenuPalette.accent(), 130), selected));
+                MenuDraw.mix(light() ? MenuDraw.a(MenuPalette.text(), 22) : 0x18FFFFFF,
+                        MenuDraw.a(MenuPalette.accent(), 200), selected));
 
-        // справа: тумблер, клавиша, кнопка раскрытия
-        float toggleSize = Math.round(S(30));
+        // справа: тумблер, клавиша, кнопка раскрытия — размеры источника
+        float toggleSize = Math.round(S(34));
         float toggleX = x + w - pad - toggleSize;
         boolean waiting = this.binding == module;
-        String keyLabel = waiting ? "Клавиша" : module.getKeyBind() >= 0 ? KeyBinds.name(module.getKeyBind()) : "";
-        float keyFont = S(10);
-        float keyHeight = S(22);
-        float keyMin = S(30);
+        String keyLabel = waiting ? SelectAndSaveHelper.text("Нажми клавишу")
+                : module.getKeyBind() >= 0 ? KeyBinds.name(module.getKeyBind()) : "";
+        float keyFont = S(11);
+        float keyHeight = S(24);
+        float keyMin = Math.round(S(34));
         float keyTarget = keyLabel.isEmpty() ? keyMin
-                : Math.max(keyMin, MenuDraw.textWidth(keyLabel, Weight.SEMIBOLD, keyFont) + S(14));
-        float keyWidth = tw(MenuAnim.MODULE_BASE + mi * MenuAnim.MOD_STRIDE + MenuAnim.MOD_KEY_WIDTH,
-                keyTarget, 220);
-        float keyX = toggleX - S(8) - keyWidth;
+                : Math.max(keyMin, MenuDraw.textWidth(keyLabel, Weight.SEMIBOLD, keyFont) + S(18));
+        float keyWidth = tw(base + MenuAnim.MOD_KEY_WIDTH, keyTarget, 220);
+        float keyX = toggleX - S(10) - keyWidth;
         float keyY = y + offsetY + (h - keyHeight) * 0.5F;
 
         boolean hasSettings = !module.getSettings().isEmpty();
-        float gearSize = Math.round(keyHeight * 1.15F);
-        float gearX = keyX - S(5) - gearSize;
+        float gearSize = Math.round(keyHeight * 1.2F);
+        float gearX = keyX - S(6) - gearSize;
 
-        float textWidth = (hasSettings ? gearX : keyX) - S(8) - (x + pad);
-        float nameFont = S(13);
-        String name = MenuDraw.ellipsize(module.getName(), Weight.SEMIBOLD, nameFont, textWidth);
+        float textWidth = (hasSettings ? gearX : keyX) - S(10) - (x + pad);
+        float nameFont = S(15);
+        // Как в источнике (Lang.tr): пользователю показывается локализованное название,
+        // поиск при этом идёт по исходному — см. collectVisible().
+        String name = MenuDraw.ellipsize(SelectAndSaveHelper.text(module.getName()), Weight.SEMIBOLD,
+                nameFont, textWidth);
         int nameColour = MenuDraw.mix(MenuDraw.mix(MenuPalette.muted(), MenuPalette.text(), 0.55F),
                 MenuPalette.text(), Math.max(on, hoverAmount));
-        float nameY = y + offsetY + S(10);
+        float nameY = y + offsetY + S(12);
         if (this.search.isEmpty()) {
             MenuDraw.text(name, x + pad, nameY, Weight.SEMIBOLD, nameFont, nameColour);
         } else {
             this.nameLit(name, x + pad, nameY, nameFont, nameColour);
         }
 
-        float descFont = S(10);
-        String description = MenuDraw.ellipsize(this.search.isEmpty() ? module.getDescription() : category.displayName(),
+        float descFont = S(12);
+        String description = MenuDraw.ellipsize(
+                SelectAndSaveHelper.text(this.search.isEmpty() ? module.getDescription() : category.displayName()),
                 Weight.MEDIUM, descFont, textWidth);
-        MenuDraw.text(description, x + pad, nameY + S(17), Weight.MEDIUM, descFont, MenuPalette.dim());
+        MenuDraw.text(description, x + pad, nameY + S(20), Weight.MEDIUM, descFont, MenuPalette.dim());
 
         boolean keyHovered = hovered && hover(keyX, keyY, keyWidth, keyHeight);
         this.keyChip(keyLabel, keyX, keyY, keyWidth, keyHeight, keyFont, waiting, keyHovered, mi);
@@ -1143,8 +1207,10 @@ public final class MenuScreen extends Screen {
     /** Тумблер: дорожка и ручка. */
     void toggle(float x, float y, float w, float h, float on, float hoverAmount) {
         boolean light = light();
-        float trackHeight = Math.round(S(18));
-        float trackWidth = Math.round(trackHeight * 1.55F);
+        // Метрики источника (ArcanicMenu.toggle): S(20) высоты и пропорция 1.5.
+        // В порте было S(18) и 1.55 — тумблер выглядел мельче оригинала.
+        float trackHeight = Math.round(S(20));
+        float trackWidth = Math.round(trackHeight * 1.5F);
         float trackX = x + w - trackWidth - S(2);
         float trackY = y + (h - trackHeight) * 0.5F;
         float radius = trackHeight * 0.5F;
@@ -1547,7 +1613,8 @@ public final class MenuScreen extends Screen {
         }
         float hoverAmount = an(animBase + MenuAnim.SET_ROW, hovered ? 1.0F : 0.0F, 18.0F);
         float fontSize = S(this.compact ? 10 : 11);
-        String name = MenuDraw.ellipsize(setting.getName(), Weight.MEDIUM, fontSize, w - S(90));
+        String name = MenuDraw.ellipsize(SelectAndSaveHelper.text(setting.getName()), Weight.MEDIUM, fontSize,
+                w - S(90));
         int labelColour = MenuPalette.text();
         float boxY = y - scrollAmount;
 
@@ -1641,7 +1708,9 @@ public final class MenuScreen extends Screen {
                 }
             } else {
                 MenuDraw.textMid(name, x, boxY, h, Weight.MEDIUM, fontSize, labelColour);
-                String value = mode.get();
+                // Как в источнике: значение режима показывается переведённым (Lang.tr),
+                // а само значение настройки и сравнения .is("...") не меняются.
+                String value = SelectAndSaveHelper.text(mode.get());
                 float valueFont = S(10);
                 float valueWidth = Math.min(w * 0.55F, MenuDraw.textWidth(value, Weight.MEDIUM, valueFont) + S(26));
                 float valueHeight = S(24);
@@ -1680,7 +1749,8 @@ public final class MenuScreen extends Screen {
             List<String> modes = multi.getModes();
             for (int i = 0; i < modes.size(); i++) {
                 String option = modes.get(i);
-                float chipWidth = MenuDraw.textWidth(option, Weight.MEDIUM, chipFont) + S(16);
+                String optionLabel = SelectAndSaveHelper.text(option);
+                float chipWidth = MenuDraw.textWidth(optionLabel, Weight.MEDIUM, chipFont) + S(16);
                 if (offsetX > x && offsetX + chipWidth > x + w) {
                     offsetX = x;
                     offsetY += S(26);
@@ -1694,7 +1764,7 @@ public final class MenuScreen extends Screen {
                 }
                 MenuDraw.outline(offsetX, offsetY, chipWidth, chipHeight, S(5),
                         selected ? acc() : MenuDraw.a(MenuPalette.text(), light() ? 30 : 16));
-                MenuDraw.textCenterMid(option, offsetX + chipWidth * 0.5F, offsetY, chipHeight, Weight.MEDIUM,
+                MenuDraw.textCenterMid(optionLabel, offsetX + chipWidth * 0.5F, offsetY, chipHeight, Weight.MEDIUM,
                         chipFont, selected ? accText() : MenuPalette.text());
                 if (live) {
                     clipped(offsetX, offsetY, chipWidth, chipHeight, scrollAmount, listTop, listBottom,
@@ -1826,6 +1896,7 @@ public final class MenuScreen extends Screen {
         String selected = mode.get();
         for (int i = 0; i < modes.size(); i++) {
             String option = modes.get(i);
+            String optionLabel = SelectAndSaveHelper.text(option);
             float itemY = y + S(3) + i * itemHeight;
             boolean hovered = hover(x + S(3), itemY, width - S(6), itemHeight);
             if (hovered) {
@@ -1838,7 +1909,7 @@ public final class MenuScreen extends Screen {
                         MenuDraw.mix(inset(hoverAmount > 0.5F),
                                 MenuDraw.a(MenuPalette.accent(), light() ? 24 : 36), isSelected ? 1.0F : 0.0F));
             }
-            MenuDraw.textMid(option, x + S(10), itemY, itemHeight, isSelected ? Weight.SEMIBOLD : Weight.MEDIUM,
+            MenuDraw.textMid(optionLabel, x + S(10), itemY, itemHeight, isSelected ? Weight.SEMIBOLD : Weight.MEDIUM,
                     S(10), isSelected ? accText() : MenuPalette.text());
             region(x + S(3), itemY, width - S(6), itemHeight, ACT_POPOVER_ITEM, i);
         }
@@ -1859,6 +1930,7 @@ public final class MenuScreen extends Screen {
         this.pickerValue = hsb[2];
         this.pickerHex = String.format(Locale.ROOT, "%08X", value);
         this.pickerHexFocused = false;
+        this.pickerRgbMode = false;
         MenuSound.play(MenuSound.POP);
     }
 
@@ -1868,10 +1940,25 @@ public final class MenuScreen extends Screen {
         return alpha << 24 | rgb & 0xFFFFFF;
     }
 
+    /** Значение в формате RGB-поля источника: {@code R G B} через пробел. */
+    private String pickerRgb(int colour) {
+        return (colour >> 16 & 0xFF) + " " + (colour >> 8 & 0xFF) + " " + (colour & 0xFF);
+    }
+
+    /**
+     * Поповер выбора цвета.
+     *
+     * <p>Порт {@code Arcanic/ColourPicker} в объёме, который проверяем без догадок:
+     * квадрат насыщенность/яркость, полоса тона, полоса прозрачности, переключатель
+     * формата значения (HEX | RGB, как в источнике), поле значения, образец и набор
+     * последних цветов. Пипетка по кадру ({@code Screenshot.takeScreenshot}) и режим
+     * «следовать теме» не перенесены: в 26.2 этих вызовов нет ни в одном клиенте
+     * репозитория, а выдумывать сигнатуры Minecraft API нельзя.
+     */
     private void colorPicker() {
         ColorSetting setting = this.colorSetting;
-        float width = S(150);
-        float height = S(178);
+        float width = S(168);
+        float height = S(232);
         float x = Math.max(S(6), Math.min(this.width - width - S(6), this.mx - width * 0.5F));
         float y = Math.max(S(6), Math.min(this.height - height - S(6), this.my + S(16)));
         this.pickerX = x;
@@ -1922,7 +2009,7 @@ public final class MenuScreen extends Screen {
         MenuDraw.ring(svX + svW * this.pickerAlpha, alphaY + strip * 0.5F, S(4), 1.5F, 0xFFFFFFFF);
         region(svX, alphaY - S(3), svW, strip + S(6), ACT_PICKER_ALPHA, 0);
 
-        // образец и hex
+        // образец и поле значения
         float sampleSize = S(20);
         float sampleY = alphaY + strip + S(8);
         if (setting.hasAlpha()) {
@@ -1940,23 +2027,76 @@ public final class MenuScreen extends Screen {
                 this.pickerHexFocused ? MenuDraw.a(MenuPalette.accent(), 30) : inset(false));
         MenuDraw.outline(hexX, sampleY, hexW, hexH, S(4),
                 this.pickerHexFocused ? acc() : MenuDraw.a(MenuPalette.text(), 18));
-        MenuDraw.textMid(hex, hexX + S(6), sampleY, hexH, Weight.MEDIUM, S(10), MenuPalette.text());
+        String field = this.pickerHexFocused ? hex
+                : this.pickerRgbMode ? this.pickerRgb(value) : String.format(Locale.ROOT, "%08X", value);
+        MenuDraw.textMid(field, hexX + S(6), sampleY, hexH, Weight.MEDIUM, S(10), MenuPalette.text());
         region(hexX, sampleY, hexW, hexH, ACT_PICKER_HEX, 0);
 
+        // Переключатель формата HEX | RGB — сегмент с «бегунком», как в источнике.
+        float segmentY = sampleY + sampleSize + S(7);
+        float segmentW = S(60);
+        float segmentH = S(14);
+        MenuDraw.round(svX, segmentY, segmentW, segmentH, S(5), inset(false));
+        MenuDraw.outline(svX, segmentY, segmentW, segmentH, S(5), MenuDraw.a(MenuPalette.text(), 18));
+        float half = segmentW * 0.5F;
+        float thumbX = this.pickerRgbMode ? svX + half : svX;
+        accentWash(thumbX + S(1), segmentY + S(1), half - S(2), segmentH - S(2), S(4), 70);
+        MenuDraw.textCenterMid("HEX", svX + half * 0.5F, segmentY, segmentH, Weight.SEMIBOLD, S(9),
+                this.pickerRgbMode ? MenuPalette.muted() : MenuPalette.text());
+        MenuDraw.textCenterMid("RGB", svX + half * 1.5F, segmentY, segmentH, Weight.SEMIBOLD, S(9),
+                this.pickerRgbMode ? MenuPalette.text() : MenuPalette.muted());
+        region(svX, segmentY, half, segmentH, ACT_PICKER_FORMAT, 0);
+        region(svX + half, segmentY, half, segmentH, ACT_PICKER_FORMAT, 1);
+
+        // Значение прозрачности в процентах — справа от сегментов (в источнике — отдельное поле).
+        if (setting.hasAlpha()) {
+            float alphaFieldX = svX + segmentW + S(6);
+            float alphaFieldW = width - pad * 2.0F - segmentW - S(6);
+            MenuDraw.round(alphaFieldX, segmentY, alphaFieldW, segmentH, S(5), inset(false));
+            MenuDraw.outline(alphaFieldX, segmentY, alphaFieldW, segmentH, S(5),
+                    MenuDraw.a(MenuPalette.text(), 18));
+            MenuDraw.textCenterMid(Math.round(this.pickerAlpha * 100.0F) + "%",
+                    alphaFieldX + alphaFieldW * 0.5F, segmentY, segmentH, Weight.SEMIBOLD, S(9),
+                    MenuPalette.text());
+        }
+
+        // Последние цвета: набор точек, текущий цвет обведён кольцом.
+        float recentY = segmentY + segmentH + S(9);
+        MenuDraw.text(SelectAndSaveHelper.text("Последние цвета"), svX, recentY, Weight.MEDIUM, S(9),
+                MenuPalette.muted());
+        float dotY = recentY + S(13);
+        float dotStep = (width - pad * 2.0F) / MenuPrefs.RECENT_MAX;
+        int[] recents = MenuPrefs.recents();
+        int recentCount = Math.min(MenuPrefs.recentCount(), MenuPrefs.RECENT_MAX);
+        float dotRadius = Math.min(dotStep * 0.42F, S(6));
+        int currentRgb = value & 0xFFFFFF;
+        for (int i = 0; i < recentCount; i++) {
+            float centreX = svX + dotStep * (i + 0.5F);
+            float centreY = dotY + dotRadius;
+            MenuDraw.circle(centreX, centreY, dotRadius, recents[i] | 0xFF000000);
+            if ((recents[i] & 0xFFFFFF) == currentRgb) {
+                MenuDraw.ring(centreX, centreY, dotRadius + S(1.5F), 1.0F, MenuPalette.text());
+            }
+            if (!blocked()) {
+                region(centreX - dotRadius, centreY - dotRadius, dotRadius * 2.0F, dotRadius * 2.0F,
+                        ACT_PICKER_RECENT, i);
+            }
+        }
+
         // кнопки
-        float buttonY = sampleY + sampleSize + S(8);
+        float buttonY = dotY + dotRadius * 2.0F + S(10);
         float buttonW = (width - pad * 2.0F - S(6)) * 0.5F;
         float buttonH = S(20);
         boolean resetHover = hover(svX, buttonY, buttonW, buttonH);
         MenuDraw.round(svX, buttonY, buttonW, buttonH, S(5), inset(resetHover));
-        MenuDraw.textCenterMid("Сброс", svX + buttonW * 0.5F, buttonY, buttonH, Weight.MEDIUM, S(10),
+        MenuDraw.textCenterMid(SelectAndSaveHelper.text("Сброс"), svX + buttonW * 0.5F, buttonY, buttonH, Weight.MEDIUM, S(10),
                 MenuPalette.text());
         region(svX, buttonY, buttonW, buttonH, ACT_PICKER_CLOSE, 1);
 
         float closeX = svX + buttonW + S(6);
         boolean closeHover = hover(closeX, buttonY, buttonW, buttonH);
         MenuDraw.round(closeX, buttonY, buttonW, buttonH, S(5), accentWashColor(closeHover));
-        MenuDraw.textCenterMid("Готово", closeX + buttonW * 0.5F, buttonY, buttonH, Weight.SEMIBOLD, S(10),
+        MenuDraw.textCenterMid(SelectAndSaveHelper.text("Готово"), closeX + buttonW * 0.5F, buttonY, buttonH, Weight.SEMIBOLD, S(10),
                 accText());
         region(closeX, buttonY, buttonW, buttonH, ACT_PICKER_CLOSE, 0);
     }
@@ -1968,7 +2108,10 @@ public final class MenuScreen extends Screen {
     // ---- нижний док
 
     private void dock(float centreX, float edge, float slide) {
-        String[] labels = {"Модули", "Настройки"};
+        // Третья кнопка — редактор HUD: в источнике он открывался из своего дока,
+        // здесь живёт рядом с «Модули» и «Настройки».
+        String[] labels = {SelectAndSaveHelper.text("Модули"), SelectAndSaveHelper.text("Настройки"),
+                SelectAndSaveHelper.text("Редактор HUD")};
         float buttonSize = S(44);
         float gap = S(8);
         float pad = S(6);
@@ -2024,9 +2167,13 @@ public final class MenuScreen extends Screen {
             if (i == 0) {
                 MenuDraw.iconCsCentered(IconGlyphs.MISC, buttonX, y + pad, buttonSize, buttonSize, iconSize,
                         iconColour);
-            } else {
+            } else if (i == 1) {
                 MenuDraw.iconLettersCentered(LegacyIconGlyphs.FILTERS, buttonX, y + pad, buttonSize, buttonSize,
                         iconSize, iconColour);
+            } else {
+                // «Редактор HUD» — иконка визуала: другого подходящего глифа в наборе нет.
+                MenuDraw.iconCsCentered(IconGlyphs.RENDER, buttonX, y + pad, buttonSize, buttonSize, iconSize,
+                        iconColour);
             }
 
             if (hoverAmount > 0.02F) {
@@ -2055,6 +2202,19 @@ public final class MenuScreen extends Screen {
     }
 
     private void dockClick(int index) {
+        if (index == 2) {
+            // Редактор HUD — отдельный экран; меню закрывается с сохранением настроек,
+            // чтобы позиции и палитра не потерялись при переходе.
+            Minecraft minecraft = this.minecraft;
+            if (minecraft != null) {
+                MenuSound.play(MenuSound.PAGE);
+                this.commitStringEdit();
+                MenuPrefs.save();
+                this.saveConfig();
+                minecraft.setScreenAndShow(new net.skycore.client.gui.hud.HudEditorScreen(this));
+            }
+            return;
+        }
         Page target = index == 1 ? Page.SETTINGS : Page.MODULES;
         if (page == target) {
             return;
@@ -2126,6 +2286,8 @@ public final class MenuScreen extends Screen {
                     || this.regionAction[index] == ACT_PICKER_HUE
                     || this.regionAction[index] == ACT_PICKER_ALPHA
                     || this.regionAction[index] == ACT_PICKER_HEX
+                    || this.regionAction[index] == ACT_PICKER_FORMAT
+                    || this.regionAction[index] == ACT_PICKER_RECENT
                     || this.regionAction[index] == ACT_PICKER_CLOSE)) {
                 this.dragAction = this.regionAction[index];
                 this.dragPayload = this.regionPayload[index];
@@ -2416,6 +2578,10 @@ public final class MenuScreen extends Screen {
         this.pickerValue = hsb[2];
         if (this.colorSetting != null) {
             this.colorSetting.set(value);
+            // Выбранный цвет пополняет список последних (порт списка PRESETS источника).
+            // Запись на диск — при закрытии меню (MenuPrefs.save), а не в кадре
+            // перетаскивания: applyPickerColor вызывается на каждом движении курсора.
+            MenuPrefs.rememberColour(value);
             this.markDirty();
         }
     }
@@ -2661,6 +2827,20 @@ public final class MenuScreen extends Screen {
                 }
             }
             case ACT_PICKER_HEX -> this.pickerHexFocused = true;
+            case ACT_PICKER_FORMAT -> {
+                this.pickerHexFocused = false;
+                this.pickerRgbMode = payload == 1;
+                MenuSound.play(MenuSound.CLICK);
+            }
+            case ACT_PICKER_RECENT -> {
+                if (this.colorSetting != null && payload >= 0 && payload < MenuPrefs.recentCount()) {
+                    int picked = MenuPrefs.recents()[payload];
+                    int alpha = this.colorSetting.hasAlpha() ? this.pickerColor() & 0xFF000000 : 0xFF000000;
+                    this.applyPickerColor(picked & 0xFFFFFF | alpha);
+                    this.pickerHue = Color.RGBtoHSB(picked >> 16 & 0xFF, picked >> 8 & 0xFF, picked & 0xFF, null)[0];
+                    MenuSound.play(MenuSound.CLICK, 1.1F, 0.6F);
+                }
+            }
             case ACT_PICKER_CLOSE -> {
                 if (payload == 1 && this.colorSetting != null) {
                     this.colorSetting.reset();
@@ -2669,6 +2849,7 @@ public final class MenuScreen extends Screen {
                 } else {
                     this.colorSetting = null;
                     this.pickerHexFocused = false;
+                    this.pickerRgbMode = false;
                     MenuSound.play(MenuSound.CLICK);
                 }
             }

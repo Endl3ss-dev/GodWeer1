@@ -5,6 +5,7 @@ import net.skycore.client.module.ClientModule;
 import net.skycore.client.module.KeyBinds;
 import net.skycore.client.setting.Setting;
 import net.skycore.client.util.IconGlyphs;
+import net.skycore.client.util.SelectAndSaveHelper;
 
 import java.util.List;
 
@@ -141,9 +142,12 @@ final class ModulePopup {
         float titleX = contentX;
         float titleW = contentW - toggleW - this.menu.S(10);
 
-        MenuDraw.text(MenuDraw.ellipsize(module.getName(), Weight.SEMIBOLD, this.menu.S(13), titleW),
+        // Порт Arcanic показывает название через Lang.tr; в SkyCore это SelectAndSaveHelper.text.
+        MenuDraw.text(MenuDraw.ellipsize(SelectAndSaveHelper.text(module.getName()), Weight.SEMIBOLD,
+                        this.menu.S(13), titleW),
                 titleX, y + this.menu.S(12), Weight.SEMIBOLD, this.menu.S(13), MenuPalette.text());
-        MenuDraw.text(MenuDraw.ellipsize(module.getDescription(), Weight.MEDIUM, this.menu.S(10), titleW),
+        MenuDraw.text(MenuDraw.ellipsize(SelectAndSaveHelper.text(module.getDescription()), Weight.MEDIUM,
+                        this.menu.S(10), titleW),
                 titleX, y + this.menu.S(30), Weight.MEDIUM, this.menu.S(10),
                 this.menu.lt(MenuPalette.dim(), 0xFF757D8A));
 
@@ -204,11 +208,11 @@ final class ModulePopup {
         float labelX = contentX + bindSize + this.menu.S(8);
         MenuDraw.iconCs(IconGlyphs.BIND, contentX + bindSize * 0.5F, keyRowY + keyHeight * 0.5F, bindSize,
                 MenuDraw.a(accTextSafe(), 190));
-        MenuDraw.text("Клавиша", labelX, keyRowY + (keyHeight - MenuText.lineHeight(Weight.MEDIUM,
+        MenuDraw.text(SelectAndSaveHelper.text("Клавиша"), labelX, keyRowY + (keyHeight - MenuText.lineHeight(Weight.MEDIUM,
                         this.menu.S(12))) * 0.5F, Weight.MEDIUM, this.menu.S(12), MenuPalette.muted());
 
         boolean waiting = this.menu.binding == module;
-        String keyLabel = waiting ? "Нажми клавишу"
+        String keyLabel = waiting ? SelectAndSaveHelper.text("Нажми клавишу")
                 : module.getKeyBind() >= 0 ? KeyBinds.name(module.getKeyBind()) : "—";
         boolean keyHover = live && this.menu.hover(contentX, keyRowY, contentW, keyHeight);
         if (keyHover) {
