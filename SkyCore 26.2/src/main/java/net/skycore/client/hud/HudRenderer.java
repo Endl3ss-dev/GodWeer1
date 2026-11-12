@@ -4,7 +4,6 @@ import com.mojang.blaze3d.platform.Window;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
-import java.util.Locale;
 import java.util.Set;
 import net.minecraft.client.DeltaTracker;
 import net.minecraft.client.Minecraft;
@@ -14,7 +13,6 @@ import net.minecraft.client.input.MouseButtonInfo;
 import net.minecraft.client.renderer.state.gui.GuiRenderState;
 import net.skycore.client.SkycoreClient;
 import net.skycore.client.config.ConfigManager;
-import net.skycore.client.gui.decide.DecideCloseAnimation;
 import net.skycore.client.module.ClientModule;
 import net.skycore.client.module.ModuleManager;
 import net.skycore.client.module.combat.SpearDamageIndicatorModule;
@@ -24,11 +22,6 @@ import net.skycore.client.util.BeginFrameHelper;
 import net.skycore.client.util.CurrentGuiGraphicsExtractorHelper;
 
 public final class HudRenderer {
-   /** Идентификаторы Draggable, которым нужны отдельные ключи в InterfaceModule.elements(). */
-   private static final String ELEMENT_TARGET_HUD = "target_hud";
-   private static final String ELEMENT_ARMOR_HUD = "armor_hud";
-   private static final String ELEMENT_NOTIFICATIONS = "notifications";
-
    private final ConfigManager config;
    private final Set<String> appliedPositions;
    private final ModuleManager modules;
@@ -56,17 +49,6 @@ public final class HudRenderer {
       this.draggables.register(this.interfaceModule.armorHud().draggable());
       this.draggables.register(this.interfaceModule.targetHud().draggable());
       this.draggables.register(this.interfaceModule.notifications().draggable());
-      // Порядок тот же, что в HUD-проходе: редактор показывает элементы этим списком.
-      this.editorElements.add(this.interfaceModule.watermark().draggable());
-      this.editorElements.add(this.interfaceModule.information().draggable());
-      this.editorElements.add(this.interfaceModule.hotkeys().draggable());
-      this.editorElements.add(this.interfaceModule.binds().draggable());
-      this.editorElements.add(this.interfaceModule.hotbar().draggable());
-      this.editorElements.add(this.interfaceModule.potions().draggable());
-      this.editorElements.add(this.interfaceModule.cooldowns().draggable());
-      this.editorElements.add(this.interfaceModule.armorHud().draggable());
-      this.editorElements.add(this.interfaceModule.targetHud().draggable());
-      this.editorElements.add(this.interfaceModule.notifications().draggable());
       ClientModule.addToggleListener((clientModule, condition) -> {
          this.interfaceModule.notifications().onModuleToggle(clientModule, condition);
       });
@@ -115,33 +97,14 @@ public final class HudRenderer {
          int guiScaledWidth = instance.getWindow().getGuiScaledWidth();
          int guiScaledHeight = instance.getWindow().getGuiScaledHeight();
          this.reprojectIfNeeded(guiScaledWidth, guiScaledHeight);
-         // Анимация закрытия Decide-меню живёт поверх HUD: снимок кадра уже снят,
-         // и шейпы рисуются независимо от того, включены ли элементы интерфейса.
-         if (DecideCloseAnimation.isActive()) {
-            GuiGraphicsExtractor closeExtractor = new GuiGraphicsExtractor(instance, guiRenderState,
-                    (int) Math.round(this.mouseX(instance)), (int) Math.round(this.mouseY(instance)));
-            CurrentGuiGraphicsExtractorHelper.enter2D(closeExtractor, deltaTracker);
-            BeginFrameHelper.beginFrame();
-            try {
-               DecideCloseAnimation.renderHud(guiScaledWidth, guiScaledHeight);
-               BeginFrameHelper.flush();
-            } catch (RuntimeException failure) {
-               // Эффект закрытия не должен утянуть за собой весь HUD-проход.
-               SkycoreClient.LOGGER.warn("Skycore Decide GUI: close animation frame failed", failure);
-               DecideCloseAnimation.cancel();
-            } finally {
-               CurrentGuiGraphicsExtractorHelper.exit2D();
-            }
-         }
          long nowNanos = System.nanoTime();
          float computedValue = clamp((float)(nowNanos - this.lastFrameAt) / 1.0E9F, 0.0F, 0.05F);
          this.lastFrameAt = nowNanos;
          if (this.draggables.active() != null) {
-            // Порт HudEditorScreen: кроме чата перетаскивание живёт и в редакторе HUD.
-            // Раньше любой экран, кроме чата, немедленно завершал drag — редактор бы
-            // не смог двигать элементы. Позиция сохраняется при отпускании кнопки.
-            if (instance.gui.screen() instanceof ChatScreen
-                    || instance.gui.screen() instanceof net.skycore.client.gui.hud.HudEditorScreen) {
+            // [+] EDIT: редактор HUD удалён вместе с остальными меню, поэтому
+            // перетаскивание снова живёт только в чате. Позиция сохраняется
+            // при отпускании кнопки.
+            if (instance.gui.screen() instanceof ChatScreen) {
                this.draggables.dragTo(this.mouseX(instance), this.mouseY(instance), guiScaledWidth, guiScaledHeight);
             } else {
                Draggable draggable = this.draggables.endDrag();
@@ -306,162 +269,6 @@ public final class HudRenderer {
 
    public DraggableManager draggables() {
       return this.draggables;
-   }
-
-   // ---- API редактора HUD (gui/hud/HudEditorScreen)
-   //
-   // Редактор — порт HudEditorScreen из Arcanic, но работает не с модулями HUD,
-   // а с теми же Draggable, которыми HUD уже живёт. Ничего не дублируется:
-   // порядок элементов задаёт список, собранный в конструкторе, а видимость —
-   // мультивыбор InterfaceModule.elements(), то есть ровно то поле, что и в меню.
-
-   /** Элементы HUD в порядке регистрации (порядок нужен для стабильных индексов). */
-   private final List<Draggable> editorElements = new ArrayList<>();
-
-   /**
-    * Рисует все элементы HUD для редактора.
-    *
-    * <p>В редакторе HUD-проход игры не выполняется: {@code Gui.extractRenderState}
-    * (и вместе с ним {@link #render}) в 26.2 не вызывается, пока открыт
-    * {@code Screen} — HUD продолжает жить только в памяти, а размеры элементов
-    * ({@code Draggable.setBounds}) в обычном режиме задаются именно из элементов
-    * во время их отрисовки. Поэтому редактор вызывает этот метод: элементы получают
-    * реальные размеры, а рамки и хит-тесты попадают точно по своим местам.
-    *
-    * <p>Выключенные элементы тоже рисуются — иначе их нельзя было бы включить
-    * в редакторе (в источнике для этого был флаг {@code preview}).
-    */
-   public void renderEditorPreview(float alpha) {
-      Minecraft instance = Minecraft.getInstance();
-      if (instance.player == null) {
-         return;
-      }
-      float scale = this.interfaceScale(instance);
-      boolean chat = false;
-      int color = this.interfaceModule.glowEnabled() ? SkycoreClient.themes().accent() : 0;
-      BeginFrameHelper.setHudGlowColor(0);
-      BeginFrameHelper.setHudIconGlowColor(color);
-
-      this.interfaceModule.watermark().render(scale, alpha);
-      this.interfaceModule.information().render(scale, alpha, chat);
-      this.interfaceModule.hotkeys().render(scale, alpha, this.modules.getModules(), chat);
-      this.interfaceModule.binds().render(scale, alpha, this.modules.getModules(), chat);
-      BeginFrameHelper.setHudIconGlowColor(0);
-      this.interfaceModule.hotbar().render(scale, alpha);
-      BeginFrameHelper.setHudIconGlowColor(color);
-      this.interfaceModule.potions().render(scale, alpha, chat);
-      this.interfaceModule.cooldowns().render(scale, alpha, chat);
-      this.interfaceModule.armorHud().render(scale, alpha, chat);
-      this.interfaceModule.targetHud().render(alpha, chat);
-      this.interfaceModule.notifications().render(scale, chat, instance.getWindow().getGuiScaledWidth());
-
-      BeginFrameHelper.flush();
-      this.applySavedPositions();
-      BeginFrameHelper.setHudGlowColor(0);
-      BeginFrameHelper.setHudIconGlowColor(0);
-   }
-
-   /** Модель видимости/настроек HUD — редактор переключает через неё те же ключи, что и меню. */
-   public InterfaceModule interfaceModule() {
-      return this.interfaceModule;
-   }
-
-   /** Сколько элементов показывает редактор. */
-   public int elementCount() {
-      return this.editorElements.size();
-   }
-
-   public Draggable elementAt(int index) {
-      if (index < 0 || index >= this.editorElements.size()) {
-         return null;
-      }
-      return this.editorElements.get(index);
-   }
-
-   /**
-    * Индекс элемента под точкой или {@code -1}.
-    *
-    * <p>Идём с конца: последний отрисованный элемент лежит сверху, и клик должен
-    * попадать в него, как это делает {@code DraggableManager.beginDrag}.
-    */
-   public int elementAt(double x, double y) {
-      for (int i = this.editorElements.size() - 1; i >= 0; i--) {
-         Draggable draggable = this.editorElements.get(i);
-         if (draggable.width() > 0.0F && draggable.height() > 0.0F && draggable.contains(x, y)) {
-            return i;
-         }
-      }
-      return -1;
-   }
-
-   /** Подпись элемента для редактора. */
-   public String elementLabel(String id) {
-      if (ELEMENT_NOTIFICATIONS.equals(id)) {
-         return "Notifications";
-      }
-      if (ELEMENT_TARGET_HUD.equals(id)) {
-         return "TargetHUD";
-      }
-      if (ELEMENT_ARMOR_HUD.equals(id)) {
-         return "ArmorHUD";
-      }
-      return id == null ? "" : id.substring(0, 1).toUpperCase(Locale.ROOT) + id.substring(1);
-   }
-
-   /** Включён ли элемент в {@link InterfaceModule#elements()}. */
-   public boolean isElementEnabled(String id) {
-      String key = elementSettingKey(id);
-      return key != null && this.interfaceModule.elements().isSelected(key);
-   }
-
-   /**
-    * Переключает видимость элемента.
-    *
-    * <p>У {@code Notifications} и {@code TargetHUD} в {@code InterfaceModule} свои
-    * условия ({@code isEnabled()} модуля), поэтому переключение идёт через тот же
-    * мультивыбор — других полей у видимости в клиенте нет.
-    */
-   public void toggleElement(String id) {
-      String key = elementSettingKey(id);
-      if (key != null) {
-         this.interfaceModule.elements().toggle(key);
-         this.config.save();
-      }
-   }
-
-   public void beginElementDrag(int index, double mouseX, double mouseY) {
-      Draggable draggable = this.elementAt(index);
-      if (draggable != null) {
-         draggable.beginDrag(mouseX, mouseY);
-         this.draggables.beginDrag(mouseX, mouseY, this.editorElements);
-      }
-   }
-
-   public void dragElement(double mouseX, double mouseY, int width, int height) {
-      this.draggables.dragTo(mouseX, mouseY, width, height);
-   }
-
-   /** Завершает перетаскивание и сохраняет нормализованную позицию. */
-   public void endElementDrag(int width, int height) {
-      Draggable draggable = this.draggables.endDrag();
-      if (draggable != null) {
-         this.savePosition(draggable, width, height);
-      }
-   }
-
-   /** Соответствие идентификатора Draggable ключу в {@code InterfaceModule.elements()}. */
-   private static String elementSettingKey(String id) {
-      if (id == null) {
-         return null;
-      }
-      if ("target_hud".equals(id)) {
-         return "TargetHUD";
-      }
-      if ("armor_hud".equals(id)) {
-         return "ArmorHUD";
-      }
-      String normalized = id.substring(0, 1).toUpperCase(Locale.ROOT) + id.substring(1);
-      return normalized;
    }
 
    private double mouseX(Minecraft minecraft) {

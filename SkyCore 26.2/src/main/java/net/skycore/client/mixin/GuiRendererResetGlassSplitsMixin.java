@@ -17,8 +17,6 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.gui.render.GuiRenderer;
 import net.minecraft.client.renderer.state.gui.GuiElementRenderState;
 import net.minecraft.client.renderer.state.gui.GuiItemRenderState;
-import net.skycore.client.gui.decide.DecideBackdrop;
-import net.skycore.client.gui.decide.DecideCloseAnimation;
 import net.skycore.client.util.AcquireViewHelper;
 import net.skycore.client.util.GuiPipelines;
 import net.skycore.client.util.CaptureHelper;
@@ -88,10 +86,6 @@ public abstract class GuiRendererResetGlassSplitsMixin {
             int kind = this.skycore$backdropKinds.getInt(value3);
             if (kind == 2) {
                AcquireViewHelper.captureNow();
-            } else if (kind == 3) {
-               DecideBackdrop.captureSceneNow(renderTarget);
-            } else if (kind == 4) {
-               DecideCloseAnimation.captureNow(renderTarget);
             } else if (!RenderGuiHelper.stabilizeOpeningBlur() || !this.skycore$openingBackdropCaptured) {
                RunPassHelper.captureNow();
                this.skycore$openingBackdropCaptured = true;

@@ -20,9 +20,10 @@ public final class ClickGUIModule extends ClientModule {
    public static final String EFFECT_DOTS = "Точки";
 
    private Runnable openAction;
-   private final ModeSetting menuStyle = this.add(
-      new ModeSetting("GUI Style", "Decide", "Decide", "Workspace", "Swerve", "Skycore")
-   );
+   // [+] EDIT: выбор GUI-стиля удалён — в клиенте остался один интерфейс
+   // (Skycore/RenderGuiHelper). Поле сохранено только как носитель значения
+   // для старых конфигов, в настройках оно больше не показывается.
+   private final ModeSetting menuStyle = new ModeSetting("GUI Style", "Skycore", "Skycore");
    private final MultiSelectSetting effects = this.add(
       new MultiSelectSetting(
          "Эффекты",
@@ -65,11 +66,14 @@ public final class ClickGUIModule extends ClientModule {
    public ClickGUIModule() {
       super("ClickGUI", "Opens the Skycore interface", ModuleCategory.RENDER);
       this.setKeyBind(344);
-      this.effects.visibleWhen(() -> this.menuStyle.is("Decide"));
-      this.closeAnimation.visibleWhen(() -> this.menuStyle.is("Decide"));
-      this.decideSize.visibleWhen(() -> this.menuStyle.is("Decide"));
-      this.runWithGui.visibleWhen(() -> this.menuStyle.is("Decide"));
-      this.style.visibleWhen(() -> !this.menuStyle.is("Decide"));
+      // [+] EDIT: эффекты, анимация закрытия и «бегать с GUI» относились к
+      // удалённому Decide-меню — они скрыты навсегда, но оставлены в классе,
+      // чтобы не менять формат конфигов пользователей.
+      this.effects.visibleWhen(() -> false);
+      this.closeAnimation.visibleWhen(() -> false);
+      this.decideSize.visibleWhen(() -> false);
+      this.runWithGui.visibleWhen(() -> false);
+      this.style.visibleWhen(() -> true);
    }
 
    public ModeSetting style() {

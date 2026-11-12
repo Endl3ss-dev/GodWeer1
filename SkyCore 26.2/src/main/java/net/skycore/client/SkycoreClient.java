@@ -15,11 +15,6 @@ import net.skycore.client.config.MacroManager;
 import net.skycore.client.config.NameList;
 import net.skycore.client.event.ClientTickEvent;
 import net.skycore.client.event.EventBus;
-import net.skycore.client.gui.decide.DecideGuiMovement;
-import net.skycore.client.gui.decide.DecideMenuScreen;
-import net.skycore.client.gui.menu.MenuPrefs;
-import net.skycore.client.gui.menu.MenuScreen;
-import net.skycore.client.gui.workspace.WorkspaceScreen;
 import net.skycore.client.hud.HudRenderer;
 import net.skycore.client.integration.DiscordStatus;
 import net.skycore.client.module.BindManager;
@@ -107,20 +102,11 @@ public final class SkycoreClient implements ClientModInitializer {
       LOGGER.info("Skycore GUI style = '{}' (конфиг: {}, {})",
               clickGUIModule.menuStyle().get(), configPath,
               configPath != null && java.nio.file.Files.exists(configPath) ? "файл есть" : "файла нет");
-      clickGUIModule.setOpenAction(() -> {
-         // Workspace — основное меню: ветка по умолчанию (и всё, что не названо явно
-         // внутри него) открывает его, а не старый экран.
-         if (clickGUIModule.menuStyle().is("Decide")) {
-            LOGGER.info("Skycore GUI: opening the Decide menu");
-            instance.setScreenAndShow(new DecideMenuScreen(MODULES, config, clickGUIModule));
-         } else if (clickGUIModule.menuStyle().is("Skycore")) {
-            instance.setScreenAndShow(new RenderGuiHelper(MODULES, THEMES, config, clickGUIModule));
-         } else if (clickGUIModule.menuStyle().is("Swerve")) {
-            instance.setScreenAndShow(new MenuScreen(MODULES, config));
-         } else {
-            openWorkspace(instance);
-         }
-      });
+      // [+] EDIT: в клиенте остался один GUI — Skycore (RenderGuiHelper).
+      // Решения о стиле больше нет: ClickGUIModule.menuStyle оставлен ради
+      // обратной совместимости конфигов, но открывается всегда один экран.
+      clickGUIModule.setOpenAction(() -> instance.setScreenAndShow(
+              new RenderGuiHelper(MODULES, THEMES, config, clickGUIModule)));
       ClientTickEvents.END_CLIENT_TICK.register(this::onEndTick);
       var targetEspRenderer = MODULES.get(net.skycore.client.module.render.TargetESPModule.class).orElseThrow();
       var petRenderer = MODULES.get(net.skycore.client.module.render.PetsModule.class).orElseThrow();
@@ -167,26 +153,6 @@ public final class SkycoreClient implements ClientModInitializer {
       config.load();
    }
 
-   /**
-    * Открывает основное меню — Workspace.
-    *
-    * <p>Вынесено отдельным методом ради одной страховки: если экран не удалось
-    * построить (например, из-за несовместимого состояния настроек), клиент не должен
-    * оставаться без интерфейса вообще — тогда открывается старый экран, который умеет
-    * всё остальное. Исключение при этом логируется, а не глотается молча.
-    */
-   private void openWorkspace(Minecraft instance) {
-      try {
-         instance.setScreenAndShow(new WorkspaceScreen(MODULES, config));
-      } catch (RuntimeException failure) {
-         LOGGER.error("Workspace menu failed to open, falling back to the legacy screen", failure);
-         ClickGUIModule clickGui = MODULES.get(ClickGUIModule.class).orElse(null);
-         instance.setScreenAndShow(clickGui == null
-                 ? new MenuScreen(MODULES, config)
-                 : new RenderGuiHelper(MODULES, THEMES, config, clickGui));
-      }
-   }
-
    private void onEndTick(Minecraft minecraft) {
       SpoofElytraAsChestplateHelper.tick();
       SynchronizeHelper.synchronize();
@@ -206,9 +172,8 @@ public final class SkycoreClient implements ClientModInitializer {
       }
 
       MODULES.tickEnabled();
-      // «Бегать с открытым GUI» у Decide-меню: экран не забирает клавиши движения,
-      // поэтому их состояние подставляется из GLFW на каждом клиентском такте.
-      DecideGuiMovement.tick(minecraft, MODULES.get(ClickGUIModule.class).orElse(null));
+      // [+] EDIT: «Бегать с открытым GUI» было свойством удалённого Decide-меню
+      // (DecideGuiMovement), поэтому такт больше ничего не подставляет.
       EVENTS.post(new ClientTickEvent(minecraft));
    }
 
