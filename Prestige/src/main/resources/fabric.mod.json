@@ -1,0 +1,25 @@
+{
+  "schemaVersion": 1,
+  "id": "prestige_local",
+  "name": "Prestige Local Recovery",
+  "version": "0.1.0",
+  "environment": "client",
+  "entrypoints": {
+    "preLaunch": [
+      "bench.prestige.portable.Bootstrap"
+    ],
+    "client": [
+      "bench.prestige.portable.Bootstrap"
+    ]
+  },
+  "accessWidener": "aw/1.21.11.aw",
+  "depends": {
+    "fabricloader": "=0.19.5",
+    "minecraft": "=1.21.11",
+    "java": ">=21",
+    "fabric-api": "*"
+  },
+  "mixins": [
+    "prestige-portable.mixins.json"
+  ]
+}

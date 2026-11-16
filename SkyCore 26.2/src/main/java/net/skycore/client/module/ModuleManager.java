@@ -26,10 +26,14 @@ import net.skycore.client.module.combat.AutoTotemModule;
 import net.skycore.client.module.combat.AutoWebTrapModule;
 import net.skycore.client.module.combat.CriticalsModule;
 import net.skycore.client.module.combat.ElytraTargetModule;
+import net.skycore.client.module.combat.ExtendedReachModule;
 import net.skycore.client.module.combat.FakePlayerModule;
+import net.skycore.client.module.combat.InstantLungeModule;
 import net.skycore.client.module.combat.ItemSwapModule;
+import net.skycore.client.module.combat.SpearDamageIndicatorModule;
 import net.skycore.client.module.combat.SpearDashModule;
 import net.skycore.client.module.combat.SpearExploitModule;
+import net.skycore.client.module.combat.SpearMaceDoubleTapModule;
 import net.skycore.client.module.combat.TargetPearlModule;
 import net.skycore.client.module.combat.TriggerBotModule;
 import net.skycore.client.module.misc.AutoDuelModule;
@@ -64,9 +68,14 @@ import net.skycore.client.module.movement.NoFallModule;
 import net.skycore.client.module.movement.NoPushModule;
 import net.skycore.client.module.movement.NoWebModule;
 import net.skycore.client.module.movement.SpeedHVHModule;
+import net.skycore.client.module.movement.SpeedModule;
+import net.skycore.client.module.movement.SpeedV2Module;
+import net.skycore.client.module.movement.SpeedV3Module;
+import net.skycore.client.module.movement.SpeedV4Module;
 import net.skycore.client.module.movement.SprintModule;
 import net.skycore.client.module.movement.SuperFireworkModule;
 import net.skycore.client.module.movement.TimerModule;
+import net.skycore.client.module.movement.VelocityModule;
 import net.skycore.client.module.movement.WebIgnoreModule;
 import net.skycore.client.module.player.DrinkUseModule;
 import net.skycore.client.module.player.AimingItemsModule;
@@ -190,6 +199,10 @@ public final class ModuleManager {
       this.trialRegister(AutoSwapModule.INSTANCE);
       this.trialRegister(AutoExplosionModule.INSTANCE);
       this.trialRegister(new AutoMaceModule());
+      this.trialRegister(ExtendedReachModule.INSTANCE);
+      this.trialRegister(InstantLungeModule.INSTANCE);
+      this.trialRegister(SpearDamageIndicatorModule.INSTANCE);
+      this.trialRegister(SpearMaceDoubleTapModule.INSTANCE);
       this.trialRegister(new SpearDashModule());
       this.trialRegister(new SpearExploitModule());
       this.trialRegister(new AttackAuraModule());
@@ -282,11 +295,16 @@ public final class ModuleManager {
       this.trialRegister(SprintModule.INSTANCE);
       this.trialRegister(SuperFireworkModule.INSTANCE);
       this.trialRegister(SpeedHVHModule.INSTANCE);
+      this.trialRegister(SpeedModule.INSTANCE);
+      this.trialRegister(SpeedV2Module.INSTANCE);
+      this.trialRegister(SpeedV3Module.INSTANCE);
+      this.trialRegister(SpeedV4Module.INSTANCE);
       this.trialRegister(NoPushModule.INSTANCE);
       this.trialRegister(NoWebModule.INSTANCE);
       this.trialRegister(NoFallModule.INSTANCE);
       this.trialRegister(JesusModule.INSTANCE);
       this.trialRegister(NoClipModule.INSTANCE);
+      this.trialRegister(VelocityModule.INSTANCE);
    }
 
    public synchronized Collection<ClientModule> enabled() {

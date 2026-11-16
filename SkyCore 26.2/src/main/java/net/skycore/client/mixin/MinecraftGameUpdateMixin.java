@@ -8,16 +8,23 @@ import net.skycore.client.event.WorldChangeEvent;
 import net.skycore.client.module.ClientModule;
 import net.skycore.client.module.combat.AttackAuraModule;
 import net.skycore.client.module.combat.AutoExplosionModule;
+import net.skycore.client.module.combat.ExtendedReachModule;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
 import org.spongepowered.asm.mixin.injection.callback.CallbackInfo;
+import org.spongepowered.asm.mixin.injection.callback.CallbackInfoReturnable;
 
 @Mixin(Minecraft.class)
 public abstract class MinecraftGameUpdateMixin {
    @Unique
    private long skycore$lastGameUpdate = System.nanoTime();
+
+   @Inject(method = "startAttack", at = @At("HEAD"))
+   private void skycore$onStartAttack(CallbackInfoReturnable<Boolean> callbackInfoReturnable) {
+      ExtendedReachModule.INSTANCE.onStartAttack();
+   }
 
    @Inject(method = "renderFrame", at = @At("HEAD"))
    private void skycore$gameUpdate(boolean condition, CallbackInfo callbackInfo) {

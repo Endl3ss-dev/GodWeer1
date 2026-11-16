@@ -15,9 +15,6 @@ import net.skycore.client.config.MacroManager;
 import net.skycore.client.config.NameList;
 import net.skycore.client.event.ClientTickEvent;
 import net.skycore.client.event.EventBus;
-import net.skycore.client.gui.menu.MenuPrefs;
-import net.skycore.client.gui.menu.MenuScreen;
-import net.skycore.client.gui.workspace.WorkspaceScreen;
 import net.skycore.client.hud.HudRenderer;
 import net.skycore.client.integration.DiscordStatus;
 import net.skycore.client.module.BindManager;
@@ -26,6 +23,9 @@ import net.skycore.client.module.KeyBinds;
 import net.skycore.client.module.ModuleManager;
 import net.skycore.client.module.combat.CrystalAuraModule;
 import net.skycore.client.module.combat.ElytraTargetModule;
+import net.skycore.client.gui.ArcanicMenu;
+import net.skycore.client.gui.SkyCosmetics;
+import net.skycore.client.gui.SkyFontManager;
 import net.skycore.client.module.render.Box3DModule;
 import net.skycore.client.module.render.ClickGUIModule;
 import net.skycore.client.module.render.CometsModule;
@@ -39,7 +39,6 @@ import net.skycore.client.module.render.TrailsModule;
 import net.skycore.client.module.render.WorldTweaksModule;
 import net.skycore.client.theme.ThemeManager;
 import net.skycore.client.util.WorldSkyRenderer;
-import net.skycore.client.util.RenderGuiHelper;
 import net.skycore.client.util.SelectAndSaveHelper;
 import net.skycore.client.util.SpoofElytraAsChestplateHelper;
 import net.skycore.client.util.SynchronizeHelper;
@@ -89,27 +88,11 @@ public final class SkycoreClient implements ClientModInitializer {
       SelectAndSaveHelper.initialize(Path.of("skycore/beta-language.json"));
       AccountManager.INSTANCE.initialize(Path.of("skycore/beta-alts.json"));
       config = new ConfigManager(MODULES, THEMES, Path.of("skycore/beta-local.json"));
-      // Оформление перенесённого меню живёт отдельным файлом: общий конфиг описывает
-      // модули, их настройки и темы, и менять его формат ради меню не нужно.
-      MenuPrefs.load();
       // Настройки бота BedWars — тоже отдельный файл (skycore/bot.json): бот не модуль,
       // поэтому в формат пользовательских конфигов он не подмешивается.
       BotConfig.load();
       commands = new CommandManager();
       interfaceRenderer = new HudRenderer(MODULES, config);
-      Minecraft instance = Minecraft.getInstance();
-      ClickGUIModule clickGUIModule = MODULES.get(ClickGUIModule.class).orElseThrow();
-      clickGUIModule.setOpenAction(() -> {
-         // Workspace — основное меню: ветка по умолчанию (и всё, что не названо явно
-         // внутри него) открывает его, а не старый экран.
-         if (clickGUIModule.menuStyle().is("Skycore")) {
-            instance.setScreenAndShow(new RenderGuiHelper(MODULES, THEMES, config, clickGUIModule));
-         } else if (clickGUIModule.menuStyle().is("Swerve")) {
-            instance.setScreenAndShow(new MenuScreen(MODULES, config));
-         } else {
-            openWorkspace(instance);
-         }
-      });
       ClientTickEvents.END_CLIENT_TICK.register(this::onEndTick);
       var targetEspRenderer = MODULES.get(net.skycore.client.module.render.TargetESPModule.class).orElseThrow();
       var petRenderer = MODULES.get(net.skycore.client.module.render.PetsModule.class).orElseThrow();
@@ -150,30 +133,21 @@ public final class SkycoreClient implements ClientModInitializer {
          MODULES.get(DuplisheModule.class).ifPresent(duplisheModule -> {
             duplisheModule.renderWorld();
          });
-         CrystalAuraModule.INSTANCE.renderWorld();
-         ElytraTargetModule.INSTANCE.renderPredictCube();
-      });
-      config.load();
-   }
+      CrystalAuraModule.INSTANCE.renderWorld();
+      ElytraTargetModule.INSTANCE.renderPredictCube();
+   });
+   config.load();
+   SkyFontManager.register();
+   SkyCosmetics.syncFromModules();
 
-   /**
-    * Открывает основное меню — Workspace.
-    *
-    * <p>Вынесено отдельным методом ради одной страховки: если экран не удалось
-    * построить (например, из-за несовместимого состояния настроек), клиент не должен
-    * оставаться без интерфейса вообще — тогда открывается старый экран, который умеет
-    * всё остальное. Исключение при этом логируется, а не глотается молча.
-    */
-   private void openWorkspace(Minecraft instance) {
-      try {
-         instance.setScreenAndShow(new WorkspaceScreen(MODULES, config));
-      } catch (RuntimeException failure) {
-         LOGGER.error("Workspace menu failed to open, falling back to the legacy screen", failure);
-         ClickGUIModule clickGui = MODULES.get(ClickGUIModule.class).orElse(null);
-         instance.setScreenAndShow(clickGui == null
-                 ? new MenuScreen(MODULES, config)
-                 : new RenderGuiHelper(MODULES, THEMES, config, clickGui));
+   // [+] ADD: открытие перенесённого GUI (ArcanicMenu) по клавише ClickGUI.
+   ClickGUIModule clickGUIModule = MODULES.get(ClickGUIModule.class).orElseThrow();
+   clickGUIModule.setOpenAction(() -> {
+      Minecraft instance = Minecraft.getInstance();
+      if (instance.gui.screen() == null) {
+         instance.setScreenAndShow(new ArcanicMenu());
       }
+   });
    }
 
    private void onEndTick(Minecraft minecraft) {
@@ -195,6 +169,8 @@ public final class SkycoreClient implements ClientModInitializer {
       }
 
       MODULES.tickEnabled();
+      // [+] EDIT: «Бегать с открытым GUI» было свойством удалённого Decide-меню
+      // (DecideGuiMovement), поэтому такт больше ничего не подставляет.
       EVENTS.post(new ClientTickEvent(minecraft));
    }
 

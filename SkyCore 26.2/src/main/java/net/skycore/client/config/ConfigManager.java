@@ -53,6 +53,10 @@ public final class ConfigManager {
    private final Gson gson = new GsonBuilder().setPrettyPrinting().create();
    private final Map<String, ConfigManager.PanelPosition> panelPositions = new LinkedHashMap<>();
 
+   public Path path() {
+      return this.file;
+   }
+
    private JsonObject profileMeta(String text) {
       Path path = this.resolveExistingProfile(text);
       if (path != null && Files.isRegularFile(path)) {

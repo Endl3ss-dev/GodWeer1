@@ -1,0 +1,113 @@
+// DecideVisuals — inspectable, ready Gradle build.
+//
+// Two modes:
+//   ./gradlew build                       — plain Java 21 jar of the decompiled sources
+//                                           (fast, offline-friendly; no Minecraft).
+//   ./gradlew -Pminecraft build           — full Fabric Loom build for Minecraft dev
+//                                           (downloads MC + Yarn mappings + remaps).
+//
+// The bundled artifact is a client mod for MC 1.21.11 (see src/main/resources/fabric.mod.json).
+// The decompiled classes reference net.minecraft.*, so only the -Pminecraft build can
+// actually compile & run them; the default build packs sources+resources as-is.
+
+buildscript {
+    repositories {
+        maven { name = 'Fabric'; url = 'https://maven.fabricmc.net/' }
+        mavenCentral()
+        gradlePluginPortal()
+    }
+    dependencies {
+        if (project.hasProperty('minecraft')) {
+            classpath "net.fabricmc:fabric-loom:${project.findProperty('loom_version')}"
+        }
+    }
+}
+
+if (project.hasProperty('minecraft')) {
+    apply plugin: 'fabric-loom'
+} else {
+    println "MODE: plain Java (no Minecraft toolchain). Use -Pminecraft for the Fabric/Loom build."
+}
+apply plugin: 'java-library'
+apply plugin: 'maven-publish'
+
+version = project.mod_version
+group = project.maven_group
+base { archivesName = project.archives_base_name }
+
+repositories {
+    maven { name = 'Fabric'; url = 'https://maven.fabricmc.net/' }
+    maven { url = 'https://maven.gecko.dev/' }
+    mavenCentral()
+}
+
+// ---- Dependencies ----------------------------------------------------------
+
+dependencies {
+    // Common third-party libs used by the decompiled sources
+    implementation 'net.java.dev.jna:jna:5.17.0'
+    implementation 'net.java.dev.jna:jna-platform:5.17.0'
+    implementation "org.jetbrains.kotlin:kotlin-stdlib:1.9.20"
+    compileOnly 'org.projectlombok:lombok:1.18.30'
+    annotationProcessor 'org.projectlombok:lombok:1.18.30'
+
+    if (project.hasProperty('minecraft')) {
+        minecraft "com.mojang:minecraft:${project.minecraft_version}"
+        mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+        modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+        modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_version}"
+        // Bundled mods/libraries shipped inside the jar (fabric.mod.json "jars")
+        modImplementation fileTree(dir: 'src/main/resources/META-INF/jars', include: '*.jar')
+    }
+}
+
+// ---- Tasks -----------------------------------------------------------------
+
+processResources {
+    inputs.property "version", project.version
+    filesMatching("fabric.mod.json") {
+        expand "version": inputs.properties.version
+    }
+}
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.release = 21
+    it.options.encoding = 'UTF-8'
+}
+
+java {
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+    if (project.hasProperty('minecraft')) {
+        withSourcesJar()
+    }
+}
+
+// Layout verification — works without the Minecraft toolchain.
+tasks.register('verifyLayout') {
+    doLast {
+        def javaRoot = file('src/main/java/ru')
+        def res = file('src/main/resources')
+        if (!javaRoot.exists() || !javaRoot.isDirectory())
+            throw new GradleException("No Java sources under src/main/java/ru")
+        ['fabric.mod.json', 'mixin.json', 'client.accesswidener', 'assets', 'META-INF'].each { p ->
+            if (!file("${res.path}/${p}").exists())
+                throw new GradleException("Missing resource: ${p}")
+        }
+        def allJava = fileTree('src/main/java').files.findAll { it.name.endsWith('.java') }
+        println "Java files: ${allJava.size()}"
+        println "shaders dir: ${file("${res.path}/assets/decide/shaders").isDirectory()}"
+        println "natives dir: ${file("${res.path}/assets/decide/natives").isDirectory()}"
+        println "bundled jars: ${file("${res.path}/META-INF/jars").listFiles()?.size()}"
+        println "Layout OK"
+    }
+}
+
+publishing {
+    publications {
+        create("mavenJava", MavenPublication) {
+            artifactId = project.archives_base_name
+            from components.java
+        }
+    }
+}

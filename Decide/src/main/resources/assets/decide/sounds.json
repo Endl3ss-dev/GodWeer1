@@ -1,0 +1,1230 @@
+﻿{
+    "entity.ribbit.ambient":  {
+                                  "sounds":  [
+                                                 "decide:entity/ribbit_ambient1",
+                                                 "decide:entity/ribbit_ambient2",
+                                                 "decide:entity/ribbit_ambient3",
+                                                 "decide:entity/ribbit_ambient4",
+                                                 "decide:entity/ribbit_ambient5"
+                                             ]
+                              },
+    "entity.ribbit.step":  {
+                               "sounds":  [
+                                              "decide:entity/ribbit_step1",
+                                              "decide:entity/ribbit_step2"
+                                          ]
+                           },
+    "wasted":  {
+                   "category":  "master",
+                   "sounds":  [
+                                  {
+                                      "name":  "decide:wasted",
+                                      "stream":  false,
+                                      "attenuation_distance":  64
+                                  }
+                              ]
+               },
+    "key.press":  {
+                      "category":  "master",
+                      "sounds":  [
+                                     "decide:keys/key_01",
+                                     "decide:keys/key_02",
+                                     "decide:keys/key_03",
+                                     "decide:keys/key_04",
+                                     "decide:keys/key_05",
+                                     "decide:keys/key_06",
+                                     "decide:keys/key_07",
+                                     "decide:keys/key_08",
+                                     "decide:keys/key_09",
+                                     "decide:keys/key_10",
+                                     "decide:keys/key_11",
+                                     "decide:keys/key_12",
+                                     "decide:keys/key_13",
+                                     "decide:keys/key_14",
+                                     "decide:keys/key_15",
+                                     "decide:keys/key_16",
+                                     "decide:keys/key_17",
+                                     "decide:keys/key_18",
+                                     "decide:keys/key_19",
+                                     "decide:keys/key_20",
+                                     "decide:keys/key_21",
+                                     "decide:keys/key_22",
+                                     "decide:keys/key_23",
+                                     "decide:keys/key_24",
+                                     "decide:keys/key_25",
+                                     "decide:keys/key_26",
+                                     "decide:keys/key_27",
+                                     "decide:keys/key_28",
+                                     "decide:keys/key_29",
+                                     "decide:keys/key_30",
+                                     "decide:keys/key_31",
+                                     "decide:keys/key_32",
+                                     "decide:keys/key_33",
+                                     "decide:keys/key_34",
+                                     "decide:keys/key_35",
+                                     "decide:keys/key_36",
+                                     "decide:keys/key_37",
+                                     "decide:keys/key_38",
+                                     "decide:keys/key_39",
+                                     "decide:keys/key_40"
+                                 ]
+                  },
+    "key.mouse":  {
+                      "category":  "master",
+                      "sounds":  [
+                                     "decide:keys/mouse/key_01",
+                                     "decide:keys/mouse/key_02",
+                                     "decide:keys/mouse/key_03",
+                                     "decide:keys/mouse/key_04",
+                                     "decide:keys/mouse/key_05",
+                                     "decide:keys/mouse/key_06",
+                                     "decide:keys/mouse/key_07",
+                                     "decide:keys/mouse/key_08",
+                                     "decide:keys/mouse/key_09",
+                                     "decide:keys/mouse/key_10",
+                                     "decide:keys/mouse/key_11",
+                                     "decide:keys/mouse/key_12",
+                                     "decide:keys/mouse/key_13",
+                                     "decide:keys/mouse/key_14",
+                                     "decide:keys/mouse/key_15",
+                                     "decide:keys/mouse/key_16",
+                                     "decide:keys/mouse/key_17",
+                                     "decide:keys/mouse/key_18",
+                                     "decide:keys/mouse/key_19",
+                                     "decide:keys/mouse/key_20",
+                                     "decide:keys/mouse/key_21",
+                                     "decide:keys/mouse/key_22",
+                                     "decide:keys/mouse/key_23",
+                                     "decide:keys/mouse/key_24",
+                                     "decide:keys/mouse/key_25",
+                                     "decide:keys/mouse/key_26",
+                                     "decide:keys/mouse/key_27",
+                                     "decide:keys/mouse/key_28",
+                                     "decide:keys/mouse/key_29",
+                                     "decide:keys/mouse/key_30",
+                                     "decide:keys/mouse/key_31",
+                                     "decide:keys/mouse/key_32",
+                                     "decide:keys/mouse/key_33",
+                                     "decide:keys/mouse/key_34",
+                                     "decide:keys/mouse/key_35",
+                                     "decide:keys/mouse/key_36",
+                                     "decide:keys/mouse/key_37",
+                                     "decide:keys/mouse/key_38",
+                                     "decide:keys/mouse/key_39",
+                                     "decide:keys/mouse/key_40"
+                                 ]
+                  },
+    "killeffect":  {
+                       "category":  "master",
+                       "sounds":  [
+                                      "decide:killeffect"
+                                  ]
+                   },
+    "effect.kill":  {
+                        "category":  "master",
+                        "sounds":  [
+                                       "decide:effect/effect_lego",
+                                       "decide:effect/effect_naaaaa",
+                                       "decide:effect/effect_opa_nahuy",
+                                       "decide:effect/effect_opa_svo",
+                                       "decide:effect/effect_paran_m",
+                                       "decide:effect/effect_povesloslos",
+                                       "decide:effect/effect_proshchai",
+                                       "decide:effect/effect_kolieni",
+                                       "decide:effect/effect_opa_proebal"
+                                   ]
+                    },
+    "effect.kill_1":  {
+                          "category":  "master",
+                          "sounds":  [
+                                         {
+                                             "name":  "decide:effect/effect_lego",
+                                             "stream":  false
+                                         }
+                                     ]
+                      },
+    "effect.kill_2":  {
+                          "category":  "master",
+                          "sounds":  [
+                                         {
+                                             "name":  "decide:effect/effect_naaaaa",
+                                             "stream":  false
+                                         }
+                                     ]
+                      },
+    "effect.kill_3":  {
+                          "category":  "master",
+                          "sounds":  [
+                                         {
+                                             "name":  "decide:effect/effect_opa_nahuy",
+                                             "stream":  false
+                                         }
+                                     ]
+                      },
+    "effect.kill_4":  {
+                          "category":  "master",
+                          "sounds":  [
+                                         {
+                                             "name":  "decide:effect/effect_opa_svo",
+                                             "stream":  false
+                                         }
+                                     ]
+                      },
+    "effect.kill_5":  {
+                          "category":  "master",
+                          "sounds":  [
+                                         {
+                                             "name":  "decide:effect/effect_paran_m",
+                                             "stream":  false
+                                         }
+                                     ]
+                      },
+    "effect.kill_6":  {
+                          "category":  "master",
+                          "sounds":  [
+                                         {
+                                             "name":  "decide:effect/effect_povesloslos",
+                                             "stream":  false
+                                         }
+                                     ]
+                      },
+    "effect.kill_7":  {
+                          "category":  "master",
+                          "sounds":  [
+                                         {
+                                             "name":  "decide:effect/effect_proshchai",
+                                             "stream":  false
+                                         }
+                                     ]
+                      },
+    "effect.kill_8":  {
+                          "category":  "master",
+                          "sounds":  [
+                                         {
+                                             "name":  "decide:effect/effect_kolieni",
+                                             "stream":  false
+                                         }
+                                     ]
+                      },
+    "effect.kill_9":  {
+                          "category":  "master",
+                          "sounds":  [
+                                         {
+                                             "name":  "decide:effect/effect_opa_proebal",
+                                             "stream":  false
+                                         }
+                                     ]
+                      },
+    "effect.death":  {
+                         "category":  "master",
+                         "sounds":  [
+                                        "decide:effect/effect_opa_nahuy",
+                                        "decide:effect/effect_opa_svo",
+                                        "decide:effect/effect_paran_m",
+                                        "decide:effect/effect_sir_ya_vahue",
+                                        "decide:effect/effect_toni",
+                                        "decide:effect/effect_uhh_blya",
+                                        "decide:effect/effect_ya_ne_veriu"
+                                    ]
+                     },
+    "effect.death_1":  {
+                           "category":  "master",
+                           "sounds":  [
+                                          {
+                                              "name":  "decide:effect/effect_opa_nahuy",
+                                              "stream":  false
+                                          }
+                                      ]
+                       },
+    "effect.death_2":  {
+                           "category":  "master",
+                           "sounds":  [
+                                          {
+                                              "name":  "decide:effect/effect_opa_svo",
+                                              "stream":  false
+                                          }
+                                      ]
+                       },
+    "effect.death_3":  {
+                           "category":  "master",
+                           "sounds":  [
+                                          {
+                                              "name":  "decide:effect/effect_paran_m",
+                                              "stream":  false
+                                          }
+                                      ]
+                       },
+    "effect.death_4":  {
+                           "category":  "master",
+                           "sounds":  [
+                                          {
+                                              "name":  "decide:effect/effect_sir_ya_vahue",
+                                              "stream":  false
+                                          }
+                                      ]
+                       },
+    "effect.death_5":  {
+                           "category":  "master",
+                           "sounds":  [
+                                          {
+                                              "name":  "decide:effect/effect_toni",
+                                              "stream":  false
+                                          }
+                                      ]
+                       },
+    "effect.death_6":  {
+                           "category":  "master",
+                           "sounds":  [
+                                          {
+                                              "name":  "decide:effect/effect_uhh_blya",
+                                              "stream":  false
+                                          }
+                                      ]
+                       },
+    "effect.death_7":  {
+                           "category":  "master",
+                           "sounds":  [
+                                          {
+                                              "name":  "decide:effect/effect_ya_ne_veriu",
+                                              "stream":  false
+                                          }
+                                      ]
+                       },
+    "effect.totem":  {
+                         "category":  "master",
+                         "sounds":  [
+                                        "decide:effect/effect_gde_totem",
+                                        "decide:effect/effect_boghe_pomiluy",
+                                        "decide:effect/effect_naaaaa",
+                                        "decide:effect/effect_ne_nado_dyadya",
+                                        "decide:effect/effect_paran_m",
+                                        "decide:effect/effect_povesloslos",
+                                        "decide:effect/effect_uhh_blya",
+                                        "decide:effect/effect_blya_minus_tal",
+                                        "decide:effect/effect_mongnu"
+                                    ]
+                     },
+    "effect.totem_1":  {
+                           "category":  "master",
+                           "sounds":  [
+                                          {
+                                              "name":  "decide:effect/effect_gde_totem",
+                                              "stream":  false
+                                          }
+                                      ]
+                       },
+    "effect.totem_2":  {
+                           "category":  "master",
+                           "sounds":  [
+                                          {
+                                              "name":  "decide:effect/effect_boghe_pomiluy",
+                                              "stream":  false
+                                          }
+                                      ]
+                       },
+    "effect.totem_3":  {
+                           "category":  "master",
+                           "sounds":  [
+                                          {
+                                              "name":  "decide:effect/effect_naaaaa",
+                                              "stream":  false
+                                          }
+                                      ]
+                       },
+    "effect.totem_4":  {
+                           "category":  "master",
+                           "sounds":  [
+                                          {
+                                              "name":  "decide:effect/effect_ne_nado_dyadya",
+                                              "stream":  false
+                                          }
+                                      ]
+                       },
+    "effect.totem_5":  {
+                           "category":  "master",
+                           "sounds":  [
+                                          {
+                                              "name":  "decide:effect/effect_paran_m",
+                                              "stream":  false
+                                          }
+                                      ]
+                       },
+    "effect.totem_6":  {
+                           "category":  "master",
+                           "sounds":  [
+                                          {
+                                              "name":  "decide:effect/effect_povesloslos",
+                                              "stream":  false
+                                          }
+                                      ]
+                       },
+    "effect.totem_7":  {
+                           "category":  "master",
+                           "sounds":  [
+                                          {
+                                              "name":  "decide:effect/effect_uhh_blya",
+                                              "stream":  false
+                                          }
+                                      ]
+                       },
+    "effect.totem_8":  {
+                           "category":  "master",
+                           "sounds":  [
+                                          {
+                                              "name":  "decide:effect/effect_blya_minus_tal",
+                                              "stream":  false
+                                          }
+                                      ]
+                       },
+    "effect.totem_9":  {
+                           "category":  "master",
+                           "sounds":  [
+                                          {
+                                              "name":  "decide:effect/effect_mongnu",
+                                              "stream":  false
+                                          }
+                                      ]
+                       },
+    "effect.afk":  {
+                       "category":  "master",
+                       "sounds":  [
+                                      "decide:effect/effect_ozhidanie",
+                                      "decide:effect/effect_hapi_hapi",
+                                      "decide:effect/effect_drochish"
+                                  ]
+                   },
+    "effect.afk_1":  {
+                         "category":  "master",
+                         "sounds":  [
+                                        {
+                                            "name":  "decide:effect/effect_ozhidanie",
+                                            "stream":  false
+                                        }
+                                    ]
+                     },
+    "effect.afk_2":  {
+                         "category":  "master",
+                         "sounds":  [
+                                        {
+                                            "name":  "decide:effect/effect_hapi_hapi",
+                                            "stream":  false
+                                        }
+                                    ]
+                     },
+    "effect.afk_3":  {
+                         "category":  "master",
+                         "sounds":  [
+                                        {
+                                            "name":  "decide:effect/effect_drochish",
+                                            "stream":  false
+                                        }
+                                    ]
+                     },
+    "effect.greeting_1":  {
+                              "category":  "master",
+                              "sounds":  [
+                                             {
+                                                 "name":  "decide:effect/effect_greeting_welcome",
+                                                 "stream":  false
+                                             }
+                                         ]
+                          },
+    "effect.greeting_2":  {
+                              "category":  "master",
+                              "sounds":  [
+                                             {
+                                                 "name":  "decide:effect/effect_greeting_batya",
+                                                 "stream":  false
+                                             }
+                                         ]
+                          },
+    "effect.greeting_3_question":  {
+                                       "category":  "master",
+                                       "sounds":  [
+                                                      {
+                                                          "name":  "decide:effect/effect_greeting_q",
+                                                          "stream":  false
+                                                      }
+                                                  ]
+                                   },
+    "effect.greeting_3_answer":  {
+                                     "category":  "master",
+                                     "sounds":  [
+                                                    {
+                                                        "name":  "decide:effect/effect_greeting_a",
+                                                        "stream":  false
+                                                    }
+                                                ]
+                                 },
+    "effect.greeting_4":  {
+                              "category":  "master",
+                              "sounds":  [
+                                             {
+                                                 "name":  "decide:effect/effect_greeting_decide",
+                                                 "stream":  false
+                                             }
+                                         ]
+                          },
+    "rain_continuous":  {
+                            "category":  "weather",
+                            "sounds":  [
+                                           {
+                                               "name":  "decide:weather/rain_continuous",
+                                               "stream":  true,
+                                               "preload":  true
+                                           }
+                                       ]
+                        },
+    "melee.executor.executor_draw":  {
+                                         "sounds":  [
+                                                        {
+                                                            "name":  "decide:melee/executor/executor_draw",
+                                                            "stream":  false
+                                                        }
+                                                    ]
+                                     },
+    "melee.executor.executor_draw_1":  {
+                                           "sounds":  [
+                                                          {
+                                                              "name":  "decide:melee/executor/executor_draw_1",
+                                                              "stream":  false
+                                                          }
+                                                      ]
+                                       },
+    "melee.executor.executor_inspect":  {
+                                            "sounds":  [
+                                                           {
+                                                               "name":  "decide:melee/executor/executor_inspect",
+                                                               "stream":  false
+                                                           }
+                                                       ]
+                                        },
+    "melee.executor.executor_inspect_1":  {
+                                              "sounds":  [
+                                                             {
+                                                                 "name":  "decide:melee/executor/executor_inspect_1",
+                                                                 "stream":  false
+                                                             }
+                                                         ]
+                                          },
+    "melee.executor.executor_swing_a":  {
+                                            "sounds":  [
+                                                           {
+                                                               "name":  "decide:melee/executor/executor_swing_a",
+                                                               "stream":  false
+                                                           }
+                                                       ]
+                                        },
+    "melee.executor.executor_rotate_a":  {
+                                             "sounds":  [
+                                                            {
+                                                                "name":  "decide:melee/executor/executor_rotate_a",
+                                                                "stream":  false
+                                                            }
+                                                        ]
+                                         },
+    "melee.executor.executor_swing_b":  {
+                                            "sounds":  [
+                                                           {
+                                                               "name":  "decide:melee/executor/executor_swing_b",
+                                                               "stream":  false
+                                                           }
+                                                       ]
+                                        },
+    "melee.executor.executor_rotate_b":  {
+                                             "sounds":  [
+                                                            {
+                                                                "name":  "decide:melee/executor/executor_rotate_b",
+                                                                "stream":  false
+                                                            }
+                                                        ]
+                                         },
+    "melee.executor.executor_swing_c":  {
+                                            "sounds":  [
+                                                           {
+                                                               "name":  "decide:melee/executor/executor_swing_c",
+                                                               "stream":  false
+                                                           }
+                                                       ]
+                                        },
+    "melee.executor.executor_rotate_c":  {
+                                             "sounds":  [
+                                                            {
+                                                                "name":  "decide:melee/executor/executor_rotate_c",
+                                                                "stream":  false
+                                                            }
+                                                        ]
+                                         },
+    "melee.mercy.draw":  {
+                             "sounds":  [
+                                            {
+                                                "name":  "decide:melee/mercy/draw",
+                                                "stream":  false
+                                            }
+                                        ]
+                         },
+    "melee.mercy.draw_1":  {
+                               "sounds":  [
+                                              {
+                                                  "name":  "decide:melee/mercy/draw_1",
+                                                  "stream":  false
+                                              }
+                                          ]
+                           },
+    "melee.mercy.inspect":  {
+                                "sounds":  [
+                                               {
+                                                   "name":  "decide:melee/mercy/inspect",
+                                                   "stream":  false
+                                               }
+                                           ]
+                            },
+    "melee.mercy.melee_1":  {
+                                "sounds":  [
+                                               {
+                                                   "name":  "decide:melee/mercy/melee_1",
+                                                   "stream":  false
+                                               }
+                                           ]
+                            },
+    "melee.mercy.melee_2":  {
+                                "sounds":  [
+                                               {
+                                                   "name":  "decide:melee/mercy/melee_2",
+                                                   "stream":  false
+                                               }
+                                           ]
+                            },
+    "melee.mercy.melee_3":  {
+                                "sounds":  [
+                                               {
+                                                   "name":  "decide:melee/mercy/melee_3",
+                                                   "stream":  false
+                                               }
+                                           ]
+                            },
+    "melee.annihil.annihil_inspect_1":  {
+                                            "sounds":  [
+                                                           {
+                                                               "name":  "decide:melee/annihil/annihil_inspect_1",
+                                                               "stream":  false
+                                                           }
+                                                       ]
+                                        },
+    "melee.annihil.annihil_inspect_2":  {
+                                            "sounds":  [
+                                                           {
+                                                               "name":  "decide:melee/annihil/annihil_inspect_2",
+                                                               "stream":  false
+                                                           }
+                                                       ]
+                                        },
+    "melee.annihil.annihil_melee_1":  {
+                                          "sounds":  [
+                                                         {
+                                                             "name":  "decide:melee/annihil/annihil_melee_1",
+                                                             "stream":  false
+                                                         }
+                                                     ]
+                                      },
+    "melee.annihil.annihil_rotate_1":  {
+                                           "sounds":  [
+                                                          {
+                                                              "name":  "decide:melee/annihil/annihil_rotate_1",
+                                                              "stream":  false
+                                                          }
+                                                      ]
+                                       },
+    "melee.annihil.annihil_melee_2":  {
+                                          "sounds":  [
+                                                         {
+                                                             "name":  "decide:melee/annihil/annihil_melee_2",
+                                                             "stream":  false
+                                                         }
+                                                     ]
+                                      },
+    "melee.annihil.annihil_rotate_2":  {
+                                           "sounds":  [
+                                                          {
+                                                              "name":  "decide:melee/annihil/annihil_rotate_2",
+                                                              "stream":  false
+                                                          }
+                                                      ]
+                                       },
+    "melee.annihil.annihil_melee_3":  {
+                                          "sounds":  [
+                                                         {
+                                                             "name":  "decide:melee/annihil/annihil_melee_3",
+                                                             "stream":  false
+                                                         }
+                                                     ]
+                                      },
+    "melee.annihil.annihil_rotate_3":  {
+                                           "sounds":  [
+                                                          {
+                                                              "name":  "decide:melee/annihil/annihil_rotate_3",
+                                                              "stream":  false
+                                                          }
+                                                      ]
+                                       },
+    "melee.annihil.annihil_draw":  {
+                                       "sounds":  [
+                                                      {
+                                                          "name":  "decide:melee/annihil/annihil_draw",
+                                                          "stream":  false
+                                                      }
+                                                  ]
+                                   },
+    "melee.annihil.annihil_draw_1":  {
+                                         "sounds":  [
+                                                        {
+                                                            "name":  "decide:melee/annihil/annihil_draw_1",
+                                                            "stream":  false
+                                                        }
+                                                    ]
+                                     },
+    "melee.cobra_vanguard.cobra_vanguard_draw":  {
+                                                     "sounds":  [
+                                                                    {
+                                                                        "name":  "decide:melee/cobra_vanguard/cobra_vanguard_draw",
+                                                                        "stream":  false
+                                                                    }
+                                                                ]
+                                                 },
+    "melee.cobra_vanguard.cobra_vanguard_draw_1":  {
+                                                       "sounds":  [
+                                                                      {
+                                                                          "name":  "decide:melee/cobra_vanguard/cobra_vanguard_draw_1",
+                                                                          "stream":  false
+                                                                      }
+                                                                  ]
+                                                   },
+    "melee.cobra_vanguard.cobra_vanguard_inspect":  {
+                                                        "sounds":  [
+                                                                       {
+                                                                           "name":  "decide:melee/cobra_vanguard/cobra_vanguard_inspect",
+                                                                           "stream":  false
+                                                                       }
+                                                                   ]
+                                                    },
+    "melee.cobra_vanguard.cobra_vanguard_inspect_1":  {
+                                                          "sounds":  [
+                                                                         {
+                                                                             "name":  "decide:melee/cobra_vanguard/cobra_vanguard_inspect_1",
+                                                                             "stream":  false
+                                                                         }
+                                                                     ]
+                                                      },
+    "melee.cobra_vanguard.cobra_vanguard_melee_1":  {
+                                                        "sounds":  [
+                                                                       {
+                                                                           "name":  "decide:melee/cobra_vanguard/cobra_vanguard_melee_1",
+                                                                           "stream":  false
+                                                                       }
+                                                                   ]
+                                                    },
+    "melee.cobra_vanguard.cobra_vanguard_melee_2":  {
+                                                        "sounds":  [
+                                                                       {
+                                                                           "name":  "decide:melee/cobra_vanguard/cobra_vanguard_melee_2",
+                                                                           "stream":  false
+                                                                       }
+                                                                   ]
+                                                    },
+    "melee.cobra_vanguard.cobra_vanguard_melee_3":  {
+                                                        "sounds":  [
+                                                                       {
+                                                                           "name":  "decide:melee/cobra_vanguard/cobra_vanguard_melee_3",
+                                                                           "stream":  false
+                                                                       }
+                                                                   ]
+                                                    },
+    "melee.polaris.melee_2":  {
+                                  "sounds":  [
+                                                 {
+                                                     "name":  "decide:melee/polaris/melee_2",
+                                                     "stream":  false
+                                                 }
+                                             ]
+                              },
+    "melee.polaris.polaris_rotate_2":  {
+                                           "sounds":  [
+                                                          {
+                                                              "name":  "decide:melee/polaris/polaris_rotate_2",
+                                                              "stream":  false
+                                                          }
+                                                      ]
+                                       },
+    "melee.polaris.draw":  {
+                               "sounds":  [
+                                              {
+                                                  "name":  "decide:melee/polaris/draw",
+                                                  "stream":  false
+                                              }
+                                          ]
+                           },
+    "melee.polaris.draw_1":  {
+                                 "sounds":  [
+                                                {
+                                                    "name":  "decide:melee/polaris/draw_1",
+                                                    "stream":  false
+                                                }
+                                            ]
+                             },
+    "melee.polaris.melee_1":  {
+                                  "sounds":  [
+                                                 {
+                                                     "name":  "decide:melee/polaris/melee_1",
+                                                     "stream":  false
+                                                 }
+                                             ]
+                              },
+    "melee.polaris.polaris_rotate_1":  {
+                                           "sounds":  [
+                                                          {
+                                                              "name":  "decide:melee/polaris/polaris_rotate_1",
+                                                              "stream":  false
+                                                          }
+                                                      ]
+                                       },
+    "melee.polaris.polaris_rotate_3":  {
+                                           "sounds":  [
+                                                          {
+                                                              "name":  "decide:melee/polaris/polaris_rotate_3",
+                                                              "stream":  false
+                                                          }
+                                                      ]
+                                       },
+    "melee.polaris.inspect":  {
+                                  "sounds":  [
+                                                 {
+                                                     "name":  "decide:melee/polaris/inspect",
+                                                     "stream":  false
+                                                 }
+                                             ]
+                              },
+    "melee.quenching.quenching_inpsect_a":  {
+                                                "sounds":  [
+                                                               {
+                                                                   "name":  "decide:melee/quenching/quenching_inpsect_a",
+                                                                   "stream":  false
+                                                               }
+                                                           ]
+                                            },
+    "melee.quenching.quenching_rotate_a":  {
+                                               "sounds":  [
+                                                              {
+                                                                  "name":  "decide:melee/quenching/quenching_rotate_a",
+                                                                  "stream":  false
+                                                              }
+                                                          ]
+                                           },
+    "melee.quenching.quenching_raise_a":  {
+                                              "sounds":  [
+                                                             {
+                                                                 "name":  "decide:melee/quenching/quenching_raise_a",
+                                                                 "stream":  false
+                                                             }
+                                                         ]
+                                          },
+    "melee.quenching.quenching_swing_a":  {
+                                              "sounds":  [
+                                                             {
+                                                                 "name":  "decide:melee/quenching/quenching_swing_a",
+                                                                 "stream":  false
+                                                             }
+                                                         ]
+                                          },
+    "melee.quenching.quenching_swing_b":  {
+                                              "sounds":  [
+                                                             {
+                                                                 "name":  "decide:melee/quenching/quenching_swing_b",
+                                                                 "stream":  false
+                                                             }
+                                                         ]
+                                          },
+    "melee.quenching.quenching_rotate_b":  {
+                                               "sounds":  [
+                                                              {
+                                                                  "name":  "decide:melee/quenching/quenching_rotate_b",
+                                                                  "stream":  false
+                                                              }
+                                                          ]
+                                           },
+    "melee.quenching.quenching_swing_c":  {
+                                              "sounds":  [
+                                                             {
+                                                                 "name":  "decide:melee/quenching/quenching_swing_c",
+                                                                 "stream":  false
+                                                             }
+                                                         ]
+                                          },
+    "melee.quenching.quenching_rotate_c":  {
+                                               "sounds":  [
+                                                              {
+                                                                  "name":  "decide:melee/quenching/quenching_rotate_c",
+                                                                  "stream":  false
+                                                              }
+                                                          ]
+                                           },
+    "melee.shadowkiller.shadowkiller_inspect":  {
+                                                    "sounds":  [
+                                                                   {
+                                                                       "name":  "decide:melee/shadowkiller/shadowkiller_inspect",
+                                                                       "stream":  false
+                                                                   }
+                                                               ]
+                                                },
+    "melee.shadowkiller.shadowkiller_deploy_1":  {
+                                                     "sounds":  [
+                                                                    {
+                                                                        "name":  "decide:melee/shadowkiller/shadowkiller_deploy_1",
+                                                                        "stream":  false
+                                                                    }
+                                                                ]
+                                                 },
+    "melee.shadowkiller.shadowkiller_deploy":  {
+                                                   "sounds":  [
+                                                                  {
+                                                                      "name":  "decide:melee/shadowkiller/shadowkiller_deploy",
+                                                                      "stream":  false
+                                                                  }
+                                                              ]
+                                               },
+    "melee.shadowkiller.shadowkiller_miss1":  {
+                                                  "sounds":  [
+                                                                 {
+                                                                     "name":  "decide:melee/shadowkiller/shadowkiller_miss1",
+                                                                     "stream":  false
+                                                                 }
+                                                             ]
+                                              },
+    "melee.shadowkiller.shadowkiller_miss2":  {
+                                                  "sounds":  [
+                                                                 {
+                                                                     "name":  "decide:melee/shadowkiller/shadowkiller_miss2",
+                                                                     "stream":  false
+                                                                 }
+                                                             ]
+                                              },
+    "melee.silencefd.inspect":  {
+                                    "sounds":  [
+                                                   {
+                                                       "name":  "decide:melee/silencefd/inspect",
+                                                       "stream":  false
+                                                   }
+                                               ]
+                                },
+    "melee.silencefd.draw":  {
+                                 "sounds":  [
+                                                {
+                                                    "name":  "decide:melee/silencefd/draw",
+                                                    "stream":  false
+                                                }
+                                            ]
+                             },
+    "melee.silencefd.melee_1":  {
+                                    "sounds":  [
+                                                   {
+                                                       "name":  "decide:melee/silencefd/melee_1",
+                                                       "stream":  false
+                                                   }
+                                               ]
+                                },
+    "melee.silencefd.melee_2":  {
+                                    "sounds":  [
+                                                   {
+                                                       "name":  "decide:melee/silencefd/melee_2",
+                                                       "stream":  false
+                                                   }
+                                               ]
+                                },
+    "melee.thieve_sea.draw":  {
+                                  "sounds":  [
+                                                 {
+                                                     "name":  "decide:melee/thieve_sea/draw",
+                                                     "stream":  false
+                                                 }
+                                             ]
+                              },
+    "melee.thieve_sea.draw_1":  {
+                                    "sounds":  [
+                                                   {
+                                                       "name":  "decide:melee/thieve_sea/draw_1",
+                                                       "stream":  false
+                                                   }
+                                               ]
+                                },
+    "melee.thieve_sea.melee_1":  {
+                                     "sounds":  [
+                                                    {
+                                                        "name":  "decide:melee/thieve_sea/melee_1",
+                                                        "stream":  false
+                                                    }
+                                                ]
+                                 },
+    "melee.thieve_sea.melee_2":  {
+                                     "sounds":  [
+                                                    {
+                                                        "name":  "decide:melee/thieve_sea/melee_2",
+                                                        "stream":  false
+                                                    }
+                                                ]
+                                 },
+    "melee.thieve_sea.melee_3":  {
+                                     "sounds":  [
+                                                    {
+                                                        "name":  "decide:melee/thieve_sea/melee_3",
+                                                        "stream":  false
+                                                    }
+                                                ]
+                                 },
+    "melee.thieve_sea.inspect":  {
+                                     "sounds":  [
+                                                    {
+                                                        "name":  "decide:melee/thieve_sea/inspect",
+                                                        "stream":  false
+                                                    }
+                                                ]
+                                 },
+    "melee.treasure_kn.treasure_kn_draw_1":  {
+                                                 "sounds":  [
+                                                                {
+                                                                    "name":  "decide:melee/treasure_kn/treasure_kn_draw_1",
+                                                                    "stream":  false
+                                                                }
+                                                            ]
+                                             },
+    "melee.treasure_kn.treasure_kn_draw":  {
+                                               "sounds":  [
+                                                              {
+                                                                  "name":  "decide:melee/treasure_kn/treasure_kn_draw",
+                                                                  "stream":  false
+                                                              }
+                                                          ]
+                                           },
+    "melee.treasure_kn.treasure_kn_melee_1":  {
+                                                  "sounds":  [
+                                                                 {
+                                                                     "name":  "decide:melee/treasure_kn/treasure_kn_melee_1",
+                                                                     "stream":  false
+                                                                 }
+                                                             ]
+                                              },
+    "melee.treasure_kn.treasure_kn_melee_r_1":  {
+                                                    "sounds":  [
+                                                                   {
+                                                                       "name":  "decide:melee/treasure_kn/treasure_kn_melee_r_1",
+                                                                       "stream":  false
+                                                                   }
+                                                               ]
+                                                },
+    "melee.treasure_kn.treasure_kn_melee_2":  {
+                                                  "sounds":  [
+                                                                 {
+                                                                     "name":  "decide:melee/treasure_kn/treasure_kn_melee_2",
+                                                                     "stream":  false
+                                                                 }
+                                                             ]
+                                              },
+    "melee.treasure_kn.treasure_kn_melee_r_2":  {
+                                                    "sounds":  [
+                                                                   {
+                                                                       "name":  "decide:melee/treasure_kn/treasure_kn_melee_r_2",
+                                                                       "stream":  false
+                                                                   }
+                                                               ]
+                                                },
+    "melee.treasure_kn.treasure_kn_melee_3":  {
+                                                  "sounds":  [
+                                                                 {
+                                                                     "name":  "decide:melee/treasure_kn/treasure_kn_melee_3",
+                                                                     "stream":  false
+                                                                 }
+                                                             ]
+                                              },
+    "melee.treasure_kn.treasure_kn_melee_r_3":  {
+                                                    "sounds":  [
+                                                                   {
+                                                                       "name":  "decide:melee/treasure_kn/treasure_kn_melee_r_3",
+                                                                       "stream":  false
+                                                                   }
+                                                               ]
+                                                },
+    "melee.treasure_kn.treasure_kn_inspect":  {
+                                                  "sounds":  [
+                                                                 {
+                                                                     "name":  "decide:melee/treasure_kn/treasure_kn_inspect",
+                                                                     "stream":  false
+                                                                 }
+                                                             ]
+                                              },
+    "melee.cs2.bknife_draw01":  {
+                                    "sounds":  [
+                                                   {
+                                                       "name":  "decide:melee/cs2/bknife_draw01",
+                                                       "stream":  false
+                                                   }
+                                               ]
+                                },
+    "melee.cs2.bknife_draw02":  {
+                                    "sounds":  [
+                                                   {
+                                                       "name":  "decide:melee/cs2/bknife_draw02",
+                                                       "stream":  false
+                                                   }
+                                               ]
+                                },
+    "melee.cs2.bknife_look01_a":  {
+                                      "sounds":  [
+                                                     {
+                                                         "name":  "decide:melee/cs2/bknife_look01_a",
+                                                         "stream":  false
+                                                     }
+                                                 ]
+                                  },
+    "melee.cs2.bknife_look01_ab":  {
+                                       "sounds":  [
+                                                      {
+                                                          "name":  "decide:melee/cs2/bknife_look01_ab",
+                                                          "stream":  false
+                                                      }
+                                                  ]
+                                   },
+    "melee.cs2.bknife_look01_b":  {
+                                      "sounds":  [
+                                                     {
+                                                         "name":  "decide:melee/cs2/bknife_look01_b",
+                                                         "stream":  false
+                                                     }
+                                                 ]
+                                  },
+    "melee.cs2.bknife_look02_a":  {
+                                      "sounds":  [
+                                                     {
+                                                         "name":  "decide:melee/cs2/bknife_look02_a",
+                                                         "stream":  false
+                                                     }
+                                                 ]
+                                  },
+    "melee.cs2.bknife_look02_ab":  {
+                                       "sounds":  [
+                                                      {
+                                                          "name":  "decide:melee/cs2/bknife_look02_ab",
+                                                          "stream":  false
+                                                      }
+                                                  ]
+                                   },
+    "melee.cs2.bknife_look02_b":  {
+                                      "sounds":  [
+                                                     {
+                                                         "name":  "decide:melee/cs2/bknife_look02_b",
+                                                         "stream":  false
+                                                     }
+                                                 ]
+                                  },
+    "melee.cs2.bknife_look03_ab":  {
+                                       "sounds":  [
+                                                      {
+                                                          "name":  "decide:melee/cs2/bknife_look03_ab",
+                                                          "stream":  false
+                                                      }
+                                                  ]
+                                   },
+    "melee.cs2.knife_deploy1":  {
+                                    "sounds":  [
+                                                   {
+                                                       "name":  "decide:melee/cs2/knife_deploy1",
+                                                       "stream":  false
+                                                   }
+                                               ]
+                                },
+    "melee.cs2.knife_push_attack1_heavy_01":  {
+                                                  "sounds":  [
+                                                                 {
+                                                                     "name":  "decide:melee/cs2/knife_push_attack1_heavy_01",
+                                                                     "stream":  false
+                                                                 }
+                                                             ]
+                                              },
+    "melee.cs2.knife_push_draw":  {
+                                      "sounds":  [
+                                                     {
+                                                         "name":  "decide:melee/cs2/knife_push_draw",
+                                                         "stream":  false
+                                                     }
+                                                 ]
+                                  },
+    "melee.cs2.knife_push_lookat_end":  {
+                                            "sounds":  [
+                                                           {
+                                                               "name":  "decide:melee/cs2/knife_push_lookat_end",
+                                                               "stream":  false
+                                                           }
+                                                       ]
+                                        },
+    "melee.cs2.knife_push_lookat_start":  {
+                                              "sounds":  [
+                                                             {
+                                                                 "name":  "decide:melee/cs2/knife_push_lookat_start",
+                                                                 "stream":  false
+                                                             }
+                                                         ]
+                                          },
+    "melee.cs2.knife_slash1":  {
+                                   "sounds":  [
+                                                  {
+                                                      "name":  "decide:melee/cs2/knife_slash1",
+                                                      "stream":  false
+                                                  }
+                                              ]
+                               },
+    "melee.cs2.knife_slash2":  {
+                                   "sounds":  [
+                                                  {
+                                                      "name":  "decide:melee/cs2/knife_slash2",
+                                                      "stream":  false
+                                                  }
+                                              ]
+                               },
+    "melee.cs2.stilletto_draw_01":  {
+                                        "sounds":  [
+                                                       {
+                                                           "name":  "decide:melee/cs2/stilletto_draw_01",
+                                                           "stream":  false
+                                                       }
+                                                   ]
+                                    },
+    "melee.cs2.stilletto_flip_01":  {
+                                        "sounds":  [
+                                                       {
+                                                           "name":  "decide:melee/cs2/stilletto_flip_01",
+                                                           "stream":  false
+                                                       }
+                                                   ]
+                                    },
+    "melee.cs2.stilletto_flip_02":  {
+                                        "sounds":  [
+                                                       {
+                                                           "name":  "decide:melee/cs2/stilletto_flip_02",
+                                                           "stream":  false
+                                                       }
+                                                   ]
+                                    },
+    "melee.cs2.stilletto_flip_03":  {
+                                        "sounds":  [
+                                                       {
+                                                           "name":  "decide:melee/cs2/stilletto_flip_03",
+                                                           "stream":  false
+                                                       }
+                                                   ]
+                                    },
+    "melee.cs2.stilletto_flip_04":  {
+                                        "sounds":  [
+                                                       {
+                                                           "name":  "decide:melee/cs2/stilletto_flip_04",
+                                                           "stream":  false
+                                                       }
+                                                   ]
+                                    }
+}

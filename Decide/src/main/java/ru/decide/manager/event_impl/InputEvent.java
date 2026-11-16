@@ -1,0 +1,58 @@
+/*
+ * Decompiled with CFR 0.152.
+ * 
+ * Could not load the following classes:
+ *  lombok.Generated
+ *  net.fabricmc.api.EnvType
+ *  net.fabricmc.api.Environment
+ *  net.minecraft.class_10185
+ */
+package ru.decide.manager.event_impl;
+
+import lombok.Generated;
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
+import net.minecraft.class_10185;
+import ru.decide.manager.events.CancellableEvent;
+
+@Environment(value=EnvType.CLIENT)
+public class InputEvent
+extends CancellableEvent {
+    private class_10185 input;
+
+    public void setJumping(boolean jump) {
+        this.input = new class_10185(this.input.comp_3159(), this.input.comp_3160(), this.input.comp_3161(), this.input.comp_3162(), jump, this.input.comp_3164(), this.input.comp_3165());
+    }
+
+    public void setDirectional(boolean forward, boolean backward, boolean left, boolean right) {
+        this.input = new class_10185(forward, backward, left, right, this.input.comp_3163(), this.input.comp_3164(), this.input.comp_3165());
+    }
+
+    public void inputNone() {
+        this.input = new class_10185(false, false, false, false, false, false, false);
+    }
+
+    public int forward() {
+        return this.input.comp_3159() ? 1 : (this.input.comp_3160() ? -1 : 0);
+    }
+
+    public float sideways() {
+        return this.input.comp_3161() ? 1.0f : (this.input.comp_3162() ? -1.0f : 0.0f);
+    }
+
+    @Generated
+    public class_10185 getInput() {
+        return this.input;
+    }
+
+    @Generated
+    public void setInput(class_10185 input) {
+        this.input = input;
+    }
+
+    @Generated
+    public InputEvent(class_10185 input) {
+        this.input = input;
+    }
+}
+

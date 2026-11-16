@@ -1,0 +1,61 @@
+{
+  "schemaVersion": 1,
+  "id": "decide",
+  "version": "1.0",
+  "name": "DecideVisuals",
+  "description": "Minecraft Modification",
+  "authors": [
+    "@decidevisuals_dev \u0026\u0026 @z0fill"
+  ],
+  "contact": {
+    "homepage": "",
+    "issues": ""
+  },
+  "license": "All-Rights-Reserved",
+  "environment": "client",
+  "entrypoints": {
+    "client": [
+      "ru.decide.Client"
+    ]
+  },
+  "mixins": [
+    "mixin.json"
+  ],
+  "accessWidener": "client.accesswidener",
+  "depends": {
+    "fabricloader": "\u003e\u003d0.18.4",
+    "fabric-api": "*",
+    "minecraft": "~1.21.11",
+    "java": "\u003e\u003d21",
+    "geckolib": "\u003e\u003d5.4.5"
+  },
+  "jars": [
+    {
+      "file": "META-INF/jars/geckolib-fabric-1.21.11-5.4.5.jar"
+    },
+    {
+      "file": "META-INF/jars/jlayer-1.0.1.jar"
+    },
+    {
+      "file": "META-INF/jars/jna-5.17.0.jar"
+    },
+    {
+      "file": "META-INF/jars/kotlin-stdlib-1.9.20.jar"
+    },
+    {
+      "file": "META-INF/jars/kotlinx-serialization-core-jvm-1.6.3.jar"
+    },
+    {
+      "file": "META-INF/jars/media-player-info-0.1.0.jar"
+    },
+    {
+      "file": "META-INF/jars/modmenu-17.0.0.jar"
+    },
+    {
+      "file": "META-INF/jars/shulkerboxtooltip-fabric-5.2.16.jar"
+    },
+    {
+      "file": "META-INF/jars/sodium-fabric-0.8.14+mc1.21.11.jar"
+    }
+  ]
+}
