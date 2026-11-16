@@ -23,6 +23,9 @@ import net.skycore.client.module.KeyBinds;
 import net.skycore.client.module.ModuleManager;
 import net.skycore.client.module.combat.CrystalAuraModule;
 import net.skycore.client.module.combat.ElytraTargetModule;
+import net.skycore.client.gui.ArcanicMenu;
+import net.skycore.client.gui.SkyCosmetics;
+import net.skycore.client.gui.SkyFontManager;
 import net.skycore.client.module.render.Box3DModule;
 import net.skycore.client.module.render.ClickGUIModule;
 import net.skycore.client.module.render.CometsModule;
@@ -36,7 +39,6 @@ import net.skycore.client.module.render.TrailsModule;
 import net.skycore.client.module.render.WorldTweaksModule;
 import net.skycore.client.theme.ThemeManager;
 import net.skycore.client.util.WorldSkyRenderer;
-import net.skycore.client.util.RenderGuiHelper;
 import net.skycore.client.util.SelectAndSaveHelper;
 import net.skycore.client.util.SpoofElytraAsChestplateHelper;
 import net.skycore.client.util.SynchronizeHelper;
@@ -86,27 +88,11 @@ public final class SkycoreClient implements ClientModInitializer {
       SelectAndSaveHelper.initialize(Path.of("skycore/beta-language.json"));
       AccountManager.INSTANCE.initialize(Path.of("skycore/beta-alts.json"));
       config = new ConfigManager(MODULES, THEMES, Path.of("skycore/beta-local.json"));
-      // Оформление перенесённого меню живёт отдельным файлом: общий конфиг описывает
-      // модули, их настройки и темы, и менять его формат ради меню не нужно.
-      MenuPrefs.load();
       // Настройки бота BedWars — тоже отдельный файл (skycore/bot.json): бот не модуль,
       // поэтому в формат пользовательских конфигов он не подмешивается.
       BotConfig.load();
       commands = new CommandManager();
       interfaceRenderer = new HudRenderer(MODULES, config);
-      Minecraft instance = Minecraft.getInstance();
-      ClickGUIModule clickGUIModule = MODULES.get(ClickGUIModule.class).orElseThrow();
-      // Диагностика: если стиль меню после загрузки конфига не совпадает с тем,
-      // что записано в skycore/beta-local.json, это видно в логе без догадок.
-      Path configPath = config.path();
-      LOGGER.info("Skycore GUI style = '{}' (конфиг: {}, {})",
-              clickGUIModule.menuStyle().get(), configPath,
-              configPath != null && java.nio.file.Files.exists(configPath) ? "файл есть" : "файла нет");
-      // [+] EDIT: в клиенте остался один GUI — Skycore (RenderGuiHelper).
-      // Решения о стиле больше нет: ClickGUIModule.menuStyle оставлен ради
-      // обратной совместимости конфигов, но открывается всегда один экран.
-      clickGUIModule.setOpenAction(() -> instance.setScreenAndShow(
-              new RenderGuiHelper(MODULES, THEMES, config, clickGUIModule)));
       ClientTickEvents.END_CLIENT_TICK.register(this::onEndTick);
       var targetEspRenderer = MODULES.get(net.skycore.client.module.render.TargetESPModule.class).orElseThrow();
       var petRenderer = MODULES.get(net.skycore.client.module.render.PetsModule.class).orElseThrow();
@@ -147,10 +133,21 @@ public final class SkycoreClient implements ClientModInitializer {
          MODULES.get(DuplisheModule.class).ifPresent(duplisheModule -> {
             duplisheModule.renderWorld();
          });
-         CrystalAuraModule.INSTANCE.renderWorld();
-         ElytraTargetModule.INSTANCE.renderPredictCube();
-      });
-      config.load();
+      CrystalAuraModule.INSTANCE.renderWorld();
+      ElytraTargetModule.INSTANCE.renderPredictCube();
+   });
+   config.load();
+   SkyFontManager.register();
+   SkyCosmetics.syncFromModules();
+
+   // [+] ADD: открытие перенесённого GUI (ArcanicMenu) по клавише ClickGUI.
+   ClickGUIModule clickGUIModule = MODULES.get(ClickGUIModule.class).orElseThrow();
+   clickGUIModule.setOpenAction(() -> {
+      Minecraft instance = Minecraft.getInstance();
+      if (instance.gui.screen() == null) {
+         instance.setScreenAndShow(new ArcanicMenu());
+      }
+   });
    }
 
    private void onEndTick(Minecraft minecraft) {
