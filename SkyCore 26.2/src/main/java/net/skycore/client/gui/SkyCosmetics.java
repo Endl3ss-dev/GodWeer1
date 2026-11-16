@@ -3,11 +3,13 @@ package net.skycore.client.gui;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import net.skycore.client.module.ClientModule;
 import net.skycore.client.module.render.CapeModule;
 import net.skycore.client.module.render.CosmeticsModule;
 import net.skycore.client.setting.BooleanSetting;
 import net.skycore.client.setting.ModeSetting;
 import net.skycore.client.setting.NumberSetting;
+import net.skycore.client.setting.Setting;
 import net.skycore.client.setting.StringSetting;
 import net.skycore.client.SkycoreClient;
 
@@ -66,7 +68,7 @@ public final class SkyCosmetics {
     public final BooleanSetting capeWind = new BooleanSetting("capeWind", false);
 
     /** Все настройки косметики для отображения в меню. */
-    public final List<net.skycore.client.setting.Setting<?>> allSettings = new ArrayList<>();
+    public final List<Setting<?>> allSettings = new ArrayList<>();
 
     /** Текущий выбранный дизайн по каждой категории. */
     private static final Map<String, String> selected = new java.util.HashMap<>();
@@ -89,12 +91,12 @@ public final class SkyCosmetics {
                 .get(CapeModule.class).orElse(null);
     }
 
-    /** Найти настройку модуля по имени с приведением типа. */
+    /** Найти настройку модуля по имени (без приведения типа). */
     @SuppressWarnings("unchecked")
-    private static <T> net.skycore.client.setting.Setting<T> findSetting(net.skycore.client.module.ClientModule m, String name) {
+    private static Setting<?> findSetting(ClientModule m, String name) {
         if (m == null) return null;
-        for (net.skycore.client.setting.Setting<?> s : m.getSettings()) {
-            if (name.equals(s.getName())) return (net.skycore.client.setting.Setting<T>) s;
+        for (Setting<?> s : m.getSettings()) {
+            if (name.equals(s.getName())) return s;
         }
         return null;
     }
@@ -121,11 +123,11 @@ public final class SkyCosmetics {
         if (cp != null) {
             inst.capeEnabled.set(cp.isEnabled());
             var mv = findSetting(cp, "Movement");
-            inst.capeMovement.set(mv != null && ((net.skycore.client.setting.ModeSetting) mv).is("Vanilla") ? "Vanilla" : "Simulation");
+            inst.capeMovement.set(mv != null && mv instanceof ModeSetting && ((ModeSetting) mv).is("Vanilla") ? "Vanilla" : "Simulation");
             var gr = findSetting(cp, "Gravity");
-            inst.capeGravity.set(gr != null ? ((net.skycore.client.setting.NumberSetting) gr).get().floatValue() : 25.0f);
+            inst.capeGravity.set(gr != null && gr instanceof NumberSetting ? ((NumberSetting) gr).get().floatValue() : 25.0f);
             var wd = findSetting(cp, "Wind");
-            inst.capeWind.set(wd != null && ((net.skycore.client.setting.BooleanSetting) wd).get());
+            inst.capeWind.set(wd != null && wd instanceof BooleanSetting && ((BooleanSetting) wd).get());
         }
     }
 
@@ -147,11 +149,11 @@ public final class SkyCosmetics {
         if (cp != null) {
             cp.setEnabled(inst.capeEnabled.get());
             var mv = findSetting(cp, "Movement");
-            if (mv instanceof net.skycore.client.setting.ModeSetting ms) ms.set(inst.capeMovement.get());
+            if (mv instanceof ModeSetting ms) ms.set(inst.capeMovement.get());
             var gr = findSetting(cp, "Gravity");
-            if (gr instanceof net.skycore.client.setting.NumberSetting ns) ns.set(inst.capeGravity.get());
+            if (gr instanceof NumberSetting ns) ns.set(inst.capeGravity.get());
             var wd = findSetting(cp, "Wind");
-            if (wd instanceof net.skycore.client.setting.BooleanSetting bs) bs.set(inst.capeWind.get());
+            if (wd instanceof BooleanSetting bs) bs.set(inst.capeWind.get());
             cp.applyConfig();
         }
     }
@@ -183,7 +185,7 @@ public final class SkyCosmetics {
     // ---------- Доступ к настройкам ----------
 
     /** Возвращает настройку для категории. */
-    public static net.skycore.client.setting.Setting<?> setting(Category cat) {
+    public static Setting<?> setting(Category cat) {
         var inst = instance();
         return switch (cat) {
             case WINGS -> inst.wings;
@@ -244,7 +246,7 @@ public final class SkyCosmetics {
         CapeModule cm = cape();
         if (cm == null) return "Vanilla";
         var mv = findSetting(cm, "Movement");
-        return mv != null && ((net.skycore.client.setting.ModeSetting) mv).is("Vanilla") ? "Vanilla" : "Simulation";
+        return mv != null && mv instanceof ModeSetting && ((ModeSetting) mv).is("Vanilla") ? "Vanilla" : "Simulation";
     }
 
     /** Устанавливает режим движения плаща. */
@@ -252,7 +254,7 @@ public final class SkyCosmetics {
         CapeModule cm = cape();
         if (cm == null) return;
         var mv = findSetting(cm, "Movement");
-        if (mv instanceof net.skycore.client.setting.ModeSetting ms) ms.set(mode);
+        if (mv instanceof ModeSetting ms) ms.set(mode);
         cm.applyConfig();
     }
 
@@ -261,7 +263,7 @@ public final class SkyCosmetics {
         CapeModule cm = cape();
         if (cm == null) return 25.0f;
         var gr = findSetting(cm, "Gravity");
-        return gr != null ? ((net.skycore.client.setting.NumberSetting) gr).get().floatValue() : 25.0f;
+        return gr != null && gr instanceof NumberSetting ? ((NumberSetting) gr).get().floatValue() : 25.0f;
     }
 
     /** Устанавливает силу гравитации плаща. */
@@ -269,7 +271,7 @@ public final class SkyCosmetics {
         CapeModule cm = cape();
         if (cm == null) return;
         var gr = findSetting(cm, "Gravity");
-        if (gr instanceof net.skycore.client.setting.NumberSetting ns) ns.set((double) gravity);
+        if (gr instanceof NumberSetting ns) ns.set((double) gravity);
         cm.applyConfig();
     }
 
@@ -278,7 +280,7 @@ public final class SkyCosmetics {
         CapeModule cm = cape();
         if (cm == null) return false;
         var wd = findSetting(cm, "Wind");
-        return wd != null && ((net.skycore.client.setting.BooleanSetting) wd).get();
+        return wd != null && wd instanceof BooleanSetting && ((BooleanSetting) wd).get();
     }
 
     /** Включить/выключить ветер плаща. */
@@ -286,7 +288,7 @@ public final class SkyCosmetics {
         CapeModule cm = cape();
         if (cm == null) return;
         var wd = findSetting(cm, "Wind");
-        if (wd instanceof net.skycore.client.setting.BooleanSetting bs) bs.set(wind);
+        if (wd instanceof BooleanSetting bs) bs.set(wind);
         cm.applyConfig();
     }
 
@@ -310,7 +312,7 @@ public final class SkyCosmetics {
     public static List<String> designs(Category cat) {
         // В будущем здесь будет чтение из skycore:cosmetics_port/catalog.json
         // и arcanic wear/index.json
-        return List.of("—");
+        return List.of("\u2014");
     }
 
     /** Иконка косметики для предпросмотра в меню. */
