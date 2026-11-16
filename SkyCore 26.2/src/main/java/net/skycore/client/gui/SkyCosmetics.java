@@ -125,7 +125,7 @@ public final class SkyCosmetics {
             var mv = findSetting(cp, "Movement");
             inst.capeMovement.set(mv != null && mv instanceof ModeSetting && ((ModeSetting) mv).is("Vanilla") ? "Vanilla" : "Simulation");
             var gr = findSetting(cp, "Gravity");
-            inst.capeGravity.set(gr != null && gr instanceof NumberSetting ? ((NumberSetting) gr).get().floatValue() : 25.0f);
+            inst.capeGravity.set(gr != null && gr instanceof NumberSetting ? (double) ((NumberSetting) gr).get().floatValue() : 25.0);
             var wd = findSetting(cp, "Wind");
             inst.capeWind.set(wd != null && wd instanceof BooleanSetting && ((BooleanSetting) wd).get());
         }
