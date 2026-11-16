@@ -135,13 +135,17 @@ public final class SkyModuleSettings {
             // Кнопка настроек (иконка шестерёнки)
             int btnW = menu.S(28);
             int btnX = x + cw - btnW - menu.S(10) - tgW - menu.S(10);
+            final int fBtnX = btnX;
+            final int fBtnY = cy;
+            final int fBtnW = btnW;
+            final int fRowH = rowH;
             boolean btnHover = rowHover && menu.hover(btnX, cy, btnW, rowH);
             int btnColor = btnHover ? SkyPalette.accent() : mixAlpha(SkyPalette.text(), 18);
             SkyGlyph.draw(gfx, "w.cog", btnX + 6, cy + (rowH - 16) / 2, 16, btnColor);
             if (btnHover) {
-                menu.clipped(btnX, cy, btnW, rowH, sc, top, bottom, () -> {
+                menu.clipped(fBtnX, fBtnY, fBtnW, fRowH, sc, top, bottom, () -> {
                     menu.setContent("module:" + m.getName());
-                    menu.openModulePopup(m, btnX, cy, btnW, rowH);
+                    menu.openModulePopup(m, fBtnX, fBtnY, fBtnW, fRowH);
                 }, null);
             }
 
@@ -448,6 +452,7 @@ public final class SkyModuleSettings {
         menu.clipped(x, y, w, h, 0, 0, Integer.MAX_VALUE, () -> {
             // Toggle handled by caller (module toggle)
         }, null);
+        return h;
     }
 
     private static int mixAlpha(int color, int alpha) {
