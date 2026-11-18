@@ -6,6 +6,7 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.OptionInstance;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.util.Mth;
+import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec2;
@@ -38,7 +39,7 @@ public final class AuraRotation {
    private float funtimeJitterPitch;
    private LivingEntity lonyLastTarget;
    private boolean funtimeOffsetValid;
-   private LivingEntity lastTarget;
+   private Entity lastTarget;
    private int funtimeTicksSinceHit;
    private boolean lonyReverseSmooth;
    private float funtimeJitterYaw;
@@ -300,7 +301,7 @@ public final class AuraRotation {
       return new Vec3(computedValue + computedValue4 * computedValue6, (boundingBox.minY + boundingBox.maxY) * 0.5, computedValue2 + computedValue5 * computedValue6);
    }
 
-   public void tick(AttackAuraModule attackAuraModule, LocalPlayer player, LivingEntity lastTarget2, String text, String text2, boolean condition, boolean condition2, boolean condition3, double angle) {
+   public void tick(AttackAuraModule attackAuraModule, LocalPlayer player, Entity lastTarget2, String text, String text2, boolean condition, boolean condition2, boolean condition3, double angle) {
       if (player != null && lastTarget2 != null && lastTarget2.isAlive()) {
          if (this.lastTarget != lastTarget2) {
             this.seed(player);
@@ -308,7 +309,8 @@ public final class AuraRotation {
          }
 
          if (ElytraTargetModule.INSTANCE.isEnabled() && player.isFallFlying()) {
-            this.applySkycoreRotation(player, ElytraTargetModule.INSTANCE.predictDonor(lastTarget2), condition3);
+            Vec3 aim = lastTarget2 instanceof LivingEntity living ? ElytraTargetModule.INSTANCE.predictDonor(living) : lastTarget2.getBoundingBox().getCenter();
+            this.applySkycoreRotation(player, aim, condition3);
             this.lastYaw = this.serverYaw(player);
             this.lastPitch = this.serverPitch(player);
          } else {
@@ -340,7 +342,7 @@ public final class AuraRotation {
       }
    }
 
-   private void updateFuntimeRotation(AttackAuraModule attackAuraModule, LocalPlayer player, LivingEntity entity, boolean condition, boolean condition2, boolean condition3) {
+   private void updateFuntimeRotation(AttackAuraModule attackAuraModule, LocalPlayer player, Entity entity, boolean condition, boolean condition2, boolean condition3) {
       int elapsed = -1;
       int intermediate = -1;
       this.lockHolyWorldCamera(player);
@@ -428,7 +430,7 @@ public final class AuraRotation {
       return Mth.lerp(randomValue, value, value2);
    }
 
-   private void updateHolyWorldLegitRotation(LocalPlayer player, LivingEntity entity) {
+   private void updateHolyWorldLegitRotation(LocalPlayer player, Entity entity) {
       if (RotationController.isActive() && !RotationController.isClientLook()) {
          player.setYRot(FreeLookController.getFreeYaw());
          player.setXRot(FreeLookController.getFreePitch());
@@ -552,7 +554,7 @@ public final class AuraRotation {
       RotationManager.update(new Rotation(angle, angle2), 2500.0F, 2500.0F, 2500.0F, 2500.0F, 2, 5, RotationController.isClientLook());
    }
 
-   private void applyFuntimeRotation(LocalPlayer player, LivingEntity entity, boolean condition, boolean condition2) {
+   private void applyFuntimeRotation(LocalPlayer player, Entity entity, boolean condition, boolean condition2) {
       if (!player.isFallFlying()) {
          this.pinHolyWorldCamera(player);
          float holyWorldCamYaw2 = holyWorldCamYaw;
@@ -661,10 +663,13 @@ public final class AuraRotation {
       this.resetFuntimeJitter();
    }
 
-   private void updateReallyWorldRotation(LocalPlayer player, LivingEntity entity, boolean condition, double value, AttackAuraModule attackAuraModule) {
+   private void updateReallyWorldRotation(LocalPlayer player, Entity entity, boolean condition, double value, AttackAuraModule attackAuraModule) {
       double maximum = CriticalHelper.getStrictDistance(entity) / Math.max(value, 0.1);
       Vec3 eyePosition = player.getEyePosition(1.0F);
-      Vec3 y = entity.position().add(0.0, Mth.clamp(eyePosition.y - entity.getY(), 0.0, maximum), 0.0).subtract(eyePosition).normalize();
+      Vec3 aim = entity instanceof LivingEntity
+         ? entity.position().add(0.0, Mth.clamp(eyePosition.y - entity.getY(), 0.0, maximum), 0.0)
+         : entity.getBoundingBox().getCenter();
+      Vec3 y = aim.subtract(eyePosition).normalize();
       float x = (float)Math.toDegrees(Math.atan2(-y.x, y.z));
       float x2 = (float)Mth.clamp(-Math.toDegrees(Math.atan2(y.y, Math.hypot(y.x, y.z))), -90.0, 90.0);
       float computedValue = (float)Math.cos(System.currentTimeMillis() / 70.0);
@@ -691,7 +696,7 @@ public final class AuraRotation {
       }
    }
 
-   private Vec2 computeFuntimeTargetAngle(LocalPlayer player, LivingEntity entity) {
+   private Vec2 computeFuntimeTargetAngle(LocalPlayer player, Entity entity) {
       Vec3 eyePosition = player.getEyePosition();
       Vec3 closestPoint = CriticalHelper.getClosestPoint(eyePosition, entity.getBoundingBox());
       Vec3 position = closestPoint.subtract(eyePosition);
@@ -713,7 +718,7 @@ public final class AuraRotation {
       return Mth.clamp((float)(-Math.toDegrees(x)), -90.0F, 90.0F);
    }
 
-   private void sunwayRotation(LocalPlayer player, LivingEntity entity) {
+   private void sunwayRotation(LocalPlayer player, Entity entity) {
       Vec3 closestVec = CriticalHelper.getClosestVec(entity);
       float value = yawTo(closestVec);
       float value2 = pitchTo(closestVec);

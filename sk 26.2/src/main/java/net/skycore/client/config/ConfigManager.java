@@ -231,6 +231,9 @@ public final class ConfigManager {
                this.loadModuleMeta(clientModule, asJsonObject);
                JsonObject asJsonObject2 = asJsonObject.has("settings") && asJsonObject.get("settings").isJsonObject() ? asJsonObject.getAsJsonObject("settings") : null;
                if (asJsonObject2 != null) {
+                  if ("Attack Aura".equals(clientModule.getName())) {
+                     migrateAuraTargets(asJsonObject2);
+                  }
                   for (Setting setting : clientModule.getSettings()) {
                      JsonElement name2 = asJsonObject2.get(setting.getName());
                      if (name2 == null && "World Tweaks".equals(clientModule.getName()) && "Aurora Intensity".equals(setting.getName())) {
@@ -652,6 +655,32 @@ public final class ConfigManager {
             jsonValues.add(element);
          }
       }
+   }
+
+   /** Import pre-profile Attack Aura configs without interpreting old inclusion flags as exclusions. */
+   private static void migrateAuraTargets(JsonObject settings) {
+      if (settings.has("Target profile") || settings.has("Standard targets") || settings.has("BedWars targets")
+         || !(settings.get("Targets") instanceof JsonArray legacy)) {
+         return;
+      }
+      Set<String> old = new LinkedHashSet<>();
+      for (JsonElement entry : legacy) {
+         if (!(entry instanceof JsonPrimitive value) || !value.isString()) {
+            return;
+         }
+         old.add(Translations.english(value.getAsString()).toLowerCase(Locale.ROOT));
+      }
+      JsonArray standard = new JsonArray();
+      // A legacy friends-only or naked-only selection must not silently enable all players.
+      if (old.contains("players")) standard.add("Players");
+      if (old.contains("animals")) standard.add("Animals");
+      if (old.contains("mobs")) standard.add("Monsters");
+      if (!old.contains("friends")) standard.add("Ignore Friends");
+      if (!old.contains("naked")) standard.add("Ignore unarmored");
+      standard.add("Ignore bots");
+      standard.add("Ignore creative");
+      settings.addProperty("Target profile", "Standard server");
+      settings.add("Standard targets", standard);
    }
 
    private static JsonElement mergedNoRenderConfig(JsonObject json, JsonElement jsonElement) {
