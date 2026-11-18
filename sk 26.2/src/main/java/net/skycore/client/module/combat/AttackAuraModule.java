@@ -44,10 +44,12 @@ import net.skycore.client.combat.RotationManager;
 import net.skycore.client.combat.ServerRotationManager;
 import net.skycore.client.event.PlayerInputEvent;
 import net.skycore.client.event.PlayerTickEndEvent;
+import net.skycore.client.event.WorldChangeEvent;
 import net.skycore.client.module.ClientModule;
 import net.skycore.client.module.ModuleCategory;
 import net.skycore.client.module.ModuleManager;
 import net.skycore.client.module.movement.AirStuckModule;
+import net.skycore.client.setting.Setting;
 import net.skycore.client.setting.NumberSetting;
 import net.skycore.client.setting.ModeSetting;
 import net.skycore.client.util.ScoreboardModeHelper;
@@ -81,6 +83,8 @@ public final class AttackAuraModule extends ClientModule {
    private static final long ATTACK_DELAY_MS = 473L;
    private final BooleanSetting tpsSync;
    private final AuraTargets targets = new AuraTargets();
+   private final AuraClicks clicks = new AuraClicks();
+   private final AuraCameraJitter jitter = new AuraCameraJitter();
    private final BooleanSetting throughWalls;
    private int skycoreTick;
 
@@ -109,7 +113,7 @@ public final class AttackAuraModule extends ClientModule {
    }
 
    public boolean onlyCriticalsEnabled() {
-      return this.onlyCriticals.get();
+      return !this.usesCpsClicks() && this.onlyCriticals.get();
    }
 
    public long attackCounter() {
@@ -122,7 +126,7 @@ public final class AttackAuraModule extends ClientModule {
       return instance != null && instance.isFallFlying() && ElytraTargetModule.INSTANCE.isEnabled() ? Math.max(value, this.pursuitRange.get().doubleValue()) : value;
    }
 
-   private void breakShieldPlayer(LocalPlayer player, Player player2) {
+   private boolean breakShieldPlayer(LocalPlayer player, Player player2) {
       Minecraft instance = Minecraft.getInstance();
       if (instance.gameMode != null && player2.isBlocking()) {
          int axeSlot = this.findAxeSlot(player);
@@ -139,13 +143,16 @@ public final class AttackAuraModule extends ClientModule {
                player.swing(InteractionHand.MAIN_HAND);
                instance.gameMode.handleContainerInput(player.inventoryMenu.containerId, axeSlot, selectedSlot, ContainerInput.SWAP, player);
             }
+            return true;
          }
       }
+      return false;
    }
 
    public AttackAuraModule() {
       super("Attack Aura", "Attacks nearby targets with silent aim", ModuleCategory.COMBAT);
       this.rotationBehavior = this.add(new ModeSetting("Rotation behavior", "Smooth", "Smooth", "Snaps"));
+      this.addSettings(this.clicks.settings);
       this.addSettings(this.targets.profile, this.targets.bedWars, this.targets.standard);
       this.movementCorrection = this.add(new ModeSetting("Movement correction", "Free", "Free", "Focused", "Target"));
       this.attackRange = this.add(new NumberSetting("Attack range", "", 3.0, 2.5, 6.0, 0.1, " blocks"));
@@ -163,6 +170,7 @@ public final class AttackAuraModule extends ClientModule {
       this.throughWalls = this.add(new BooleanSetting("Through walls", true));
       this.hitThroughDoors = this.add(new BooleanSetting("Hit through doors", false));
       this.clientLook = this.add(new BooleanSetting("Client Look", false));
+      this.addSettings(this.jitter.settings);
       this.rotations = new AuraRotation();
       this.canCrit = true;
       this.lastRotateTick = -1;
@@ -189,10 +197,13 @@ public final class AttackAuraModule extends ClientModule {
 
          return false;
       });
-      this.smartCriticals.visibleWhen(this.onlyCriticals::get);
+      this.tpsSync.visibleWhen(() -> !this.usesCpsClicks());
+      this.onlyCriticals.visibleWhen(() -> !this.usesCpsClicks());
+      this.smartCriticals.visibleWhen(() -> !this.usesCpsClicks() && this.onlyCriticals.get());
       this.clientLook.visibleWhen(() -> {
          return !this.rotationMode.is("HolyWorldLegit");
       });
+      SkycoreClient.events().subscribe(WorldChangeEvent.class, event -> this.resetClickEffects());
       SkycoreClient.events().subscribe(PlayerInputEvent.class, this::onPlayerInput);
       SkycoreClient.events().subscribe(PlayerTickEndEvent.class, this::onPreTick);
    }
@@ -358,7 +369,7 @@ public final class AttackAuraModule extends ClientModule {
                   this.target = this.findTarget();
                }
 
-               this.refreshCanCrit(player);
+               if (!this.usesCpsClicks()) this.refreshCanCrit(player);
                if (this.target == null) {
                   this.hitImminent = false;
                   RotationController.setClientLook(false);
@@ -374,7 +385,7 @@ public final class AttackAuraModule extends ClientModule {
                } else {
                   int value = this.canAttack() && !this.shouldBlockAttack(player) ? 1 : 0;
                   RotationController.setClientLook(this.clientLookEnabled());
-                  if (this.rotationMode.is("ReallyWorld")) {
+                  if (this.usesCpsClicks() || this.rotationMode.is("ReallyWorld")) {
                      this.updateRotation((value != 0));
                   } else {
                      this.onGameUpdate();
@@ -629,12 +640,21 @@ public final class AttackAuraModule extends ClientModule {
          instance.gameMode.releaseUsingItem(player);
       }
 
-      if (Boolean.TRUE.equals(this.breakShield.get()) && this.target instanceof Player player2 && player2.isBlocking()) {
-         this.breakShieldPlayer(player, player2);
+      boolean cps = this.usesCpsClicks();
+      boolean axeHit = this.breakShield.get() && this.target instanceof Player player2
+         && player2.isBlocking() && this.breakShieldPlayer(player, player2);
+      // A shield-breaking axe swing spends the CPS click; legacy mode keeps its follow-up hit.
+      if (!axeHit || !cps) {
+         instance.gameMode.attack(player, this.target);
+         player.swing(InteractionHand.MAIN_HAND);
       }
-
-      instance.gameMode.attack(player, this.target);
-      player.swing(InteractionHand.MAIN_HAND);
+      long now = System.nanoTime();
+      if (cps) {
+         this.clicks.recordClick(now);
+      } else {
+         this.clicks.reset();
+      }
+      this.jitter.recordHit(now);
       this.lastAttackTime = System.currentTimeMillis();
       this.attackCounter++;
       this.skycoreNextAttackTick = this.skycoreTick + 1;
@@ -737,7 +757,7 @@ public final class AttackAuraModule extends ClientModule {
 
    public void onGameUpdate() {
       if (this.isEnabled() && Minecraft.getInstance().player != null && this.target != null) {
-         this.updateRotation(this.hitImminent);
+         this.updateRotation(this.usesCpsClicks() ? this.canAttack() : this.hitImminent);
          this.updateAttack();
       } else {
          this.releaseRotationControl();
@@ -822,12 +842,31 @@ public final class AttackAuraModule extends ClientModule {
       return this.bypassWalls.get();
    }
 
+   public boolean usesCpsClicks() {
+      return this.clicks.usesCps();
+   }
+
+   /** Sampled only by the local render camera, never by ray checks or the rotation controller. */
+   public AuraCameraJitter.Offset cameraJitter() {
+      Minecraft mc = Minecraft.getInstance();
+      if (!this.isEnabled() || !this.jitter.enabled.get() || mc.player == null || mc.level == null || mc.isPaused() || !mc.player.isAlive()) {
+         this.jitter.reset();
+         return AuraCameraJitter.Offset.NONE;
+      }
+      // Pre-physics aim can be sampled after vanilla has already advanced the player tick.
+      int ticksSinceAim = mc.player.tickCount - this.lastRotateTick;
+      boolean aiming = this.jitter.whileAiming.get() && this.lastRotateTick != -1 && ticksSinceAim >= 0 && ticksSinceAim <= 1
+         && this.isValidTarget(this.target) && !TargetPearlModule.isRotationActive() && !CrystalAuraModule.INSTANCE.isRotating();
+      return this.jitter.sample(System.nanoTime(), aiming);
+   }
+
    public boolean isHitImminent() {
       return this.isEnabled() && this.hitImminent;
    }
 
    @Override
    protected void onEnable() {
+      this.resetClickEffects();
       this.lastAttackTime = 0L;
       this.canCrit = true;
       this.lastRotateTick = -1;
@@ -860,11 +899,15 @@ public final class AttackAuraModule extends ClientModule {
       LocalPlayer player = instance.player;
       if (player == null) {
          return false;
+      } else if (this.usesCpsClicks()) {
+         // 1.8 changes the attack clock, not the acquisition range or eligibility of a target.
+         return this.clicks.ready(System.nanoTime()) && this.isWithinAttackRange(this.target) && !instance.isPaused()
+            && !this.isManualBlockPlacement(player, instance) && !CrystalAuraModule.INSTANCE.isRotating() && !TargetPearlModule.isRotationActive();
       } else if (ElytraTargetModule.INSTANCE.isEnabled() && player.isFallFlying() && this.target != null) {
          return this.isWithinAttackRange(this.target) && player.getAttackStrengthScale(1.5F) > 0.92F && this.skycoreTick >= this.skycoreNextAttackTick;
       } else {
          float value = this.tpsSync.get() ? 1.0F : 1.5F;
-         int attackStrengthScale = this.millisSinceAttack() >= 473L && player.getAttackStrengthScale(value) > this.getAICooldown() ? 1 : 0;
+         int attackStrengthScale = this.millisSinceAttack() >= ATTACK_DELAY_MS && player.getAttackStrengthScale(value) > this.getAICooldown() ? 1 : 0;
          // Deflecting a projectile cannot crit; the normal cooldown, reach and ray checks still apply.
          if (this.target instanceof Projectile) {
             return attackStrengthScale != 0;
@@ -943,7 +986,20 @@ public final class AttackAuraModule extends ClientModule {
       return false;
    }
 
+   private void resetClickEffects() {
+      this.clicks.reset();
+      this.jitter.reset();
+   }
+
+   /** A pre-CPS profile loaded over a live 1.8 profile must still select legacy attacks and an unshaken camera. */
+   public void prepareClickProfileLoad() {
+      for (Setting<?> option : this.clicks.settings) option.reset();
+      for (Setting<?> option : this.jitter.settings) option.reset();
+      this.resetClickEffects();
+   }
+
    private void resetState() {
+      this.resetClickEffects();
       this.target = null;
       this.hitImminent = false;
       this.canCrit = false;

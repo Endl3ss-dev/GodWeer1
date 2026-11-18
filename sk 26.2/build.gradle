@@ -28,6 +28,20 @@ tasks.withType(JavaCompile).configureEach {
     options.release = 25
 }
 
+// Standalone smoke test; no Minecraft instance or external test framework is needed.
+sourceSets {
+    auraTest {
+        compileClasspath += sourceSets.main.output
+        runtimeClasspath += sourceSets.main.output
+    }
+}
+tasks.register('testAuraClicks', JavaExec) {
+    dependsOn 'auraTestClasses'
+    classpath = sourceSets.auraTest.runtimeClasspath
+    mainClass = 'net.skycore.client.module.combat.AuraClickEffectsTest'
+}
+tasks.named('check') { dependsOn 'testAuraClicks' }
+
 loom {
     runs {
         client {
