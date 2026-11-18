@@ -1,0 +1,4 @@
+/reg wd
+/l wd
+/l nefol
+/hub

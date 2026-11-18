@@ -1,0 +1,1231 @@
+{
+  "modules": {
+    "Auto Potion": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Strength": true,
+        "Speed": true,
+        "Fire Resistance": true,
+        "Healing": true,
+        "Heal Health": 14.0
+      }
+    },
+    "Auto Swap": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Рука": true,
+        "Голова": false,
+        "Свап (рука)": -1,
+        "Свапать с": "Щит",
+        "Свапать на": "Геплы",
+        "Свап (голова)": -1,
+        "Свапать с (голова)": "Шар",
+        "Свапать на (голова)": "Шлем",
+        "Уведомления": true,
+        "Свап топора на меч": true
+      }
+    },
+    "Auto Explosion": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Right-Click Explosion": true,
+        "Fast": true,
+        "Protect Resources": false
+      }
+    },
+    "Auto Mace": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Дистанция активации": 4.0,
+        "Радиус удара": 3.5,
+        "Радиус поиска": 12.0,
+        "Задержка прыжка": 1.0
+      }
+    },
+    "Attack Aura": {
+      "enabled": false,
+      "keyBind": 86,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Rotation mode": "HvH",
+        "Rotation behavior": "Smooth",
+        "Targets": [
+          "Players",
+          "Naked"
+        ],
+        "Movement correction": "Free",
+        "Attack range": 3.5,
+        "Pursuit range": 2.1,
+        "Sort Mode": "Distance",
+        "Disable on death": true,
+        "Don\u0027t attack while eating": false,
+        "TPS Sync": false,
+        "Only crits": true,
+        "Smart crits": false,
+        "Release shield": true,
+        "Break Shield": true,
+        "RW wall bypass": false,
+        "Ray trace": true,
+        "Through walls": true,
+        "Hit through doors": false,
+        "Client Look": false
+      }
+    },
+    "Anti Bot": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Bypass": "ReallyWorld",
+        "Airborne Only": true
+      }
+    },
+    "AntiThorns": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {}
+    },
+    "Aimbot": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Дистанция": 40.0,
+        "Цели": [
+          "Игроки",
+          "Голые"
+        ],
+        "Отводка": true
+      }
+    },
+    "AutoWebTrap": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Matrix Bypass": false
+      }
+    },
+    "Target Pearl": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Target Only": false,
+        "Min Distance": 10.0
+      }
+    },
+    "TriggerBot": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Targets": [
+          "Players",
+          "Naked"
+        ],
+        "Break Shield": true,
+        "TPS Sync": false,
+        "Smart crits": false
+      }
+    },
+    "Criticals": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Работать если": [
+          "В паутине",
+          "С плавным падением"
+        ],
+        "Ускорение ударов": false
+      }
+    },
+    "Crystal Aura": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Mode": "Default",
+        "Ротация": "Vanilla",
+        "Коррекция движения": "Свободная",
+        "Кристаллов/сек": 8.0,
+        "Дистанция постановки": 5.500000037252903,
+        "Макс. урон себе": 6.0,
+        "Мин. HP": 4.0,
+        "Делать подкоп": true,
+        "Rage": false,
+        "AntiExplosion": false,
+        "Не взрывать": [
+          "Друзей",
+          "Ресурсы"
+        ]
+      }
+    },
+    "ElytraTarget": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Дистанция атаки": 3.0,
+        "Режим предикта": "По взгляду",
+        "Сила предикта": 3.0,
+        "Рендерить предикт": true,
+        "Замедление": true,
+        "Отображение": "Модель игрока"
+      }
+    },
+    "Auto Totem": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Health": 4.0,
+        "Modes": [
+          "Crystals",
+          "Anchor",
+          "Fall",
+          "Elytra"
+        ],
+        "Elytra Health": 10.0,
+        "Fall Distance": 20.0,
+        "Health with Ball": 10.0,
+        "Ignore Dragonid Totem": true
+      }
+    },
+    "Crystal Aura Combat": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Режим": "ReallyWorld",
+        "Радиус цели": 8.0,
+        "Дальность установки": 4.5,
+        "Дальность взрыва": 3.0,
+        "Мин. урон врагу": 3.0,
+        "Макс. урон себе": 8.0,
+        "Задержка в тиках": 0.0,
+        "Rage": false,
+        "Скрытие": false,
+        "Ставить обсидиан": true,
+        "Легитный": false,
+        "Коррекция движения": "Сфокусированная",
+        "Авто подкоп": true
+      }
+    },
+    "Arrows": {
+      "enabled": true,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Targets": [
+          "Friends",
+          "Players"
+        ],
+        "Color": "Sync",
+        "Custom Color": -1,
+        "Only If Not Visible": false,
+        "Radius": 40.0
+      }
+    },
+    "Atmosphere": {
+      "enabled": true,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Volumetric Fog": true,
+        "Dusk Layer": true,
+        "Reflections": false,
+        "Sky Reflections": true,
+        "Rain": false,
+        "Always": true,
+        "Intensity": 0.55,
+        "Drops": 1.1,
+        "Splashes": true,
+        "Ripples": 0.5,
+        "Block Reflections": 0.7000000000000001,
+        "Water Reflections": 0.7000000000000001,
+        "Surface Slope": 0.4,
+        "Density": 3.0,
+        "Layer Height": 8.0,
+        "Softness": 0.25,
+        "Fog Start": 12.0,
+        "Fog End": 96.0,
+        "Layer Strength": 1.5,
+        "Distant Blur": 0.2,
+        "Theme Color": true,
+        "Fog Color": -4667160
+      }
+    },
+    "Lock Slot": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Slots": []
+      }
+    },
+    "No Delay": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Fast EXP": true
+      }
+    },
+    "Fast EXP": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Throw Key": -1
+      }
+    },
+    "Item Scroller": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Delay": 8.0
+      }
+    },
+    "Click Pearl": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Throw key": 1002,
+        "Legit": false
+      }
+    },
+    "Fast Break": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "No Cooldown": true,
+        "Speed": 1.5
+      }
+    },
+    "AutoTool": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {}
+    },
+    "Chest Stealer": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Delay (ms)": 100.0,
+        "Random Order": false
+      }
+    },
+    "Auto Joiner": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Grief": 5.0
+      }
+    },
+    "Auto Penis Builder": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Facing": "Auto",
+        "Rotation": true,
+        "Distance": 2.0,
+        "Delay": 50.0
+      }
+    },
+    "Arrow Swap": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Swap Key": -1,
+        "First Arrow": false,
+        "Second Arrow": false
+      }
+    },
+    "InterpolateF5": {
+      "enabled": true,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {}
+    },
+    "Interface": {
+      "enabled": true,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Elements": [
+          "Hotkeys",
+          "TargetHUD",
+          "Watermark",
+          "Information",
+          "Notifications",
+          "Hotbar",
+          "Potions"
+        ],
+        "Glow": true
+      }
+    },
+    "Full Bright": {
+      "enabled": true,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Mode": "Gamma",
+        "Adaptive Brightness": true,
+        "Brightness": 8.0
+      }
+    },
+    "Hands": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Intensity": 0.1,
+        "Speed": 0.2,
+        "Length": 0.1,
+        "Trail Fade": 0.55,
+        "Trail Softness": 2.5,
+        "Trail Blur": 0.2,
+        "Hand Fade": 0.9,
+        "Hand Softness": 0.45,
+        "Hand Blur": 0.2,
+        "Smoke": 0.8,
+        "Color Mode": "Rainbow",
+        "Custom Color": -10079233,
+        "Rainbow Speed": 1.0,
+        "Rainbow Scale": 1.0
+      }
+    },
+    "Focus": {
+      "enabled": true,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {}
+    },
+    "Fog": {
+      "enabled": true,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Fog Start": 1.1,
+        "Fog End": 1.2000000000000002,
+        "Change Color": true,
+        "Fog Color": -1704008,
+        "Fog Blur": false,
+        "Blur Strength": 16.5,
+        "Blur Distance": 8.0,
+        "Blur Tint": true
+      }
+    },
+    "Duplishe": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Прикол": false
+      }
+    },
+    "DynamicSurroundings": {
+      "enabled": true,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Ambient Soundscapes": true,
+        "Ambience Volume": 0.75,
+        "Wildlife and Cave Sounds": true,
+        "Footstep Accents": true,
+        "Equip Sounds": true,
+        "Fireflies": true,
+        "Rain Splashes": true,
+        "Liquid Filter": true,
+        "Water Volume": 0.8,
+        "Water High Frequencies": 0.3,
+        "Lava Volume": 0.5,
+        "Lava High Frequencies": 0.1,
+        "Reverb Filter": true,
+        "Reverb Amount": 1.0,
+        "Reverb Scan Blocks": 1024.0,
+        "Check Sky Access": true,
+        "Dimension Reverb": "minecraft:the_nether;1.0",
+        "Default Material Lists": true,
+        "Low Reverb Blocks": "",
+        "High Reverb Blocks": "",
+        "Reverb Density": 0.2,
+        "Reverb Diffusion": 0.6,
+        "Reverb Gain": 0.15,
+        "Reverb High Frequencies": 0.8,
+        "Minimum Decay Time": 0.1,
+        "Decay High Frequency Ratio": 0.7,
+        "Air Absorption High Frequencies": 0.99,
+        "Reflections Gain Base": 0.05,
+        "Reflections Gain Multiplier": 0.05,
+        "Reflections Delay Multiplier": 0.025,
+        "Late Reverb Gain Base": 1.26,
+        "Late Reverb Gain Multiplier": 0.1,
+        "Late Reverb Delay Multiplier": 0.01,
+        "Obstruction Filter": true,
+        "Obstruction Per Block": 0.1,
+        "Maximum Obstruction": 0.98,
+        "Heavy Obstruction Blocks": "minecraft:black_wool,minecraft:blue_wool,minecraft:brown_wool,minecraft:cyan_wool,minecraft:gray_wool,minecraft:green_wool,minecraft:light_blue_wool,minecraft:light_gray_wool,minecraft:lime_wool,minecraft:magenta_wool,minecraft:orange_wool,minecraft:pink_wool,minecraft:purple_wool,minecraft:red_wool,minecraft:white_wool,minecraft:yellow_wool,minecraft:sponge,minecraft:wet_sponge",
+        "Ignored Sound Events": "minecraft:music.creative,minecraft:music.credits,minecraft:music.dragon,minecraft:music.end,minecraft:music.game,minecraft:music.menu,minecraft:music.nether.basalt_deltas,minecraft:music.nether.nether_wastes,minecraft:music.nether.soul_sand_valley,minecraft:music.nether.crimson_forest,minecraft:music.nether.warped_forest,minecraft:music.under_water,minecraft:music.overworld.deep_dark,minecraft:music.overworld.dripstone_caves,minecraft:music.overworld.frozen_peaks,minecraft:music.overworld.grove,minecraft:music.overworld.jagged_peaks,minecraft:music.overworld.jungle_and_forest,minecraft:music.overworld.lush_caves,minecraft:music.overworld.meadow,minecraft:music.overworld.old_growth_taiga,minecraft:music.overworld.snowy_slopes,minecraft:music.overworld.stony_peaks,minecraft:music.overworld.swamp,minecraft:ui.button.click,minecraft:ui.toast.challenge_complete,minecraft:ui.toast.in,minecraft:ui.toast.out"
+      }
+    },
+    "Comets": {
+      "enabled": true,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Size": 1.8000000000000003,
+        "Speed": 1.5000000000000002,
+        "Targets": [
+          "Self"
+        ],
+        "Color Mode": "Sync",
+        "Custom Color": -10177025
+      }
+    },
+    "Cubes": {
+      "enabled": true,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Amount": 100.0,
+        "Size": 1.0,
+        "Color": "Sync",
+        "Custom Color": -1
+      }
+    },
+    "Block Overlay": {
+      "enabled": true,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Mode": "Shader",
+        "Shader Scale": 0.75
+      }
+    },
+    "Cape": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Movement": "Simulation",
+        "Wind": false,
+        "Gravity": 25.0
+      }
+    },
+    "Target ESP": {
+      "enabled": true,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Effect": "New Ghosts",
+        "Palette": "Theme",
+        "Custom Color": -16711800,
+        "New Ghosts Color 1": -10773761,
+        "New Ghosts Color 2": -3908353
+      }
+    },
+    "3DBox": {
+      "enabled": true,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Targets": [
+          "Players"
+        ],
+        "Friend Color": true,
+        "Color": "Sync",
+        "Custom Color": -1,
+        "Outline Alpha": 0.9500000000000001,
+        "Fill": true,
+        "Fill Alpha": 0.25
+      }
+    },
+    "Swing Animations": {
+      "enabled": true,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Mode": "Mode 3",
+        "Animation Strength": 1.0,
+        "DropDown Angle": 12.0,
+        "DropDown Slant": 12.0,
+        "Swing Power": 8.0,
+        "Downward Swing": 0.0,
+        "Swing Smoothness": 11.0,
+        "Only with AttackAura": false,
+        "Only During Hit": true,
+        "Swap Hands": false,
+        "Eating Animation": false,
+        "Mode 18 Item Size": 1.0,
+        "Mode 18 Tilt": 6.0,
+        "Mode 18 Swing Duration": 12.0,
+        "Mode 18 Smoothing": 1.0,
+        "HMI Swing Smoothness": 0.0,
+        "HMI Swing Strength": 1.0,
+        "HMI Item Size": 1.0,
+        "HMI Change Swing Speed": false,
+        "HMI Swing Duration": 10.0
+      }
+    },
+    "No Render": {
+      "enabled": true,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Camera Clip": false,
+        "Убрать затемнение": true,
+        "Overlay": [
+          "Totem Overlay",
+          "Shaking",
+          "Boss Bar",
+          "Effect Icons",
+          "Fire",
+          "Bad Effects"
+        ],
+        "World": [
+          "Totem Particles",
+          "Grass",
+          "Weather",
+          "Effects"
+        ],
+        "Sounds": []
+      }
+    },
+    "Cosmetics": {
+      "enabled": true,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Cosmetic Wings": "061_black_hole",
+        "Cosmetic Backpacks": "009_adidas",
+        "Cosmetic Hats": "020_black_hole_halo",
+        "Cosmetic Masks": "039_angry",
+        "Cosmetic Pets": "046_dragon",
+        "Cosmetic Sword": "",
+        "Cosmetic Sword Model": ""
+      }
+    },
+    "Pets": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Pet": "Dog"
+      }
+    },
+    "Prediction": {
+      "enabled": true,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Снаряды": [
+          "Эндер Пёрл",
+          "Стрела",
+          "Трезубец"
+        ]
+      }
+    },
+    "Particles": {
+      "enabled": true,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Spawn On": [
+          "Attack",
+          "Move",
+          "Idle",
+          "Throw",
+          "Totem"
+        ],
+        "Particle Type": "Bloom",
+        "Speed": 1.5000000000000002,
+        "Size": 0.2,
+        "Attack Count": 30.0,
+        "Move Count": 2.0,
+        "Throw Count": 6.0,
+        "Idle Count": 5.0,
+        "Idle Range": 16.0,
+        "Rotation": true,
+        "Glow": true,
+        "Totem Glow": false,
+        "Totem Glow Size": 1.0,
+        "Totem Size": 1.0,
+        "Totem Icon": "Star",
+        "Color": "Sync",
+        "Custom Color": -1
+      }
+    },
+    "Motion Blur": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Strength": 100.0
+      }
+    },
+    "Name Tags": {
+      "enabled": true,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Scale": 1.0,
+        "Targets": [
+          "Naked",
+          "Players"
+        ],
+        "Box": "Off",
+        "Item Box": "Квадрат",
+        "Custom Box Color": false,
+        "Top Box Color": -1,
+        "Bottom Box Color": -1,
+        "Privilege": true,
+        "Health": true,
+        "Equipment": true,
+        "Equipment Glint": true,
+        "Distance": 64.0
+      }
+    },
+    "ItemPhysics": {
+      "enabled": true,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {}
+    },
+    "JumpCircles": {
+      "enabled": true,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Appearance Speed": 1.0,
+        "Radius": 1.35,
+        "Distortion Strength": 0.45
+      }
+    },
+    "World Tweaks": {
+      "enabled": true,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Change Time": true,
+        "Time of Day": "Night",
+        "Custom Time": 6000.0,
+        "Smooth Time Cycle": false,
+        "Cycle From": 12000.0,
+        "Cycle To": 23000.0,
+        "Cycle Duration": 30.0,
+        "Celestial Rotation": 0.0,
+        "Time Speed": 0.0,
+        "Weather Control": false,
+        "Weather": "Clear",
+        "Change Sky": true,
+        "Effect": "Aurora",
+        "Sky Color Mode": "Sync",
+        "Primary Color": -8812853,
+        "Secondary Color": -8812853,
+        "End Sky Override": true,
+        "Speed": 4.0,
+        "Intensity": 3.0000000000000004,
+        "Aurora Speed": 1.2000000000000002,
+        "Aurora Intensity": 1.5000000000000002,
+        "Softness": 0.4,
+        "Coverage": 0.5,
+        "Summer Mode": "Day",
+        "Shader Speed": 1.2000000000000002,
+        "Shader Scale": 1.0,
+        "Shader Outline": 0.09999999999999999,
+        "Shader Glow": 10.0,
+        "Shader Fill": 0.6000000000000001,
+        "Shader Alpha": 1.0,
+        "Change Saturation": true,
+        "Saturation": 2.0,
+        "Temperature": false,
+        "Temperature Amount": 0.0,
+        "Change World Color": false,
+        "World Color Mode": "Sync",
+        "World Color": -1,
+        "Fog": "Vanilla",
+        "Fog Distance": 90.0
+      }
+    },
+    "View Model": {
+      "enabled": true,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Left Hand X": 0.0,
+        "Left Hand Y": 0.0,
+        "Left Hand Z": 0.0,
+        "Right Hand X": 0.3599999999999999,
+        "Right Hand Y": -0.030000000000000027,
+        "Right Hand Z": -0.6299999999999999,
+        "Only with AttackAura": false,
+        "Reset Left Hand": false,
+        "Reset Right Hand": false,
+        "Configure in World": false
+      }
+    },
+    "Waypoint": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {}
+    },
+    "Thunder Shatter": {
+      "enabled": true,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Palette": "Gold",
+        "Glass Color": -11413,
+        "Shards": 14.0,
+        "Duration": 1550.0,
+        "Burst Power": 1.0,
+        "Flash": true,
+        "Shockwaves": true,
+        "Glass Trails": true,
+        "Ground Scatter": true
+      }
+    },
+    "Trails": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Intensity": 1.4000000000000001,
+        "Length": 2.5,
+        "Width": 1.0,
+        "Speed": 1.0
+      }
+    },
+    "ReallyWorld Helper": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Close menu": false,
+        "Chat filter": false,
+        "Anti flight key": -1,
+        "Trap bind": false,
+        "Trap key": 1002,
+        "Grim bypass": true
+      }
+    },
+    "FT Helper": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Server Mode": "FT",
+        "Wind Charge": -1,
+        "Auto Jump": false,
+        "Buff throw": "Crosshair",
+        "Open Shulker": -1,
+        "Gods Aura": -1,
+        "Trap": -1,
+        "Plast": -1,
+        "Disorientation": -1,
+        "Visible Dust": -1,
+        "Freeze Ball": -1,
+        "Fiery Tornado": -1,
+        "Assassin Potion": -1,
+        "Holy Water": -1,
+        "Rage Potion": -1,
+        "Paladin Potion": -1,
+        "Popper": -1,
+        "Radiation Potion": -1,
+        "Drowsiness Potion": -1
+      }
+    },
+    "IRC": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {}
+    },
+    "Death Coords": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {}
+    },
+    "Elytra Helper": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Swap Key": -1,
+        "Firework Key": -1,
+        "Unequip Elytra on Landing": false,
+        "Auto Takeoff": false,
+        "Firework on Takeoff": false,
+        "Firework in Offhand": false,
+        "Notifications": true
+      }
+    },
+    "Click Friend": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {}
+    },
+    "Client Sounds": {
+      "enabled": true,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Sound": "Mode 1",
+        "Volume": 70.0,
+        "Disable Effect": "Pitch Down"
+      }
+    },
+    "Auto Message": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {}
+    },
+    "Auto Respawn": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {}
+    },
+    "ClickGUI": {
+      "enabled": false,
+      "keyBind": 344,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Render factor": 0.44999999999999996,
+        "Style": "Solid"
+      }
+    },
+    "Auto Duel": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Kit": [
+          "Heads",
+          "Classic",
+          "Shield",
+          "Healing",
+          "Cheater Paradise",
+          "Totems",
+          "Bow",
+          "Thorns III",
+          "Netherite"
+        ],
+        "Skip Friends": true,
+        "Bet": true,
+        "Min Balance": "0",
+        "Amount": "1000000"
+      }
+    },
+    "GrimGlide": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Timer Boost": 1.5,
+        "Сброс таймера": 0.5
+      }
+    },
+    "Gui Move": {
+      "enabled": true,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Mode": "Vanilla"
+      }
+    },
+    "Flight": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Mode": "Dragon Fly"
+      }
+    },
+    "Free Camera": {
+      "enabled": false,
+      "keyBind": 96,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Скорость XZ": 1.5000000000000002,
+        "Скорость Y": 1.0
+      }
+    },
+    "Dragon Fly": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {}
+    },
+    "Elytra Motion": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Дистанция": 1.5
+      }
+    },
+    "Air Stuck": {
+      "enabled": false,
+      "keyBind": 71,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Change aura range": false,
+        "Aura range": 3.5,
+        "Catch peak": true,
+        "360 keep-alive": false
+      }
+    },
+    "Auto Jump": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {}
+    },
+    "Streamer Mode": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Hide Rank": true,
+        "Hide Grief": true,
+        "Hide IP": true,
+        "Hide Balance": true,
+        "Hide Relics": true,
+        "Hide Daisies": true,
+        "Hide Nametag Prefixes": true,
+        "Mask Donation": true,
+        "Donation": "Player"
+      }
+    },
+    "top4ik": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "FPS": 15.0,
+        "Качество (p)": 720.0
+      }
+    },
+    "Scoreboard HP": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {}
+    },
+    "Server RP Spoof": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "On main thread": false
+      }
+    },
+    "Aiming Items": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Pick Up": [
+          "Heads",
+          "Elytra"
+        ]
+      }
+    },
+    "Anti AFK": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Actions": [
+          "Jump",
+          "Swing Arm",
+          "Command"
+        ]
+      }
+    },
+    "Timer": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Скорость": 1.8,
+        "Умный": true,
+        "Скорость убывания": 1.0
+      }
+    },
+    "Web Ignore": {
+      "enabled": true,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {}
+    },
+    "Sprint": {
+      "enabled": true,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {}
+    },
+    "Super Firework": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Boost": true,
+        "Boost Mode": "ReallyWorld",
+        "XZ 0-5": 1.52,
+        "XZ 5-10": 1.53,
+        "XZ 10-15": 1.54,
+        "XZ 15-20": 1.55,
+        "XZ 20-25": 1.56,
+        "XZ 25-30": 1.57,
+        "XZ 30-35": 1.58,
+        "XZ 35-40": 1.59,
+        "XZ 40-45": 1.6,
+        "Y 0-5": 1.51,
+        "Y 5-10": 1.52,
+        "Y 10-15": 1.53,
+        "Y 15-20": 1.54,
+        "Y 20-25": 1.55,
+        "Y 25-30": 1.56,
+        "Y 30-35": 1.57,
+        "Y 35-40": 1.58,
+        "Y 40-45": 1.59,
+        "Y 45-50": 1.6,
+        "Y 50-55": 1.61
+      }
+    },
+    "SpeedHVH": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Мод": "Моушн",
+        "Только под бафом": false,
+        "Уровень бафа": "Любой",
+        "Скорость": 0.3999999985098839,
+        "Мощность бафа": 0.14999999664723873,
+        "Ускорение": 0.2499999962747097,
+        "Подпрыгивание": true
+      }
+    },
+    "No Push": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Type": [
+          "Water",
+          "Blocks",
+          "Players",
+          "Fishing rod"
+        ],
+        "Visible in blocks": true
+      }
+    },
+    "No Web": {
+      "enabled": true,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Mode": "ReallyWorld 1.21.4"
+      }
+    },
+    "No Fall": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {}
+    },
+    "Jesus": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Mode": "Custom",
+        "Speed": 0.2
+      }
+    },
+    "No Clip": {
+      "enabled": false,
+      "keyBind": -1,
+      "bindMode": "TOGGLE",
+      "settings": {
+        "Fast": false,
+        "test": false
+      }
+    }
+  },
+  "favorites": [],
+  "customThemes": [],
+  "theme": {
+    "id": "lime",
+    "accent": -4194399,
+    "text": -1,
+    "tertiary": 1442840575,
+    "backgroundHud": 1275989773,
+    "backgroundGui": 657930
+  },
+  "panels": {},
+  "draggables": {
+    "potions": {
+      "x": 0.95416033,
+      "y": 0.054606304
+    },
+    "hotkeys": {
+      "x": 0.02853781,
+      "y": 0.08583119
+    },
+    "information": {
+      "x": 0.0042877067,
+      "y": 1.0
+    },
+    "binds": {
+      "x": 0.5045561,
+      "y": 0.40170038
+    },
+    "notifications": {
+      "x": 0.5,
+      "y": 0.06431569
+    },
+    "watermark": {
+      "x": 0.50938374,
+      "y": 0.0121991
+    },
+    "target_hud": {
+      "x": 0.49797082,
+      "y": 0.6343988
+    }
+  },
+  "mainMenu": {
+    "background": 0
+  },
+  "clickGui": {
+    "cosmeticSubcategory": "swords",
+    "categoryDock": "BOTTOM"
+  }
+}
