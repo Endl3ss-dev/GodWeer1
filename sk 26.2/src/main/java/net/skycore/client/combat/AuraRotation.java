@@ -244,8 +244,7 @@ public final class AuraRotation {
       double computedValue2 = computedValue * computedValue * computedValue * (cameraType != 0 ? 1.0 : 8.0);
       angle = QuantizeHelper.quantize(angle, computedValue2);
       angle2 = QuantizeHelper.quantize(angle2, computedValue2);
-      RotationManager.updateExact(new Rotation(angle, angle2), 10, 2);
-      if (condition) {
+      if (RotationManager.updateExact(new Rotation(angle, angle2), 10, 2) && condition) {
          player.setYRot(angle);
          player.setXRot(angle2);
       }
@@ -345,7 +344,6 @@ public final class AuraRotation {
    private void updateFuntimeRotation(AttackAuraModule attackAuraModule, LocalPlayer player, Entity entity, boolean condition, boolean condition2, boolean condition3) {
       int elapsed = -1;
       int intermediate = -1;
-      this.lockHolyWorldCamera(player);
       intermediate = (byte)-1;
       elapsed = this.funtimeTicksSinceHit + 1;
       intermediate = (byte)-1;
@@ -365,7 +363,7 @@ public final class AuraRotation {
       this.lonySmooth = 0.0F;
       holyWorldHoldingSnap = false;
       holyWorldCamValid = false;
-      RotationManager.INSTANCE.stopRotation();
+      // The owning module releases its submitted task; resetting geometry must not stop another module.
    }
 
    private float serverYaw(LocalPlayer player) {
@@ -431,6 +429,7 @@ public final class AuraRotation {
    }
 
    private void updateHolyWorldLegitRotation(LocalPlayer player, Entity entity) {
+      if (!RotationManager.canClaim(1)) return;
       if (RotationController.isActive() && !RotationController.isClientLook()) {
          player.setYRot(FreeLookController.getFreeYaw());
          player.setXRot(FreeLookController.getFreePitch());
@@ -530,37 +529,21 @@ public final class AuraRotation {
       RotationManager.update(new Rotation(clampedValue, clampedValue2), 360.0F, 360.0F, 0.0F, 5.0F, 1, 5, false);
    }
 
-   private void reallyWorldFastRotation(LocalPlayer player) {
-      float yaw;
-      if (RotationController.isClientLook()) {
-         yaw = player.getYRot();
-      } else {
-         yaw = this.serverYaw(player);
-      }
-
-      float yaw2 = yaw;
-      float pitch;
-      if (RotationController.isClientLook()) {
-         pitch = player.getXRot();
-      } else {
-         pitch = this.serverPitch(player);
-      }
-
-      float pitch2 = pitch;
-      float computedValue = Mth.wrapDegrees(this.lerpYaw - yaw2);
-      float computedValue2 = Mth.wrapDegrees(this.lerpPitch - pitch2);
-      float angle = yaw2 + computedValue;
-      float angle2 = pitch2 + computedValue2;
-      RotationManager.update(new Rotation(angle, angle2), 2500.0F, 2500.0F, 2500.0F, 2500.0F, 2, 5, RotationController.isClientLook());
+   private void reallyWorldFastRotation(LocalPlayer player, boolean visible) {
+      float yaw = visible ? player.getYRot() : this.serverYaw(player);
+      float pitch = visible ? player.getXRot() : this.serverPitch(player);
+      Rotation desired = new Rotation(yaw + Mth.wrapDegrees(this.lerpYaw - yaw), pitch + Mth.wrapDegrees(this.lerpPitch - pitch));
+      RotationManager.update(desired, 2500.0F, 2500.0F, 2500.0F, 2500.0F, 2, 5, visible);
    }
 
    private void applyFuntimeRotation(LocalPlayer player, Entity entity, boolean condition, boolean condition2) {
-      if (!player.isFallFlying()) {
-         this.pinHolyWorldCamera(player);
-         float holyWorldCamYaw2 = holyWorldCamYaw;
-         float holyWorldCamPitch2 = holyWorldCamPitch;
+      if (!player.isFallFlying() && RotationManager.canClaim(6)) {
          Vec2 vec2 = this.computeFuntimeTargetAngle(player, entity);
          if (vec2 != null) {
+            // Don't detach the view until there's an angle we can actually submit.
+            this.pinHolyWorldCamera(player);
+            float holyWorldCamYaw2 = holyWorldCamYaw;
+            float holyWorldCamPitch2 = holyWorldCamPitch;
             float yaw;
             float pitch;
             if (condition) {
@@ -690,10 +673,8 @@ public final class AuraRotation {
          float pitch = pitchTo(closestVec);
          this.lerpYaw = yaw;
          this.lerpPitch = pitch;
-         this.reallyWorldFastRotation(player);
-      } else {
-         this.reallyWorldFastRotation(player);
       }
+      this.reallyWorldFastRotation(player, attackAuraModule.clientLookEnabled());
    }
 
    private Vec2 computeFuntimeTargetAngle(LocalPlayer player, Entity entity) {

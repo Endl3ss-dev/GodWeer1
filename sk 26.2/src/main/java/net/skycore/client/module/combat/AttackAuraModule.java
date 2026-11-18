@@ -24,6 +24,7 @@ import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.item.Items;
 import net.minecraft.world.level.block.Blocks;
 import net.minecraft.world.level.material.FluidState;
+import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.Vec2;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.HitResult.Type;
@@ -38,7 +39,9 @@ import net.skycore.client.combat.AuraRotation;
 import net.skycore.client.combat.CriticalHelper;
 import net.skycore.client.combat.FreeLookController;
 import net.skycore.client.combat.InputPredictor;
+import net.skycore.client.combat.MouseSensitivity;
 import net.skycore.client.combat.RayTraceHelper;
+import net.skycore.client.combat.Rotation;
 import net.skycore.client.combat.RotationController;
 import net.skycore.client.combat.RotationManager;
 import net.skycore.client.combat.ServerRotationManager;
@@ -52,11 +55,21 @@ import net.skycore.client.module.movement.AirStuckModule;
 import net.skycore.client.setting.Setting;
 import net.skycore.client.setting.NumberSetting;
 import net.skycore.client.setting.ModeSetting;
+import net.skycore.client.util.CaptureLevelProjectionHelper;
 import net.skycore.client.util.ScoreboardModeHelper;
 import net.skycore.client.setting.BooleanSetting;
 
 public final class AttackAuraModule extends ClientModule {
    private final ModeSetting movementCorrection;
+   private final ModeSetting v2Correction;
+   private final RockstarAim rockstar = new RockstarAim();
+   private static final int ROCKSTAR_PRIORITY = 5;
+   private static final String ELYTRA_PATH = "ElytraTarget";
+   private enum AimPhase { PHYSICS, FRAME, ATTACK_SLOT }
+   private String aimPath;
+   private boolean visibleAim;
+   private Entity aimedTarget;
+   private Rotation ownedRotation;
    private final BooleanSetting clientLook;
    private int lastRotateTick;
    private final AuraRotation rotations;
@@ -71,7 +84,8 @@ public final class AttackAuraModule extends ClientModule {
    private final BooleanSetting releaseShield;
    private final BooleanSetting rayTrace;
    private int skycoreNextAttackTick;
-   private final ModeSetting rotationMode = this.add(new ModeSetting("Rotation mode", "ReallyWorld", "ReallyWorld", "HvH", "Funtime", "HolyWorldLegit"));
+   private final ModeSetting rotationMode = this.add(new ModeSetting("Rotation mode", "ReallyWorld",
+      RockstarAim.Mode.alongside("ReallyWorld", "HvH", "Funtime", "HolyWorldLegit")));
    private boolean hitImminent;
    private final NumberSetting pursuitRange;
    private final BooleanSetting bypassWalls;
@@ -154,7 +168,9 @@ public final class AttackAuraModule extends ClientModule {
       this.rotationBehavior = this.add(new ModeSetting("Rotation behavior", "Smooth", "Smooth", "Snaps"));
       this.addSettings(this.clicks.settings);
       this.addSettings(this.targets.profile, this.targets.bedWars, this.targets.standard);
-      this.movementCorrection = this.add(new ModeSetting("Movement correction", "Free", "Free", "Focused", "Target"));
+      this.movementCorrection = this.add(new ModeSetting("Movement correction", "Free", "Free", "Focused", "Target", "V2"));
+      this.v2Correction = this.add(new ModeSetting("V2 correction type", "Silent", "Silent", "Direct"));
+      this.v2Correction.visibleWhen(() -> this.movementCorrection.is("V2"));
       this.attackRange = this.add(new NumberSetting("Attack range", "", 3.0, 2.5, 6.0, 0.1, " blocks"));
       this.pursuitRange = this.add(new NumberSetting("Pursuit range", "", 1.5, 0.0, 3.0, 0.1, " blocks"));
       this.sortMode = this.add(new ModeSetting("Sort Mode", "Distance", "Distance", "Health", "Armor", "All"));
@@ -200,10 +216,9 @@ public final class AttackAuraModule extends ClientModule {
       this.tpsSync.visibleWhen(() -> !this.usesCpsClicks());
       this.onlyCriticals.visibleWhen(() -> !this.usesCpsClicks());
       this.smartCriticals.visibleWhen(() -> !this.usesCpsClicks() && this.onlyCriticals.get());
-      this.clientLook.visibleWhen(() -> {
-         return !this.rotationMode.is("HolyWorldLegit");
-      });
-      SkycoreClient.events().subscribe(WorldChangeEvent.class, event -> this.resetClickEffects());
+      this.clientLook.visibleWhen(() -> !this.rotationMode.is("HolyWorldLegit") && this.rockstarMode() != RockstarAim.Mode.HOLY_WORLD
+         && this.rockstarMode() != RockstarAim.Mode.NONE);
+      SkycoreClient.events().subscribe(WorldChangeEvent.class, event -> this.resetState());
       SkycoreClient.events().subscribe(PlayerInputEvent.class, this::onPlayerInput);
       SkycoreClient.events().subscribe(PlayerTickEndEvent.class, this::onPreTick);
    }
@@ -271,25 +286,105 @@ public final class AttackAuraModule extends ClientModule {
       return order.thenComparingInt(Entity::getId);
    }
 
-   private void updateRotation(boolean condition) {
-      LocalPlayer instance = Minecraft.getInstance().player;
-      if (instance != null && this.target != null && this.isValidTarget(this.target)) {
-         if (!TargetPearlModule.isRotationActive()) {
-            this.rotations
-               .tick(
-                  this,
-                  instance,
-                  this.target,
-                  this.rotationMode.get(),
-                  this.rotationBehavior.get(),
-                  condition,
-                  Boolean.TRUE.equals(this.bypassWalls.get()),
-                  Boolean.TRUE.equals(this.breakShield.get()),
-                  this.attackDistance()
-               );
-            this.lastRotateTick = instance.tickCount;
-         }
+   private RockstarAim.Mode rockstarMode() { return RockstarAim.Mode.from(this.rotationMode.get()); }
+
+   private String rotationPath(LocalPlayer player) {
+      if (this.rockstarMode() != RockstarAim.Mode.NONE && player.isFallFlying() && ElytraTargetModule.INSTANCE.isEnabled()) return ELYTRA_PATH;
+      return this.rotationMode.get();
+   }
+
+   private boolean inputUnavailable(LocalPlayer player, Minecraft mc) {
+      return mc.isPaused() || !player.isAlive() || TargetPearlModule.isRotationActive() || CrystalAuraModule.INSTANCE.isRotating()
+         || ServerRotationManager.INSTANCE.isRotating() || this.isManualBlockPlacement(player, mc);
+   }
+
+   private boolean rockstarBlocked(LocalPlayer player, Minecraft mc, boolean elytra) {
+      return this.inputUnavailable(player, mc) || !RotationManager.canClaim(elytra ? 10 : ROCKSTAR_PRIORITY);
+   }
+
+   private void updateRotation(boolean ready, AimPhase phase, long now) {
+      Minecraft mc = Minecraft.getInstance();
+      LocalPlayer player = mc.player;
+      if (player == null || mc.level == null || this.target == null) {
+         this.releaseRotationControl();
+         return;
       }
+      RockstarAim.Mode mode = this.rockstarMode();
+      String path = this.rotationPath(player);
+      boolean elytra = ELYTRA_PATH.equals(path);
+      boolean visible = !elytra && this.clientLookEnabled();
+      if (!path.equals(this.aimPath) || visible != this.visibleAim) this.releaseRotationControl();
+      if (mode == RockstarAim.Mode.NONE) return; // never fall through to ReallyWorld, including during flight
+      if (mode != null && this.rockstarBlocked(player, mc, elytra)) {
+         this.releaseRotationControl();
+         return;
+      }
+      this.aimPath = path;
+      this.visibleAim = visible;
+      if (mode != null && !elytra) {
+         if (phase == AimPhase.ATTACK_SLOT || (phase == AimPhase.FRAME) != (mode == RockstarAim.Mode.HOLY_WORLD)) return;
+         if (!this.isValidTarget(this.target) || !this.rockstar.begin(mode, this.target, player.tickCount, phase == AimPhase.FRAME, now)) return;
+         this.applyRockstar(mode, player, ready, now);
+         return;
+      }
+      // Native modes (including the existing ElytraTarget prediction) keep their original scheduling.
+      if (phase == AimPhase.FRAME || !this.isValidTarget(this.target) || TargetPearlModule.isRotationActive() || CrystalAuraModule.INSTANCE.isRotating()) return;
+      Rotation previous = RotationManager.INSTANCE.targetRotation();
+      this.rotations.tick(this, player, this.target, this.rotationMode.get(), this.rotationBehavior.get(), ready,
+         this.bypassWalls.get(), this.breakShield.get(), this.attackDistance());
+      if (RotationManager.INSTANCE.targetRotation() != previous) this.rememberAim(player, RotationManager.INSTANCE.targetRotation());
+   }
+
+   private void rememberAim(LocalPlayer player, Rotation submitted) {
+      this.ownedRotation = submitted;
+      this.aimedTarget = this.target;
+      this.lastRotateTick = player.tickCount;
+   }
+
+   private void applyRockstar(RockstarAim.Mode mode, LocalPlayer player, boolean ready, long now) {
+      Vec3 eyes = player.getEyePosition();
+      Rotation current = new Rotation(player.getYRot(), player.getXRot());
+      if (mode == RockstarAim.Mode.HOLY_WORLD) {
+         if (FreeLookController.isActive()) current = new Rotation(FreeLookController.getFreeYaw(), FreeLookController.getFreePitch());
+         float partial = Minecraft.getInstance().getDeltaTracker().getGameTimeDeltaPartialTick(false);
+         Vec3 center = CaptureLevelProjectionHelper.interpolatedPosition(this.target, partial).add(this.target.getBoundingBox().getCenter().subtract(this.target.position()));
+         Rotation view = this.rockstar.holy.frame(now, eyes, center, current, MouseSensitivity.getGCDValue());
+         if (RotationManager.updateExact(view, ROCKSTAR_PRIORITY, 2, true)) {
+            player.yHeadRot = player.yBodyRot = view.getYaw();
+            this.rememberAim(player, view);
+         }
+         return;
+      }
+      boolean living = this.target instanceof LivingEntity;
+      RockstarAim.Geometry g = new RockstarAim.Geometry(eyes, player.getY(), player.getDeltaMovement(), this.target.getBoundingBox(), this.target.getEyePosition(), living);
+      boolean inRange = this.isWithinAttackRange(this.target);
+      RockstarAim.Turn turn = switch (mode) {
+         case SIMPLE, ONE_TICK, REALLY_WORLD -> this.rockstar.point(mode, g, current, rot -> RayTraceHelper.rayTraceEntity(player,
+            this.target, rot.getYaw(), rot.getPitch(), this.attackDistance(), !this.throughWalls.get(), this.hitThroughDoors.get()));
+         case VON_TAM, FUN_TIME -> this.rockstar.funTime(g, current, ready && inRange, now);
+         case SPOOKY_TIME -> this.rockstar.spookyTime(g, current, inRange, !this.target.onGround() && this.target.fallDistance > 0);
+         case SLOTH -> this.rockstar.sloth(g, current, inRange, ready);
+         case SLIME_WORLD -> this.rockstar.slimeWorld(g, current, inRange, new RockstarAim.SlimeScene(
+            !player.hasLineOfSight(this.target), nearFootBlock(this.target), this.target.onGround(), this.target instanceof LivingEntity e && e.isFallFlying(),
+            FreeLookController.isActive() ? FreeLookController.getFreePitch() : player.getXRot()), now);
+         default -> throw new IllegalStateException("Not a tick rotation: " + mode);
+      };
+      RotationManager.update(turn.angles(), turn.yawSpeed(), turn.pitchSpeed(), turn.returnSpeed(), turn.returnSpeed(), 2, ROCKSTAR_PRIORITY, this.visibleAim);
+      if (RotationManager.INSTANCE.targetRotation() == turn.angles()) this.rememberAim(player, turn.angles());
+   }
+
+   // Adapted from Rockstar/src/main/java/moscow/rockstar/util/game/CombatUtility.java (four corners at foot height).
+   private static boolean nearFootBlock(Entity entity) {
+      AABB b = entity.getBoundingBox();
+      double y = entity.getY();
+      return !entity.level().getBlockState(BlockPos.containing(b.minX - 0.05, y, b.minZ - 0.05)).isAir()
+         || !entity.level().getBlockState(BlockPos.containing(b.maxX + 0.05, y, b.minZ - 0.05)).isAir()
+         || !entity.level().getBlockState(BlockPos.containing(b.minX - 0.05, y, b.maxZ + 0.05)).isAir()
+         || !entity.level().getBlockState(BlockPos.containing(b.maxX + 0.05, y, b.maxZ + 0.05)).isAir();
+   }
+
+   public void onRenderFrame(long now) {
+      if (this.isEnabled() && this.rockstarMode() == RockstarAim.Mode.HOLY_WORLD) this.updateRotation(false, AimPhase.FRAME, now);
    }
 
    private boolean funtimeCameraHitsTarget(LocalPlayer player) {
@@ -361,8 +456,7 @@ public final class AttackAuraModule extends ClientModule {
             } else if (this.isManualBlockPlacement(player, instance)) {
                this.hitImminent = false;
                if (this.target != null && this.isValidTarget(this.target)) {
-                  RotationController.setClientLook(this.clientLookEnabled());
-                  this.updateRotation(false);
+                  this.updateRotation(false, AimPhase.PHYSICS, System.nanoTime());
                }
             } else {
                if (this.target == null || !this.isValidTarget(this.target)) {
@@ -372,7 +466,6 @@ public final class AttackAuraModule extends ClientModule {
                if (!this.usesCpsClicks()) this.refreshCanCrit(player);
                if (this.target == null) {
                   this.hitImminent = false;
-                  RotationController.setClientLook(false);
                   this.releaseRotationControl();
                } else if (!player.isFallFlying()
                   && (!ElytraTargetModule.INSTANCE.isEnabled() || !player.isFallFlying())
@@ -384,9 +477,8 @@ public final class AttackAuraModule extends ClientModule {
                   this.releaseRotationControl();
                } else {
                   int value = this.canAttack() && !this.shouldBlockAttack(player) ? 1 : 0;
-                  RotationController.setClientLook(this.clientLookEnabled());
-                  if (this.usesCpsClicks() || this.rotationMode.is("ReallyWorld")) {
-                     this.updateRotation((value != 0));
+                  if (this.rockstarMode() != null || this.usesCpsClicks() || this.rotationMode.is("ReallyWorld")) {
+                     this.updateRotation(value != 0, AimPhase.PHYSICS, System.nanoTime());
                   } else {
                      this.onGameUpdate();
                   }
@@ -486,10 +578,15 @@ public final class AttackAuraModule extends ClientModule {
    }
 
    private void releaseRotationControl() {
+      if (this.aimPath == null) return;
+      RotationManager manager = RotationManager.INSTANCE;
+      if (this.ownedRotation != null && manager.targetRotation() == this.ownedRotation && manager.isRotating()) manager.stopRotation();
+      this.ownedRotation = null;
+      this.aimedTarget = null;
+      this.aimPath = null;
+      this.lastRotateTick = -1;
+      this.rockstar.reset();
       this.rotations.reset();
-      ServerRotationManager.INSTANCE.stopRotation();
-      RotationManager.INSTANCE.stopRotation();
-      RotationController.releaseToFreeLook();
    }
 
    private double skycoreHealth(LivingEntity entity) {
@@ -626,6 +723,7 @@ public final class AttackAuraModule extends ClientModule {
          || instance.level == null
          || instance.gameMode == null
          || this.target == null
+         || (this.rockstarMode() != null && this.rockstarBlocked(player, instance, ELYTRA_PATH.equals(this.aimPath)))
          || !this.isValidTarget(this.target)
          || !this.canAttack()
          || this.shouldBlockAttack(player)) {
@@ -721,6 +819,15 @@ public final class AttackAuraModule extends ClientModule {
          Minecraft instance = Minecraft.getInstance();
          LocalPlayer player = instance.player;
          if (player != null && instance.level != null) {
+            if (this.movementCorrection.is("V2")) {
+               if (this.ownsActiveAim(player) && !this.inputUnavailable(player, instance) && this.isValidTarget(this.target)) {
+                  // RotationController already applies the task yaw to LocalPlayer for travel and jump physics.
+                  float view = FreeLookController.isActive() ? FreeLookController.getFreeYaw() : player.getYRot();
+                  RockstarMovement.apply(playerInputEvent, view, player.getYRot(), this.v2Correction.is("Silent"));
+               }
+               return;
+            }
+            if (this.rockstarMode() != null && !this.ownsActiveAim(player)) return;
             if (this.target == null || !this.isValidTarget(this.target)) {
                this.target = this.findTarget();
             }
@@ -740,7 +847,7 @@ public final class AttackAuraModule extends ClientModule {
                         this.fixMovement(playerInputEvent, x);
                      } else if (this.movementCorrection.is("Target")) {
                         if (!RotationManager.INSTANCE.isRotating()) {
-                           this.updateRotation(this.canAttack());
+                           this.updateRotation(this.canAttack(), AimPhase.ATTACK_SLOT, System.nanoTime());
                         }
 
                         if (!ActionStop.isStop()) {
@@ -755,9 +862,14 @@ public final class AttackAuraModule extends ClientModule {
       }
    }
 
+   private boolean ownsActiveAim(LocalPlayer player) {
+      return this.target != null && this.target == this.aimedTarget && this.rotationPath(player).equals(this.aimPath)
+         && RotationManager.INSTANCE.isAimingAt(this.ownedRotation);
+   }
+
    public void onGameUpdate() {
       if (this.isEnabled() && Minecraft.getInstance().player != null && this.target != null) {
-         this.updateRotation(this.usesCpsClicks() ? this.canAttack() : this.hitImminent);
+         this.updateRotation(this.usesCpsClicks() ? this.canAttack() : this.hitImminent, AimPhase.ATTACK_SLOT, System.nanoTime());
          this.updateAttack();
       } else {
          this.releaseRotationControl();
@@ -856,7 +968,7 @@ public final class AttackAuraModule extends ClientModule {
       // Pre-physics aim can be sampled after vanilla has already advanced the player tick.
       int ticksSinceAim = mc.player.tickCount - this.lastRotateTick;
       boolean aiming = this.jitter.whileAiming.get() && this.lastRotateTick != -1 && ticksSinceAim >= 0 && ticksSinceAim <= 1
-         && this.isValidTarget(this.target) && !TargetPearlModule.isRotationActive() && !CrystalAuraModule.INSTANCE.isRotating();
+         && this.ownsActiveAim(mc.player) && this.isValidTarget(this.target) && !TargetPearlModule.isRotationActive() && !CrystalAuraModule.INSTANCE.isRotating();
       return this.jitter.sample(System.nanoTime(), aiming);
    }
 
@@ -884,14 +996,7 @@ public final class AttackAuraModule extends ClientModule {
    }
 
    public boolean clientLookEnabled() {
-      if (!this.rotationMode.is("HolyWorldLegit")) {
-         Boolean get = this.clientLook.get();
-         if (!get) {
-            return false;
-         }
-      }
-
-      return true;
+      return this.rotationMode.is("HolyWorldLegit") || this.rockstarMode() == RockstarAim.Mode.HOLY_WORLD || this.clientLook.get();
    }
 
    public boolean canAttack() {
@@ -991,11 +1096,14 @@ public final class AttackAuraModule extends ClientModule {
       this.jitter.reset();
    }
 
-   /** A pre-CPS profile loaded over a live 1.8 profile must still select legacy attacks and an unshaken camera. */
-   public void prepareClickProfileLoad() {
+   /** Missing keys in an older profile must not inherit the previous profile's live effects or Rockstar modes. */
+   public void prepareProfileLoad() {
+      this.resetState();
+      this.rotationMode.reset();
+      this.movementCorrection.reset();
+      this.v2Correction.reset();
       for (Setting<?> option : this.clicks.settings) option.reset();
       for (Setting<?> option : this.jitter.settings) option.reset();
-      this.resetClickEffects();
    }
 
    private void resetState() {
