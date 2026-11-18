@@ -26,6 +26,7 @@ import net.skycore.client.hud.NotificationsHud;
 import net.skycore.client.module.BindMode;
 import net.skycore.client.module.ClientModule;
 import net.skycore.client.module.ModuleManager;
+import net.skycore.client.module.combat.AttackAuraModule;
 import net.skycore.client.module.combat.ElytraTargetModule;
 import net.skycore.client.module.render.InterfaceModule;
 import net.skycore.client.profile.LocalProfile;
@@ -228,6 +229,7 @@ public final class ConfigManager {
 
             if (name != null && name.isJsonObject()) {
                JsonObject asJsonObject = name.getAsJsonObject();
+               if (clientModule instanceof AttackAuraModule aura) aura.prepareClickProfileLoad();
                this.loadModuleMeta(clientModule, asJsonObject);
                JsonObject asJsonObject2 = asJsonObject.has("settings") && asJsonObject.get("settings").isJsonObject() ? asJsonObject.getAsJsonObject("settings") : null;
                if (asJsonObject2 != null) {

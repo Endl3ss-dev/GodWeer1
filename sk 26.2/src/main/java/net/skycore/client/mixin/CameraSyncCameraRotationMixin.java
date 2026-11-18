@@ -2,8 +2,12 @@ package net.skycore.client.mixin;
 
 import net.minecraft.client.Camera;
 import net.minecraft.client.Minecraft;
+import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
+import net.skycore.client.SkycoreClient;
 import net.skycore.client.combat.RotationController;
+import net.skycore.client.module.combat.AttackAuraModule;
+import net.skycore.client.module.combat.AuraCameraJitter;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -19,6 +23,19 @@ public abstract class CameraSyncCameraRotationMixin {
       if (entity != null) {
          RotationController.applyRenderInterpolation();
          RotationController.syncFreeLook(entity.getViewYRot(value), entity.getViewXRot(value));
+      }
+   }
+
+   // Apply once, after vanilla/F5/free-look have chosen the base angles. Never feed this offset into aim or packets.
+   @Inject(method = "alignWithEntity", at = @At("RETURN"))
+   private void skycore$applyAuraJitter(float partialTick, CallbackInfo ci) {
+      Minecraft mc = Minecraft.getInstance();
+      Camera camera = (Camera)(Object)this;
+      if (mc.player == null || camera.entity() != mc.player) return;
+      AuraCameraJitter.Offset offset = SkycoreClient.modules().get(AttackAuraModule.class)
+         .map(AttackAuraModule::cameraJitter).orElse(AuraCameraJitter.Offset.NONE);
+      if (offset.yaw() != 0 || offset.pitch() != 0) {
+         ((CameraInvokeSetRotationAccessor)camera).skycore$invokeSetRotation(camera.yRot() + offset.yaw(), Mth.clamp(camera.xRot() + offset.pitch(), -90.0F, 90.0F));
       }
    }
 
