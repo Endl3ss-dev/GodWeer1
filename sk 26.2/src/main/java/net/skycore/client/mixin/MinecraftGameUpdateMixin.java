@@ -21,18 +21,13 @@ public abstract class MinecraftGameUpdateMixin {
 
    @Inject(method = "renderFrame", at = @At("HEAD"))
    private void skycore$gameUpdate(boolean condition, CallbackInfo callbackInfo) {
-      boolean orElse = SkycoreClient.modules().get(AttackAuraModule.class).map(ClientModule::isEnabled).orElse(false);
-      if (orElse) {
-         long nowNanos = System.nanoTime();
-         long timestamp = Math.max(0L, (nowNanos - this.skycore$lastGameUpdate) / 4166666L);
-         this.skycore$lastGameUpdate += timestamp * 4166666L;
-
-         for (long timestamp2 = 0L; timestamp2 < Math.min(timestamp, 65L); timestamp2++) {
-            if (orElse) {
-               SkycoreClient.modules().get(AttackAuraModule.class).ifPresent(AttackAuraModule::onGameUpdate);
-            }
-         }
-      }
+      AttackAuraModule aura = SkycoreClient.modules().get(AttackAuraModule.class).filter(ClientModule::isEnabled).orElse(null);
+      if (aura == null) return;
+      long now = System.nanoTime();
+      aura.onRenderFrame(now); // exactly once, outside the existing attack-clock catch-up loop
+      long slots = Math.max(0L, (now - this.skycore$lastGameUpdate) / 4166666L);
+      this.skycore$lastGameUpdate += slots * 4166666L;
+      for (long i = 0; i < Math.min(slots, 65L); i++) aura.onGameUpdate();
    }
 
    @Inject(method = "setLevel", at = @At("HEAD"))

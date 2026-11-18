@@ -139,6 +139,11 @@ public final class RotationManager {
    }
 
    public static boolean updateExact(Rotation rotation, int value, int elapsed) {
+      return updateExact(rotation, value, elapsed, false);
+   }
+
+   /** For rotations already stepped by the caller; don't quantize a frame-integrated mouse delta twice. */
+   public static boolean updateExact(Rotation rotation, int value, int elapsed, boolean visible) {
       if (SynchronizeHelper.isActive() && canClaim(value)) {
          LocalPlayer instance2 = Minecraft.getInstance().player;
          if (instance2 == null) {
@@ -146,15 +151,17 @@ public final class RotationManager {
          }
 
          RotationManager iNSTANCE = INSTANCE;
-         if (!FreeLookController.isActive()) {
+         if (visible && RotationController.isActive()) {
+            RotationController.deactivateKeepingAim();
+         } else if (!visible && !FreeLookController.isActive()) {
             FreeLookController.setFreeYaw(instance2.getYRot());
             FreeLookController.setFreePitch(instance2.getXRot());
             FreeLookController.setActive(true);
          }
 
          iNSTANCE.sourceRotation = true;
-         iNSTANCE.clientLook = false;
-         RotationController.setClientLook(false);
+         iNSTANCE.clientLook = visible;
+         RotationController.setClientLook(visible);
          iNSTANCE.targetRotation = rotation;
          iNSTANCE.currentPriority = value;
          iNSTANCE.currentTimeout = elapsed;
@@ -172,6 +179,11 @@ public final class RotationManager {
 
    public static void updateHolyworld(Rotation rotation, float value, float value2, float value3, float value4, int value5, int value6, boolean condition) {
       update(rotation, value, value2, value3, value4, value5, value6, condition);
+   }
+
+   /** Equal angles are not ownership: each producer submits its own immutable Rotation. */
+   public boolean isAimingAt(Rotation submitted) {
+      return submitted != null && this.currentTask == RotationTask.AIM && this.targetRotation == submitted;
    }
 
    public boolean isAimingAtPriority(int value) {

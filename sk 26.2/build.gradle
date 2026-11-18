@@ -28,11 +28,11 @@ tasks.withType(JavaCompile).configureEach {
     options.release = 25
 }
 
-// Standalone smoke test; no Minecraft instance or external test framework is needed.
+// Headless smoke tests. Rotation tests use the mapped game math/input types, not a running client.
 sourceSets {
     auraTest {
-        compileClasspath += sourceSets.main.output
-        runtimeClasspath += sourceSets.main.output
+        compileClasspath += sourceSets.main.output + sourceSets.main.compileClasspath
+        runtimeClasspath += sourceSets.main.runtimeClasspath
     }
 }
 tasks.register('testAuraClicks', JavaExec) {
@@ -40,7 +40,12 @@ tasks.register('testAuraClicks', JavaExec) {
     classpath = sourceSets.auraTest.runtimeClasspath
     mainClass = 'net.skycore.client.module.combat.AuraClickEffectsTest'
 }
-tasks.named('check') { dependsOn 'testAuraClicks' }
+tasks.register('testRockstarAura', JavaExec) {
+    dependsOn 'auraTestClasses'
+    classpath = sourceSets.auraTest.runtimeClasspath
+    mainClass = 'net.skycore.client.module.combat.RockstarAuraTest'
+}
+tasks.named('check') { dependsOn 'testAuraClicks', 'testRockstarAura' }
 
 loom {
     runs {

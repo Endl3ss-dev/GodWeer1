@@ -229,7 +229,7 @@ public final class ConfigManager {
 
             if (name != null && name.isJsonObject()) {
                JsonObject asJsonObject = name.getAsJsonObject();
-               if (clientModule instanceof AttackAuraModule aura) aura.prepareClickProfileLoad();
+               if (clientModule instanceof AttackAuraModule aura) aura.prepareProfileLoad();
                this.loadModuleMeta(clientModule, asJsonObject);
                JsonObject asJsonObject2 = asJsonObject.has("settings") && asJsonObject.get("settings").isJsonObject() ? asJsonObject.getAsJsonObject("settings") : null;
                if (asJsonObject2 != null) {
