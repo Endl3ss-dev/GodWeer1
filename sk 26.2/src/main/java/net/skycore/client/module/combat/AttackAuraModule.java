@@ -1,10 +1,6 @@
 package net.skycore.client.module.combat;
 
-import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.core.BlockPos;
@@ -18,13 +14,10 @@ import net.minecraft.world.InteractionHand;
 import net.minecraft.world.effect.MobEffects;
 import net.minecraft.world.entity.Entity;
 import net.minecraft.world.entity.LivingEntity;
-import net.minecraft.world.entity.Mob;
-import net.minecraft.world.entity.ambient.AmbientCreature;
-import net.minecraft.world.entity.animal.Animal;
-import net.minecraft.world.entity.decoration.ArmorStand;
 import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.entity.player.Inventory;
 import net.minecraft.world.entity.player.Player;
+import net.minecraft.world.entity.projectile.Projectile;
 import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
@@ -49,7 +42,6 @@ import net.skycore.client.combat.RayTraceHelper;
 import net.skycore.client.combat.RotationController;
 import net.skycore.client.combat.RotationManager;
 import net.skycore.client.combat.ServerRotationManager;
-import net.skycore.client.config.FriendManager;
 import net.skycore.client.event.PlayerInputEvent;
 import net.skycore.client.event.PlayerTickEndEvent;
 import net.skycore.client.module.ClientModule;
@@ -58,7 +50,6 @@ import net.skycore.client.module.ModuleManager;
 import net.skycore.client.module.movement.AirStuckModule;
 import net.skycore.client.setting.NumberSetting;
 import net.skycore.client.setting.ModeSetting;
-import net.skycore.client.setting.MultiSelectSetting;
 import net.skycore.client.util.ScoreboardModeHelper;
 import net.skycore.client.setting.BooleanSetting;
 
@@ -83,13 +74,13 @@ public final class AttackAuraModule extends ClientModule {
    private final NumberSetting pursuitRange;
    private final BooleanSetting bypassWalls;
    private long attackCounter;
-   private LivingEntity target;
+   private Entity target;
    private final BooleanSetting disableOnDeath;
    private final BooleanSetting ignoreEating;
    private final NumberSetting attackRange;
    private static final long ATTACK_DELAY_MS = 473L;
    private final BooleanSetting tpsSync;
-   private final MultiSelectSetting targets;
+   private final AuraTargets targets = new AuraTargets();
    private final BooleanSetting throughWalls;
    private int skycoreTick;
 
@@ -155,7 +146,7 @@ public final class AttackAuraModule extends ClientModule {
    public AttackAuraModule() {
       super("Attack Aura", "Attacks nearby targets with silent aim", ModuleCategory.COMBAT);
       this.rotationBehavior = this.add(new ModeSetting("Rotation behavior", "Smooth", "Smooth", "Snaps"));
-      this.targets = this.add(new MultiSelectSetting("Targets", List.of("Players", "Friends", "Naked", "Animals", "Mobs"), Set.of("Players", "Naked")));
+      this.addSettings(this.targets.profile, this.targets.bedWars, this.targets.standard);
       this.movementCorrection = this.add(new ModeSetting("Movement correction", "Free", "Free", "Focused", "Target"));
       this.attackRange = this.add(new NumberSetting("Attack range", "", 3.0, 2.5, 6.0, 0.1, " blocks"));
       this.pursuitRange = this.add(new NumberSetting("Pursuit range", "", 1.5, 0.0, 3.0, 0.1, " blocks"));
@@ -206,8 +197,9 @@ public final class AttackAuraModule extends ClientModule {
       SkycoreClient.events().subscribe(PlayerTickEndEvent.class, this::onPreTick);
    }
 
+   /** Living-only view for TargetHUD, ESP, ElytraTarget and other existing consumers. */
    public LivingEntity currentTarget() {
-      return this.isEnabled() ? this.target : null;
+      return this.isEnabled() && this.target instanceof LivingEntity living ? living : null;
    }
 
    private boolean shouldBlockAttack(LocalPlayer player) {
@@ -234,42 +226,38 @@ public final class AttackAuraModule extends ClientModule {
       }
    }
 
-   private LivingEntity findTarget() {
-      Minecraft instance = Minecraft.getInstance();
-      LocalPlayer player = instance.player;
-      if (player != null && instance.level != null) {
-         ArrayList<LivingEntity> livingEntitys = new ArrayList<>();
-
-         for (Entity entity : instance.level.entitiesForRendering()) {
-            if (entity instanceof LivingEntity entity2 && this.isValidTarget(entity2)) {
-               livingEntitys.add(entity2);
-            }
-         }
-
-         if (livingEntitys.isEmpty()) {
-            return null;
-         }
-
-         if (livingEntitys.size() > 1) {
-            if (this.sortMode.is("All")) {
-               livingEntitys.sort(Comparator.<LivingEntity>comparingDouble(entity3 -> {
-                  return entity3 instanceof Player player2 ? -this.getEntityArmor(player2) : -entity3.getArmorValue();
-               }).thenComparingDouble(this::getEntityHealth).thenComparingDouble(CriticalHelper::getStrictDistance));
-            } else if (this.sortMode.is("Distance")) {
-               livingEntitys.sort(Comparator.comparingDouble(CriticalHelper::getStrictDistance));
-            } else if (this.sortMode.is("Armor")) {
-               livingEntitys.sort(Comparator.comparingDouble(entity4 -> {
-                  return entity4 instanceof Player player3 ? this.getEntityArmor(player3) : entity4.getArmorValue();
-               }));
-            } else if (this.sortMode.is("Health")) {
-               livingEntitys.sort(Comparator.comparingDouble(this::getEntityHealth));
-            }
-         }
-
-         return (LivingEntity)livingEntitys.get(0);
-      } else {
+   private Entity findTarget() {
+      Minecraft mc = Minecraft.getInstance();
+      LocalPlayer player = mc.player;
+      if (player == null || mc.level == null) {
          return null;
       }
+      boolean flying = ElytraTargetModule.INSTANCE.isEnabled() && player.isFallFlying();
+      Comparator<Entity> order = this.targetOrder(player, flying);
+      Entity best = null;
+      for (Entity candidate : mc.level.entitiesForRendering()) {
+         if (this.isValidTarget(candidate) && (best == null || order.compare(candidate, best) < 0)) {
+            best = candidate;
+         }
+      }
+      return best;
+   }
+
+   private Comparator<Entity> targetOrder(LocalPlayer player, boolean flying) {
+      Comparator<Entity> distance = flying ? Comparator.comparingDouble(player::distanceTo) : Comparator.comparingDouble(CriticalHelper::getStrictDistance);
+      // Projectiles have no health or armor. In attribute-based sorts rank them after living targets, then by distance.
+      boolean highestArmorFirst = !flying && this.sortMode.is("All");
+      Comparator<Entity> armor = Comparator.comparingDouble(e -> e instanceof LivingEntity living
+         ? (highestArmorFirst ? -living.getArmorValue() : living.getArmorValue()) : Double.POSITIVE_INFINITY);
+      Comparator<Entity> health = Comparator.comparingDouble(e -> e instanceof LivingEntity living
+         ? (flying ? this.skycoreHealth(living) : this.getEntityHealth(living)) : Double.POSITIVE_INFINITY);
+      Comparator<Entity> order = switch (this.sortMode.get()) {
+         case "All" -> armor.thenComparing(health).thenComparing(distance);
+         case "Armor" -> armor.thenComparing(distance);
+         case "Health" -> health.thenComparing(distance);
+         default -> distance;
+      };
+      return order.thenComparingInt(Entity::getId);
    }
 
    private void updateRotation(boolean condition) {
@@ -366,9 +354,7 @@ public final class AttackAuraModule extends ClientModule {
                   this.updateRotation(false);
                }
             } else {
-               if (ElytraTargetModule.INSTANCE.isEnabled() && player.isFallFlying()) {
-                  this.target = this.findSkycoreTarget();
-               } else if (this.target == null || !this.isValidTarget(this.target)) {
+               if (this.target == null || !this.isValidTarget(this.target)) {
                   this.target = this.findTarget();
                }
 
@@ -396,7 +382,9 @@ public final class AttackAuraModule extends ClientModule {
 
                   this.hitImminent = ((value != 0 && this.isWithinAttackRange(this.target) ? 1 : 0) != 0);
                   if (this.hitImminent) {
-                     AutoMaceModule.prepareForHit(this.target);
+                     if (this.target instanceof LivingEntity living) {
+                        AutoMaceModule.prepareForHit(living);
+                     }
                      if (this.updateAttack()) {
                         this.lastAttackTime = System.currentTimeMillis();
                      }
@@ -528,72 +516,15 @@ public final class AttackAuraModule extends ClientModule {
       return player.getArmorValue();
    }
 
-   private boolean isValidTarget(LivingEntity entity) {
-      LocalPlayer instance = Minecraft.getInstance().player;
-      if (instance == null || entity == instance) {
+   private boolean isValidTarget(Entity entity) {
+      LocalPlayer player = Minecraft.getInstance().player;
+      if (player == null || !(entity instanceof LivingEntity || entity instanceof Projectile)) {
          return false;
       }
-
-      if (ElytraTargetModule.INSTANCE.isEnabled() && instance.isFallFlying()) {
-         if (!entity.isAlive() || entity.distanceTo(instance) > 106.0F) {
-            return false;
-         }
-
-         if (entity instanceof Player player) {
-            if (AntiBotModule.isBot(player)) {
-               return false;
-            } else if (FriendManager.INSTANCE.isFriend(player.getGameProfile().name())) {
-               return this.targets.isSelected("Friends");
-            } else {
-               return entity.getArmorValue() == 0 ? this.targets.isSelected("Naked") : this.targets.isSelected("Players");
-            }
-         } else {
-            return entity instanceof Mob && (this.targets.isSelected("Mobs") || this.targets.isSelected("Animals"));
-         }
-      } else if (entity.tickCount >= 3 && !(CriticalHelper.getStrictDistance(entity) >= this.getMaxAimRange())) {
-         if (entity instanceof Player player2) {
-            if (AntiBotModule.isBot(player2)) {
-               return false;
-            }
-
-            if (!this.targets.isSelected("Friends") && FriendManager.INSTANCE.isFriend(player2.getGameProfile().name())) {
-               return false;
-            }
-
-            if (player2.getGameProfile().name().equalsIgnoreCase(instance.getGameProfile().name())) {
-               return false;
-            }
-
-            if (player2.getArmorValue() == 0 && !this.targets.isSelected("Naked")) {
-               return false;
-            }
-
-            if (!this.targets.isSelected("Players") && !this.targets.isSelected("Naked") && !this.targets.isSelected("Friends")) {
-               return false;
-            }
-         }
-
-         if (!(entity instanceof Player)) {
-            int value = !(entity instanceof Animal) && !(entity instanceof AmbientCreature) ? 0 : 1;
-            if (value != 0) {
-               if (!this.targets.isSelected("Animals")) {
-                  return false;
-               }
-            } else {
-               if (!(entity instanceof Mob)) {
-                  return false;
-               }
-
-               if (!this.targets.isSelected("Mobs")) {
-                  return false;
-               }
-            }
-         }
-
-         return !entity.isInvulnerable() && entity.isAlive() && !(entity instanceof ArmorStand);
-      } else {
-         return false;
-      }
+      boolean inRange = ElytraTargetModule.INSTANCE.isEnabled() && player.isFallFlying()
+         ? entity.distanceTo(player) <= 106.0F
+         : (entity instanceof Projectile || entity.tickCount >= 3) && CriticalHelper.getStrictDistance(entity) < this.getMaxAimRange();
+      return inRange && this.targets.allows(player, entity);
    }
 
    public void onSlowFallingClientTick() {
@@ -644,57 +575,6 @@ public final class AttackAuraModule extends ClientModule {
       }
 
       return false;
-   }
-
-   private LivingEntity findSkycoreTarget() {
-      Minecraft instance = Minecraft.getInstance();
-      LocalPlayer player = instance.player;
-      if (player != null && instance.level != null) {
-         float distance = 106.0F;
-         ArrayList<LivingEntity> livingEntitys = new ArrayList<>();
-
-         for (Entity entity : instance.level.entitiesForRendering()) {
-            if (entity instanceof LivingEntity entity2 && entity2 != player && entity2.isAlive() && !(entity2.distanceTo(player) > distance)) {
-               if (entity2 instanceof Player player2) {
-                  if (AntiBotModule.isBot(player2)) {
-                     continue;
-                  }
-
-                  boolean gameProfile = FriendManager.INSTANCE.isFriend(player2.getGameProfile().name());
-                  if (gameProfile
-                     ? !this.targets.isSelected("Friends")
-                     : (entity2.getArmorValue() == 0 ? !this.targets.isSelected("Naked") : !this.targets.isSelected("Players"))) {
-                     continue;
-                  }
-               } else if (!(entity2 instanceof Mob) || !this.targets.isSelected("Mobs") && !this.targets.isSelected("Animals")) {
-                  continue;
-               }
-
-               livingEntitys.add(entity2);
-            }
-         }
-
-         Comparator<net.minecraft.world.entity.LivingEntity> comparator = Comparator.comparing(entity3 -> {
-            int value = 0;
-            value = entity3 != this.target ? 1 : 0;
-            return Boolean.valueOf((value != 0));
-         });
-         if (this.sortMode.is("All")) {
-            comparator = comparator.thenComparingDouble(LivingEntity::getArmorValue).thenComparingDouble(this::skycoreHealth).thenComparingDouble(entity4 -> {
-               return entity4.distanceTo(player);
-            });
-         } else if (this.sortMode.is("Distance")) {
-            comparator = comparator.thenComparingDouble(entity5 -> entity5.distanceTo(player));
-         } else if (this.sortMode.is("Armor")) {
-            comparator = comparator.thenComparingDouble(LivingEntity::getArmorValue);
-         } else {
-            comparator = comparator.thenComparingDouble(this::skycoreHealth);
-         }
-
-         return livingEntitys.stream().min(comparator.thenComparingInt(Entity::getId)).orElse(null);
-      } else {
-         return null;
-      }
    }
 
    private void onPreTick(PlayerTickEndEvent event) {
@@ -864,7 +744,7 @@ public final class AttackAuraModule extends ClientModule {
       }
    }
 
-   private boolean isWithinAttackRange(LivingEntity entity) {
+   private boolean isWithinAttackRange(Entity entity) {
       LocalPlayer instance = Minecraft.getInstance().player;
       if (instance != null && entity != null) {
          if (ElytraTargetModule.INSTANCE.isEnabled()) {
@@ -985,6 +865,10 @@ public final class AttackAuraModule extends ClientModule {
       } else {
          float value = this.tpsSync.get() ? 1.0F : 1.5F;
          int attackStrengthScale = this.millisSinceAttack() >= 473L && player.getAttackStrengthScale(value) > this.getAICooldown() ? 1 : 0;
+         // Deflecting a projectile cannot crit; the normal cooldown, reach and ray checks still apply.
+         if (this.target instanceof Projectile) {
+            return attackStrengthScale != 0;
+         }
          int value2 = !instance.options.keyJump.isDown() && player.onGround() ? 0 : 1;
          if (CriticalHelper.isJumpBlockedByCeiling()) {
             return (attackStrengthScale != 0);
