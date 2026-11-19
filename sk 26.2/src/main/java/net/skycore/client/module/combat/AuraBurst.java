@@ -15,7 +15,7 @@ final class AuraBurst {
    static final int MAX_ATTACKS_PER_TICK = 50;
 
    final NumberSetting attacksPerTick = new NumberSetting("Attacks per tick",
-      "Swings sent in one game tick while the target stays in range.", 5.0, 1.0, MAX_ATTACKS_PER_TICK, 1.0);
+      "Swings sent in one game tick while the target stays in range.", 5.0, 1.0, MAX_ATTACKS_PER_TICK, 1.0, "");
    final BooleanSetting antiKick = new BooleanSetting("Anti kick",
       "Space bursts out by a delay instead of attacking on every game tick.", true);
    final NumberSetting antiKickDelay = new NumberSetting("Anti kick delay",
