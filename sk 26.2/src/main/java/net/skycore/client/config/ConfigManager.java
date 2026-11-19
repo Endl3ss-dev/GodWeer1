@@ -235,6 +235,7 @@ public final class ConfigManager {
                if (asJsonObject2 != null) {
                   if ("Attack Aura".equals(clientModule.getName())) {
                      migrateAuraTargets(asJsonObject2);
+                     migrateAuraClickPause(asJsonObject2);
                   }
                   for (Setting setting : clientModule.getSettings()) {
                      JsonElement name2 = asJsonObject2.get(setting.getName());
@@ -683,6 +684,31 @@ public final class ConfigManager {
       standard.add("Ignore creative");
       settings.addProperty("Target profile", "Standard server");
       settings.add("Standard targets", standard);
+   }
+
+   /** Preserve the old fixed pause when loading profiles written before the pause became a range. */
+   private static void migrateAuraClickPause(JsonObject settings) {
+      JsonElement legacy = auraSetting(settings, "Pause duration");
+      if (legacy == null) {
+         return;
+      }
+      if (auraSetting(settings, "Min pause duration") == null && auraSetting(settings, "Max pause duration") == null) {
+         settings.add("Min pause duration", legacy.deepCopy());
+         settings.add("Max pause duration", legacy.deepCopy());
+      }
+   }
+
+   private static JsonElement auraSetting(JsonObject settings, String englishName) {
+      JsonElement direct = settings.get(englishName);
+      if (direct != null) {
+         return direct;
+      }
+      for (Entry<String, JsonElement> entry : settings.entrySet()) {
+         if (englishName.equalsIgnoreCase(Translations.english(entry.getKey()))) {
+            return entry.getValue();
+         }
+      }
+      return null;
    }
 
    private static JsonElement mergedNoRenderConfig(JsonObject json, JsonElement jsonElement) {

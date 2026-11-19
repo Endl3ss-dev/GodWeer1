@@ -25,13 +25,14 @@ public final class AuraClickEffectsTest {
       check(!c.pattern.isVisible() && !c.fixed.isVisible() && !c.min.isVisible() && !c.max.isVisible() && !c.tickHits.isVisible(), "legacy UI");
       c.mode.set("1.8");
       check(c.pattern.isVisible() && c.fixed.isVisible() && !c.min.isVisible() && !c.max.isVisible() && c.tickHits.isVisible(), "static UI");
-      check(!c.pauseMs.isVisible(), "pause hidden");
+      check(!c.minPauseMs.isVisible() && !c.maxPauseMs.isVisible(), "pause bounds hidden");
       c.tickHits.set(true);
-      check(c.pauseMs.isVisible(), "pause duration visible");
+      check(c.minPauseMs.isVisible() && c.maxPauseMs.isVisible(), "pause bounds visible");
       c.pattern.set("Custom CPS");
       check(!c.fixed.isVisible() && c.min.isVisible() && c.max.isVisible(), "custom UI");
       for (NumberSetting s : List.of(c.fixed, c.min, c.max)) limits(s, 1, 35, 1);
-      limits(c.pauseMs, 0.05, 0.45, 0.01);
+      limits(c.minPauseMs, 0, 0.45, 0.01);
+      limits(c.maxPauseMs, 0, 0.45, 0.01);
       limits(j.speed, 0, 20, 0.1);
       limits(j.strength, 0, 5, 0.1);
       check(!j.enabled.get() && !j.whileAiming.isVisible() && !j.onHit.isVisible() && !j.speed.isVisible() && !j.strength.isVisible(), "jitter off by default");
@@ -108,22 +109,56 @@ public final class AuraClickEffectsTest {
       deadline(c, now + Math.round(1_000_000_000.0 / 14));
    }
 
+   private static long sampledPauseNanos(AuraClicks clicks, long start, long maxPauseNanos) {
+      long low = 0;
+      long high = maxPauseNanos + 1;
+      while (low < high) {
+         long middle = low + (high - low) / 2;
+         if (clicks.isTemporarilyPaused(start + middle)) low = middle + 1;
+         else high = middle;
+      }
+      return low;
+   }
+
    private static void pause() {
-      AuraClicks c = new AuraClicks();
+      AuraClicks c = new AuraClicks(new SplittableRandom(19));
       c.mode.set("1.8");
       c.fixed.set(10.0);
       c.tickHits.set(true);
-      for (int micros : List.of(50, 100, 450)) {
-         c.pauseMs.set(micros / 1000.0);
-         c.reset();
-         long t = Long.MAX_VALUE - 10; // nanoTime deadlines also work across signed wraparound
-         c.recordClick(t);
-         deadline(c, t + 100_000_000L + micros * 1000L);
+      c.minPauseMs.set(0.15);
+      c.maxPauseMs.set(0.15);
+      long start = Long.MAX_VALUE - 1_000_000L; // nanoTime deadlines also work across signed wraparound
+      c.recordClick(start);
+      check(c.isTemporarilyPaused(start), "pause begins immediately after a successful click");
+      check(c.isTemporarilyPaused(start + 149_999L), "0.15 ms remains active for 150,000 ns");
+      check(!c.isTemporarilyPaused(start + 150_000L), "pause ends at the configured duration");
+      check(!c.ready(start + 100_000_000L - 1) && c.ready(start + 100_000_000L), "pause does not extend the CPS interval");
+
+      c.minPauseMs.set(0.05);
+      c.maxPauseMs.set(0.25);
+      Set<Long> sampled = new HashSet<>();
+      long now = 1_000_000_000L;
+      for (int i = 0; i < 100; i++) {
+         c.recordClick(now);
+         long pause = sampledPauseNanos(c, now, 250_000L);
+         check(pause >= 50_000L && pause <= 250_000L && pause % 10_000L == 0, "random pause stays within inclusive bounds and 0.01 ms steps");
+         sampled.add(pause);
+         now += 1_000_000L;
       }
+      check(sampled.size() > 1, "random pause changes between successful clicks");
+
+      c.minPauseMs.set(0.25);
+      c.maxPauseMs.set(0.05);
+      c.recordClick(now);
+      long reversed = sampledPauseNanos(c, now, 250_000L);
+      check(reversed >= 50_000L && reversed <= 250_000L, "reversed pause bounds are order-independent");
+
       c.tickHits.set(false);
-      c.reset();
       c.recordClick(0);
+      check(!c.isTemporarilyPaused(0), "disabled tick hits do not pause Attack Aura");
       deadline(c, 100_000_000L);
+      c.reset();
+      check(!c.isTemporarilyPaused(1), "reset clears the temporary pause");
    }
 
    private static void jitter() {
