@@ -9,7 +9,9 @@ import net.skycore.client.setting.Setting;
 
 /** Client-thread scheduler for 1.8 clicks and the temporary post-hit pause. */
 final class AuraClicks {
-   final ModeSetting mode = new ModeSetting("Click mode", "1.12", "1.12", "1.8");
+   static final String NO_DELAY = "1.8 NoDelay";
+
+   final ModeSetting mode = new ModeSetting("Click mode", "1.12", "1.12", "1.8", NO_DELAY);
    final ModeSetting pattern = new ModeSetting("CPS mode", "Static CPS", "Static CPS", "Custom CPS");
    final NumberSetting fixed = new NumberSetting("Clicks per second", 10, 1, 35, 1);
    final NumberSetting min = new NumberSetting("Min clicks per second", 8, 1, 35, 1);
@@ -41,6 +43,11 @@ final class AuraClicks {
 
    boolean usesCps() {
       return mode.is("1.8");
+   }
+
+   /** MotherHack-style NoDelay clock: bursts of attacks per tick instead of a CPS schedule. */
+   boolean usesBurst() {
+      return mode.is(NO_DELAY);
    }
 
    boolean ready(long now) {

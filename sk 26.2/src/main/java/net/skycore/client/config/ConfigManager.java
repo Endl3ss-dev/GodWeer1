@@ -223,6 +223,10 @@ public final class ConfigManager {
       if (json != null) {
          for (ClientModule clientModule : this.modules.getModules()) {
             JsonElement name = json.get(clientModule.getName());
+            if (name == null && isAuraModule(clientModule)) {
+               // Profiles written before the module was renamed still store it as "Attack Aura".
+               name = json.get("Attack Aura");
+            }
             if ("No Render".equals(clientModule.getName())) {
                name = mergedNoRenderConfig(json, name);
             }
@@ -233,7 +237,7 @@ public final class ConfigManager {
                this.loadModuleMeta(clientModule, asJsonObject);
                JsonObject asJsonObject2 = asJsonObject.has("settings") && asJsonObject.get("settings").isJsonObject() ? asJsonObject.getAsJsonObject("settings") : null;
                if (asJsonObject2 != null) {
-                  if ("Attack Aura".equals(clientModule.getName())) {
+                  if (isAuraModule(clientModule)) {
                      migrateAuraTargets(asJsonObject2);
                      migrateAuraClickPause(asJsonObject2);
                   }
@@ -658,6 +662,11 @@ public final class ConfigManager {
             jsonValues.add(element);
          }
       }
+   }
+
+   /** The killaura ships as "Aura"; "Attack Aura" is the section name older profiles use. */
+   private static boolean isAuraModule(ClientModule module) {
+      return "Aura".equals(module.getName()) || "Attack Aura".equals(module.getName());
    }
 
    /** Import pre-profile Attack Aura configs without interpreting old inclusion flags as exclusions. */

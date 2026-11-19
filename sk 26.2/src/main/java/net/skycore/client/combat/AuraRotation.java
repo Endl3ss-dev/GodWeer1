@@ -318,7 +318,7 @@ public final class AuraRotation {
                || "HolyWorldLegit".equals(text)
                || "Funtime".equals(text)
                || !condition4
-               || (attackAuraModule.usesCpsClicks() ? condition : !(player.getAttackStrengthScale(1.0F) < 0.95F))
+               || (attackAuraModule.usesClickClock() ? condition : !(player.getAttackStrengthScale(1.0F) < 0.95F))
                || condition2) {
                switch (text) {
                   case "HvH":

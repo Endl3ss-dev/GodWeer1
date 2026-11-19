@@ -20,9 +20,13 @@ public final class AuraClickEffectsTest {
 
    private static void settings() {
       AuraClicks c = new AuraClicks();
+      AuraBurst b = new AuraBurst();
       AuraCameraJitter j = new AuraCameraJitter();
-      check(c.mode.getModes().equals(List.of("1.12", "1.8")) && !c.usesCps(), "legacy default");
+      check(c.mode.getModes().equals(List.of("1.12", "1.8", AuraClicks.NO_DELAY)) && !c.usesCps() && !c.usesBurst(), "legacy default");
       check(!c.pattern.isVisible() && !c.fixed.isVisible() && !c.min.isVisible() && !c.max.isVisible() && !c.tickHits.isVisible(), "legacy UI");
+      c.mode.set(AuraClicks.NO_DELAY);
+      check(c.usesBurst() && !c.usesCps() && !c.pattern.isVisible() && !c.tickHits.isVisible(), "NoDelay UI");
+      c.mode.set("1.12");
       c.mode.set("1.8");
       check(c.pattern.isVisible() && c.fixed.isVisible() && !c.min.isVisible() && !c.max.isVisible() && c.tickHits.isVisible(), "static UI");
       check(!c.minPauseMs.isVisible() && !c.maxPauseMs.isVisible(), "pause bounds hidden");
@@ -38,7 +42,7 @@ public final class AuraClickEffectsTest {
       check(!j.enabled.get() && !j.whileAiming.isVisible() && !j.onHit.isVisible() && !j.speed.isVisible() && !j.strength.isVisible(), "jitter off by default");
       j.enabled.set(true);
       check(j.whileAiming.isVisible() && j.onHit.isVisible() && j.speed.isVisible() && j.strength.isVisible(), "jitter UI");
-      for (Setting<?>[] group : List.of(c.settings, j.settings)) {
+      for (Setting<?>[] group : List.of(c.settings, b.settings, j.settings)) {
          for (Setting<?> s : group) {
             String ru = Translations.russian(s.getName());
             check(!ru.equals(s.getName()) && Translations.english(ru).equals(s.getName()), "translation: " + s.getName());
@@ -161,6 +165,36 @@ public final class AuraClickEffectsTest {
       check(!c.isTemporarilyPaused(1), "reset clears the temporary pause");
    }
 
+   /** 1.8 NoDelay burst clock: one burst per game tick, Anti Kick spacing, inclusive ranges. */
+   private static void burst() {
+      AuraBurst b = new AuraBurst();
+      limits(b.attacksPerTick, 1, AuraBurst.MAX_ATTACKS_PER_TICK, 1);
+      limits(b.antiKickDelay, 10, 200, 10);
+      check(b.antiKick.get() && b.antiKickDelay.isVisible(), "anti kick defaults");
+      b.antiKick.set(false);
+      check(!b.antiKickDelay.isVisible(), "delay hidden without anti kick");
+      b.attacksPerTick.set(7.0);
+      check(b.attacks() == 7, "attacks per tick");
+
+      long now = 0;
+      b.reset();
+      check(b.ready(now, 10), "first burst ready");
+      b.recordBurst(now, 10);
+      check(!b.ready(now, 10) && !b.ready(now + 1_000_000, 10), "one burst per game tick");
+      check(b.ready(now, 11), "no delay without anti kick");
+
+      b.antiKick.set(true);
+      b.antiKickDelay.set(50.0);
+      b.reset();
+      b.recordBurst(now, 20);
+      check(!b.ready(now, 21) && !b.ready(now + 49_999_999, 21), "anti-kick window is open");
+      check(b.ready(now + 50_000_000, 21), "anti-kick window closes after 50 ms");
+      b.recordBurst(now + 50_000_000, 21);
+      check(!b.ready(now + 50_000_000, 21) && !b.ready(now + 50_000_000, 22), "same-tick callback cannot re-burst");
+      b.reset();
+      check(b.ready(now, 22), "reset clears the anti-kick window");
+   }
+
    private static void jitter() {
       AuraCameraJitter j = new AuraCameraJitter();
       var none = AuraCameraJitter.Offset.NONE;
@@ -202,7 +236,8 @@ public final class AuraClickEffectsTest {
       staticClock();
       customClock();
       pause();
+      burst();
       jitter();
-      System.out.println("Aura click effects: settings, static CPS, custom CPS, pauses and jitter passed.");
+      System.out.println("Aura click effects: settings, static CPS, custom CPS, pauses, 1.8 NoDelay bursts and jitter passed.");
    }
 }

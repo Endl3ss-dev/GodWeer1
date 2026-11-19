@@ -98,6 +98,8 @@ public final class AttackAuraModule extends ClientModule {
    private final BooleanSetting tpsSync;
    private final AuraTargets targets = new AuraTargets();
    private final AuraClicks clicks = new AuraClicks();
+   private final AuraBurst burst = new AuraBurst();
+   private final AuraSprint sprintReset = new AuraSprint();
    private final AuraCameraJitter jitter = new AuraCameraJitter();
    private final BooleanSetting throughWalls;
    private int skycoreTick;
@@ -127,7 +129,7 @@ public final class AttackAuraModule extends ClientModule {
    }
 
    public boolean onlyCriticalsEnabled() {
-      return !this.usesCpsClicks() && this.onlyCriticals.get();
+      return !this.usesClickClock() && this.onlyCriticals.get();
    }
 
    public long attackCounter() {
@@ -164,9 +166,14 @@ public final class AttackAuraModule extends ClientModule {
    }
 
    public AttackAuraModule() {
-      super("Attack Aura", "Attacks nearby targets with silent aim", ModuleCategory.COMBAT);
+      super("Aura", "Attacks nearby targets with silent aim, 1.8 bursts and sprint resets", ModuleCategory.COMBAT);
       this.rotationBehavior = this.add(new ModeSetting("Rotation behavior", "Smooth", "Smooth", "Snaps"));
       this.addSettings(this.clicks.settings);
+      this.addSettings(this.burst.settings);
+      this.addSettings(this.sprintReset.settings);
+      for (Setting<?> option : this.burst.settings) {
+         option.visibleWhen(this::usesBurstClicks);
+      }
       this.addSettings(this.targets.profile, this.targets.bedWars, this.targets.standard);
       this.movementCorrection = this.add(new ModeSetting("Movement correction", "Free", "Free", "Focused", "Target", "V2"));
       this.v2Correction = this.add(new ModeSetting("V2 correction type", "Silent", "Silent", "Direct"));
@@ -213,9 +220,9 @@ public final class AttackAuraModule extends ClientModule {
 
          return false;
       });
-      this.tpsSync.visibleWhen(() -> !this.usesCpsClicks());
-      this.onlyCriticals.visibleWhen(() -> !this.usesCpsClicks());
-      this.smartCriticals.visibleWhen(() -> !this.usesCpsClicks() && this.onlyCriticals.get());
+      this.tpsSync.visibleWhen(() -> !this.usesClickClock());
+      this.onlyCriticals.visibleWhen(() -> !this.usesClickClock());
+      this.smartCriticals.visibleWhen(() -> !this.usesClickClock() && this.onlyCriticals.get());
       this.clientLook.visibleWhen(() -> !this.rotationMode.is("HolyWorldLegit") && this.rockstarMode() != RockstarAim.Mode.HOLY_WORLD
          && this.rockstarMode() != RockstarAim.Mode.NONE);
       SkycoreClient.events().subscribe(WorldChangeEvent.class, event -> this.resetState());
@@ -472,7 +479,7 @@ public final class AttackAuraModule extends ClientModule {
                   this.target = this.findTarget();
                }
 
-               if (!this.usesCpsClicks()) this.refreshCanCrit(player);
+               if (!this.usesClickClock()) this.refreshCanCrit(player);
                if (this.target == null) {
                   this.hitImminent = false;
                   this.releaseRotationControl();
@@ -486,7 +493,7 @@ public final class AttackAuraModule extends ClientModule {
                   this.releaseRotationControl();
                } else {
                   int value = this.canAttack() && !this.shouldBlockAttack(player) ? 1 : 0;
-                  if (this.rockstarMode() != null || this.usesCpsClicks() || this.rotationMode.is("ReallyWorld")) {
+                  if (this.rockstarMode() != null || this.usesClickClock() || this.rotationMode.is("ReallyWorld")) {
                      this.updateRotation(value != 0, AimPhase.PHYSICS, System.nanoTime());
                   } else {
                      this.onGameUpdate();
@@ -749,22 +756,31 @@ public final class AttackAuraModule extends ClientModule {
       }
 
       boolean cps = this.usesCpsClicks();
-      boolean axeHit = this.breakShield.get() && this.target instanceof Player player2
+      boolean burst = this.usesBurstClicks();
+      // An axe swap per swing makes no sense inside a burst, so the shield breaker stays single-hit only.
+      boolean axeHit = !burst && this.breakShield.get() && this.target instanceof Player player2
          && player2.isBlocking() && this.breakShieldPlayer(player, player2);
       // A shield-breaking axe swing spends the CPS click; legacy mode keeps its follow-up hit.
       if (!axeHit || !cps) {
-         instance.gameMode.attack(player, this.target);
-         player.swing(InteractionHand.MAIN_HAND);
+         int swings = burst ? this.burst.attacks() : 1;
+         for (int i = 0; i < swings; i++) {
+            // Vanilla clears the sprint flag on a knockback hit, so the reset has to precede every swing.
+            this.sprintReset.beforeAttack(player);
+            instance.gameMode.attack(player, this.target);
+            player.swing(InteractionHand.MAIN_HAND);
+            this.attackCounter++;
+         }
       }
       long now = System.nanoTime();
-      if (cps) {
+      if (burst) {
+         this.burst.recordBurst(now, this.skycoreTick);
+      } else if (cps) {
          this.clicks.recordClick(now);
       } else {
          this.clicks.reset();
       }
       this.jitter.recordHit(now);
       this.lastAttackTime = System.currentTimeMillis();
-      this.attackCounter++;
       this.skycoreNextAttackTick = this.skycoreTick + 1;
       this.hitImminent = false;
       this.rotations.onAttack();
@@ -883,7 +899,7 @@ public final class AttackAuraModule extends ClientModule {
       if (this.isEnabled() && Minecraft.getInstance().player != null && this.target != null) {
          long now = System.nanoTime();
          if (this.pauseForClickGap(now)) return;
-         this.updateRotation(this.usesCpsClicks() ? this.canAttack() : this.hitImminent, AimPhase.ATTACK_SLOT, now);
+         this.updateRotation(this.usesClickClock() ? this.canAttack() : this.hitImminent, AimPhase.ATTACK_SLOT, now);
          this.updateAttack();
       } else {
          this.releaseRotationControl();
@@ -972,6 +988,15 @@ public final class AttackAuraModule extends ClientModule {
       return this.clicks.usesCps();
    }
 
+   public boolean usesBurstClicks() {
+      return this.clicks.usesBurst();
+   }
+
+   /** CPS clicks and 1.8 NoDelay bursts both ignore the vanilla attack cooldown and crit gating. */
+   public boolean usesClickClock() {
+      return this.usesCpsClicks() || this.usesBurstClicks();
+   }
+
    /** Sampled only by the local render camera, never by ray checks or the rotation controller. */
    public AuraCameraJitter.Offset cameraJitter() {
       Minecraft mc = Minecraft.getInstance();
@@ -1021,6 +1046,10 @@ public final class AttackAuraModule extends ClientModule {
       } else if (this.usesCpsClicks()) {
          // 1.8 changes the attack clock, not the acquisition range or eligibility of a target.
          return this.clicks.ready(System.nanoTime()) && this.isWithinAttackRange(this.target) && !instance.isPaused()
+            && !this.isManualBlockPlacement(player, instance) && !CrystalAuraModule.INSTANCE.isRotating() && !TargetPearlModule.isRotationActive();
+      } else if (this.usesBurstClicks()) {
+         // 1.8 NoDelay: one burst per tick, spaced by Anti Kick; the cooldown and crit rules are skipped.
+         return this.burst.ready(System.nanoTime(), this.skycoreTick) && this.isWithinAttackRange(this.target) && !instance.isPaused()
             && !this.isManualBlockPlacement(player, instance) && !CrystalAuraModule.INSTANCE.isRotating() && !TargetPearlModule.isRotationActive();
       } else if (ElytraTargetModule.INSTANCE.isEnabled() && player.isFallFlying() && this.target != null) {
          return this.isWithinAttackRange(this.target) && player.getAttackStrengthScale(1.5F) > 0.92F && this.skycoreTick >= this.skycoreNextAttackTick;
@@ -1107,6 +1136,7 @@ public final class AttackAuraModule extends ClientModule {
 
    private void resetClickEffects() {
       this.clicks.reset();
+      this.burst.reset();
       this.jitter.reset();
    }
 
@@ -1117,6 +1147,8 @@ public final class AttackAuraModule extends ClientModule {
       this.movementCorrection.reset();
       this.v2Correction.reset();
       for (Setting<?> option : this.clicks.settings) option.reset();
+      for (Setting<?> option : this.burst.settings) option.reset();
+      for (Setting<?> option : this.sprintReset.settings) option.reset();
       for (Setting<?> option : this.jitter.settings) option.reset();
    }
 
