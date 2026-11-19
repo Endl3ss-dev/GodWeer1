@@ -7,7 +7,7 @@ import net.skycore.client.setting.ModeSetting;
 import net.skycore.client.setting.NumberSetting;
 import net.skycore.client.setting.Setting;
 
-/** Client-thread clock for 1.8 clicks. Polling never consumes a click or re-rolls its CPS. */
+/** Client-thread scheduler for 1.8 clicks and the temporary post-hit pause. */
 final class AuraClicks {
    final ModeSetting mode = new ModeSetting("Click mode", "1.12", "1.12", "1.8");
    final ModeSetting pattern = new ModeSetting("CPS mode", "Static CPS", "Static CPS", "Custom CPS");
@@ -15,11 +15,14 @@ final class AuraClicks {
    final NumberSetting min = new NumberSetting("Min clicks per second", 8, 1, 35, 1);
    final NumberSetting max = new NumberSetting("Max clicks per second", 12, 1, 35, 1);
    final BooleanSetting tickHits = new BooleanSetting("Tick hits", false);
-   final NumberSetting pauseMs = new NumberSetting("Pause duration", "Pause the click clock after each attack (milliseconds).", 0.1, 0.05, 0.45, 0.01, " ms");
-   final Setting<?>[] settings = {mode, pattern, fixed, min, max, tickHits, pauseMs};
+   final NumberSetting minPauseMs = new NumberSetting("Min pause duration", "Minimum temporary Attack Aura pause after a hit (milliseconds).", 0.1, 0.0, 0.45, 0.01, " ms");
+   final NumberSetting maxPauseMs = new NumberSetting("Max pause duration", "Maximum temporary Attack Aura pause after a hit (milliseconds).", 0.1, 0.0, 0.45, 0.01, " ms");
+   final Setting<?>[] settings = {mode, pattern, fixed, min, max, tickHits, minPauseMs, maxPauseMs};
    private final RandomGenerator random;
    private boolean scheduled;
    private long nextClick;
+   private boolean pauseScheduled;
+   private long pauseUntil;
 
    AuraClicks() {
       this(ThreadLocalRandom.current());
@@ -32,7 +35,8 @@ final class AuraClicks {
       min.visibleWhen(() -> usesCps() && pattern.is("Custom CPS"));
       max.visibleWhen(min::isVisible);
       tickHits.visibleWhen(this::usesCps);
-      pauseMs.visibleWhen(() -> usesCps() && tickHits.get());
+      minPauseMs.visibleWhen(() -> usesCps() && tickHits.get());
+      maxPauseMs.visibleWhen(minPauseMs::isVisible);
    }
 
    boolean usesCps() {
@@ -54,17 +58,41 @@ final class AuraClicks {
          cps = variable ? random.nextInt(Math.min(a, b), Math.max(a, b) + 1) : a;
       }
       long period = Math.round(1_000_000_000.0 / cps);
-      long pause = tickHits.get() ? Math.round(pauseMs.get() * 1_000_000.0) : 0;
       // A fixed rate can absorb modest frame lateness without drifting. A variable delay starts
       // at the real click so the next sampled interval is never shortened below the custom bounds.
       // Leave at least a third of a fixed beat between clicks; drop entire missed beats, never queue a burst.
       long late = now - nextClick;
       long credit = !variable && scheduled && late >= 0 && late < period ? Math.min(late, period * 2 / 3) : 0;
-      nextClick = now + period - credit + pause;
+      nextClick = now + period - credit;
       scheduled = true;
+
+      long pause = tickHits.get() ? randomPauseNanos() : 0;
+      this.pauseUntil = now + pause;
+      this.pauseScheduled = pause > 0;
+   }
+
+   boolean isTemporarilyPaused(long now) {
+      if (!pauseScheduled) {
+         return false;
+      }
+      if (!usesCps() || !tickHits.get()) {
+         pauseScheduled = false;
+         return false;
+      }
+      return now - pauseUntil < 0;
+   }
+
+   private long randomPauseNanos() {
+      int first = (int)Math.round(minPauseMs.get() * 100.0);
+      int second = (int)Math.round(maxPauseMs.get() * 100.0);
+      int lower = Math.min(first, second);
+      int upper = Math.max(first, second);
+      int hundredthsOfMs = lower == upper ? lower : random.nextInt(lower, upper + 1);
+      return hundredthsOfMs * 10_000L;
    }
 
    void reset() {
       scheduled = false;
+      pauseScheduled = false;
    }
 }

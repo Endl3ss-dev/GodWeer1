@@ -302,7 +302,15 @@ public final class AttackAuraModule extends ClientModule {
       return this.inputUnavailable(player, mc) || !RotationManager.canClaim(elytra ? 10 : ROCKSTAR_PRIORITY);
    }
 
+   private boolean pauseForClickGap(long now) {
+      if (!this.clicks.isTemporarilyPaused(now)) return false;
+      this.hitImminent = false;
+      this.releaseRotationControl();
+      return true;
+   }
+
    private void updateRotation(boolean ready, AimPhase phase, long now) {
+      if (this.pauseForClickGap(now)) return;
       Minecraft mc = Minecraft.getInstance();
       LocalPlayer player = mc.player;
       if (player == null || mc.level == null || this.target == null) {
@@ -446,6 +454,7 @@ public final class AttackAuraModule extends ClientModule {
    private void updateBeforePhysics(PlayerTickEndEvent playerTickEndEvent) {
       this.skycoreTick++;
       if (this.isEnabled()) {
+         if (this.pauseForClickGap(System.nanoTime())) return;
          if (!CrystalAuraModule.INSTANCE.isRotating()) {
             Minecraft instance = Minecraft.getInstance();
             LocalPlayer player = playerTickEndEvent.player();
@@ -718,7 +727,8 @@ public final class AttackAuraModule extends ClientModule {
    private boolean updateAttack() {
       Minecraft instance = Minecraft.getInstance();
       LocalPlayer player = instance.player;
-      if (!this.isEnabled()
+      if (this.pauseForClickGap(System.nanoTime())
+         || !this.isEnabled()
          || player == null
          || instance.level == null
          || instance.gameMode == null
@@ -758,6 +768,7 @@ public final class AttackAuraModule extends ClientModule {
       this.skycoreNextAttackTick = this.skycoreTick + 1;
       this.hitImminent = false;
       this.rotations.onAttack();
+      if (cps) this.pauseForClickGap(now);
       return true;
    }
 
@@ -819,6 +830,7 @@ public final class AttackAuraModule extends ClientModule {
          Minecraft instance = Minecraft.getInstance();
          LocalPlayer player = instance.player;
          if (player != null && instance.level != null) {
+            if (this.pauseForClickGap(System.nanoTime())) return;
             if (this.movementCorrection.is("V2")) {
                if (this.ownsActiveAim(player) && !this.inputUnavailable(player, instance) && this.isValidTarget(this.target)) {
                   // RotationController already applies the task yaw to LocalPlayer for travel and jump physics.
@@ -869,7 +881,9 @@ public final class AttackAuraModule extends ClientModule {
 
    public void onGameUpdate() {
       if (this.isEnabled() && Minecraft.getInstance().player != null && this.target != null) {
-         this.updateRotation(this.usesCpsClicks() ? this.canAttack() : this.hitImminent, AimPhase.ATTACK_SLOT, System.nanoTime());
+         long now = System.nanoTime();
+         if (this.pauseForClickGap(now)) return;
+         this.updateRotation(this.usesCpsClicks() ? this.canAttack() : this.hitImminent, AimPhase.ATTACK_SLOT, now);
          this.updateAttack();
       } else {
          this.releaseRotationControl();
@@ -1002,7 +1016,7 @@ public final class AttackAuraModule extends ClientModule {
    public boolean canAttack() {
       Minecraft instance = Minecraft.getInstance();
       LocalPlayer player = instance.player;
-      if (player == null) {
+      if (player == null || this.pauseForClickGap(System.nanoTime())) {
          return false;
       } else if (this.usesCpsClicks()) {
          // 1.8 changes the attack clock, not the acquisition range or eligibility of a target.
