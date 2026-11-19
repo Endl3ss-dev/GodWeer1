@@ -1,0 +1,90 @@
+{
+  "gui.on": {
+    "sounds": [
+      {
+        "name": "motherhack:on",
+        "stream": false
+      }
+    ]
+  },
+  "gui.off": {
+    "sounds": [
+      {
+        "name": "motherhack:off",
+        "stream": false
+      }
+    ]
+  },
+  "gui.reverse": {
+    "sounds": [
+      {
+        "name": "motherhack:reverse",
+        "stream": false
+      }
+    ]
+  },
+  "gui.open": {
+    "sounds": [
+      {
+        "name": "motherhack:open",
+        "stream": false
+      }
+    ]
+  },
+  "gui.close": {
+    "sounds": [
+      {
+        "name": "motherhack:close",
+        "stream": false
+      }
+    ]
+  },
+  "kill1": {
+    "sounds": [
+      {
+        "name": "motherhack:kill1",
+        "stream": false
+      }
+    ]
+  },
+  "kill2": {
+    "sounds": [
+      {
+        "name": "motherhack:kill2",
+        "stream": false
+      }
+    ]
+  },
+  "kill3": {
+    "sounds": [
+      {
+        "name": "motherhack:kill3",
+        "stream": false
+      }
+    ]
+  },
+  "kill4": {
+    "sounds": [
+      {
+        "name": "motherhack:kill4",
+        "stream": false
+      }
+    ]
+  },
+  "kill5": {
+    "sounds": [
+      {
+        "name": "motherhack:kill5",
+        "stream": false
+      }
+    ]
+  },
+  "kill6": {
+    "sounds": [
+      {
+        "name": "motherhack:kill6",
+        "stream": false
+      }
+    ]
+  }
+}

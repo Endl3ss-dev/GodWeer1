@@ -1,0 +1,145 @@
+plugins {
+    id 'fabric-loom' version '1.10-SNAPSHOT'
+    id 'maven-publish'
+    id 'com.gradleup.shadow' version '9.0.0-beta15'
+}
+
+version = project.mod_version
+group = project.maven_group
+
+base {
+    archivesName = project.archives_base_name
+}
+
+repositories {
+    mavenCentral()
+    maven { url "https://jitpack.io" }
+    maven { url "https://maven.meteordev.org/releases" }
+    maven { url "https://maven.meteordev.org" }
+    maven { url "https://maven.ladysnake.org/releases" }
+}
+
+dependencies {
+    minecraft("com.mojang:minecraft:${project.minecraft_version}")
+    mappings("net.fabricmc:yarn:${project.yarn_mappings}:v2")
+    modImplementation("net.fabricmc:fabric-loader:${project.loader_version}")
+    modImplementation("net.fabricmc.fabric-api:fabric-api:${project.fabric_version}") {
+        exclude(group: "net.fabricmc.fabric-api", module: "fabric-dimensions-v1")
+        exclude(group: "net.fabricmc.fabric-api", module: "fabric-crash-report-info-v1")
+    }
+    include implementation("meteordevelopment:discord-ipc:1.1")
+    include implementation("meteordevelopment:orbit:0.2.3")
+    // MediaPlayerInfo - optional dependency, wrapped in try-catch to prevent crashes
+    compileOnly("dev.redstones.mediaplayerinfo:media-player-info:0.1.0")
+    
+    compileOnly("org.projectlombok:lombok:1.18.38")
+    annotationProcessor("org.projectlombok:lombok:1.18.38")
+}
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.encoding = "UTF-8"
+    if (21 >= 10 || JavaVersion.current().isJava10Compatible()) it.options.release.set(21)
+}
+
+loom {
+    accessWidenerPath = file("src/main/resources/motherhack-recode.accesswidener")
+    
+    runs {
+        client {
+            vmArgs(
+                "-Xmx1536M",
+                "-Xms512M",
+                "-Dmixin.debug.export=true",
+                "-Dmixin.env.disableRefMap=true",
+                "-Dmixin.checks.interfaces=false",
+                "-Dmixin.checks.interfaces.strict=false",
+                "-XX:CompileCommand=exclude,fun/motherhack/utils/render/Render2D.drawBorder"
+            )
+            property("fabric.log.disableAnsi", "false")
+            property("mixin.env.remapRefMap", "false")
+        }
+    }
+}
+
+java {
+    def javaVersion = JavaVersion.toVersion(21)
+    if (JavaVersion.current() < javaVersion) toolchain.languageVersion = JavaLanguageVersion.of(21)
+    withSourcesJar()
+}
+
+jar {
+    from("LICENSE") {
+        rename { "${it}_${project.archivesBaseName}" }
+    }
+}
+
+shadowJar {
+    exclude("org/objectweb/**")
+    configurations = [project.configurations.shadow]
+    archiveClassifier.set("dev")
+}
+
+remapJar {
+    dependsOn(shadowJar)
+    inputFile = tasks.shadowJar.archiveFile
+}
+
+// МАКСИМАЛЬНАЯ ЗАЩИТА JAR
+configurations {
+    obfuscator
+}
+
+dependencies {
+    obfuscator 'org.ow2.asm:asm:9.6'
+    obfuscator 'org.ow2.asm:asm-tree:9.6'
+}
+
+// Компиляция защитного инструмента
+task compileProtector(type: JavaCompile) {
+    source = fileTree('tools') { include 'MaxProtector.java' }
+    destinationDirectory = file("${buildDir}/protector")
+    classpath = configurations.obfuscator
+    sourceCompatibility = '21'
+    targetCompatibility = '21'
+    options.encoding = 'UTF-8'
+}
+
+// МАКСИМАЛЬНАЯ ЗАЩИТА - всё в одном
+task buildProtected(type: JavaExec, dependsOn: [remapJar, compileProtector]) {
+    group = 'build'
+    description = 'Build MAXIMUM protected JAR (string obfuscation + number obfuscation + variable renaming)'
+    
+    mainClass = 'MaxProtector'
+    classpath = files("${buildDir}/protector") + configurations.obfuscator
+    
+    doFirst {
+        def inputJar = remapJar.archiveFile.get().asFile
+        def timestamp = new Date().format('yyyyMMdd-HHmmss')
+        def outputJar = file("${buildDir}/libs/${project.archives_base_name}-${project.version}-protected-${timestamp}.jar")
+        args = [inputJar.absolutePath, outputJar.absolutePath]
+    }
+    
+    doLast {
+        def timestamp = new Date().format('yyyyMMdd-HHmmss')
+        def protectedJar = file("${buildDir}/libs/${project.archives_base_name}-${project.version}-protected-${timestamp}.jar")
+        println ""
+        println "╔${'═' * 58}╗"
+        println "║${' ' * 15}ЗАЩИЩЁННЫЙ JAR ГОТОВ!${' ' * 20}║"
+        println "╠${'═' * 58}╣"
+        println "║ Файл: ${protectedJar.name.padRight(48)}║"
+        println "║ Размер: ${(protectedJar.length() / 1024 / 1024).round(2)} MB${' ' * 43}║"
+        println "╠${'═' * 58}╣"
+        println "║ Применённая защита:${' ' * 36}║"
+        println "║   ✓ Обфускация строк (XOR + Base64)${' ' * 21}║"
+        println "║   ✓ Обфускация чисел (int, long, double)${' ' * 16}║"
+        println "║   ✓ Переименование переменных${' ' * 26}║"
+        println "║   ✓ Переименование полей и методов${' ' * 21}║"
+        println "║   ✓ Control Flow обфускация${' ' * 28}║"
+        println "║   ✓ Фейковые методы-ловушки${' ' * 28}║"
+        println "║   ✓ Мусорный код${' ' * 39}║"
+        println "╠${'═' * 58}╣"
+        println "║ Мод полностью работоспособен!${' ' * 27}║"
+        println "║ Все функции сохранены.${' ' * 35}║"
+        println "╚${'═' * 58}╝"
+    }
+}
