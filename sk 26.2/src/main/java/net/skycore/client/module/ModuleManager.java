@@ -57,6 +57,7 @@ import net.skycore.client.module.movement.NoFallModule;
 import net.skycore.client.module.movement.NoPushModule;
 import net.skycore.client.module.movement.NoWebModule;
 import net.skycore.client.module.movement.SpeedHVHModule;
+import net.skycore.client.module.movement.ScaffoldModule;
 import net.skycore.client.module.movement.SprintModule;
 import net.skycore.client.module.movement.SuperFireworkModule;
 import net.skycore.client.module.movement.TimerModule;
@@ -264,6 +265,7 @@ public final class ModuleManager {
       this.trialRegister(TimerModule.INSTANCE);
       this.trialRegister(WebIgnoreModule.INSTANCE);
       this.trialRegister(SprintModule.INSTANCE);
+      this.trialRegister(new ScaffoldModule());
       this.trialRegister(SuperFireworkModule.INSTANCE);
       this.trialRegister(SpeedHVHModule.INSTANCE);
       this.trialRegister(NoPushModule.INSTANCE);
