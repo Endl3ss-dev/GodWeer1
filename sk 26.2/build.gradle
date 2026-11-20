@@ -45,7 +45,12 @@ tasks.register('testRockstarAura', JavaExec) {
     classpath = sourceSets.auraTest.runtimeClasspath
     mainClass = 'net.skycore.client.module.combat.RockstarAuraTest'
 }
-tasks.named('check') { dependsOn 'testAuraClicks', 'testRockstarAura' }
+tasks.register('testScaffold', JavaExec) {
+    dependsOn 'auraTestClasses'
+    classpath = sourceSets.auraTest.runtimeClasspath
+    mainClass = 'net.skycore.client.module.movement.ScaffoldModuleTest'
+}
+tasks.named('check') { dependsOn 'testAuraClicks', 'testRockstarAura', 'testScaffold' }
 
 loom {
     runs {
