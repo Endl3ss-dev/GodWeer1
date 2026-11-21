@@ -1,3 +1,8 @@
+> Старые edge mode / Jump Assist удалены из Scaffold по запросу пользователя.
+> Сейчас Scaffold выполняет только Telly; актуальная инструкция и настройки:
+> [telly-scaffold.md](telly-scaffold.md). Ниже оставлено историческое описание,
+> его настройки больше не доступны.
+
 # Scaffold — edge mode, multipoint aim, manual jump assist
 
 Модуль Movement. Работает через vanilla input/useItemOn, с видимым поворотом

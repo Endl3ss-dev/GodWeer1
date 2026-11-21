@@ -27,9 +27,11 @@ public final class ScaffoldModuleTest {
    }
 
    public static void main(String[] args) {
-      check(TellyScaffoldController.placementTick(0) == 4, "first dataset placement tick");
-      check(TellyScaffoldController.placementTick(1) == 7, "second dataset placement tick");
-      check(TellyScaffoldController.placementTick(2) == 10, "third dataset placement tick");
+      check(TellyScaffoldController.canPlace(1, 1, 100, 1), "first aligned airborne tick is usable");
+      check(!TellyScaffoldController.canPlace(0, 1, 100, 1), "start tick is respected");
+      check(!TellyScaffoldController.canPlace(10, 1, 0, 1), "no duplicate same-tick use");
+      check(TellyScaffoldController.canPlace(2, 1, 1, 1), "next aligned tick does not wait for dataset tick 7");
+      check(!TellyScaffoldController.canPlace(5, 1, 1, 3), "custom placement interval is respected");
       check(TellyScaffoldController.cardinal(0) == Direction.SOUTH, "telly south");
       check(TellyScaffoldController.cardinal(90) == Direction.WEST, "telly west");
       check(TellyScaffoldController.cardinal(-90) == Direction.EAST, "telly east");
@@ -119,7 +121,24 @@ public final class ScaffoldModuleTest {
       ScaffoldModule module = new ScaffoldModule();
       check(module.getCategory() == ModuleCategory.MOVEMENT, "movement category");
       check(!module.isEnabled(), "disabled by default");
-      check(module.getSettings().size() == 19, "all controls registered");
+      check(module.getSettings().size() == 14, "only Telly controls registered");
+      for (var setting : module.getSettings()) check(setting.getName().startsWith("Telly "), "no legacy mode controls");
+      var defaults = module.tellySettings();
+      check(defaults.autoJump() && defaults.autoSwitch() && defaults.diagnostics(), "usable Telly defaults");
+      check(defaults.startTick() == 1 && defaults.interval() == 1 && defaults.blocks() == 3, "responsive defaults");
+      check(defaults.jumpDistance() < 0.85, "do not jump a whole block before edge");
+      var quiet = new ScaffoldModule.TellySettings(true, true, true, true, false,
+         0.3, 3, 1, 1, 90, 90, 1, 4.5, 5);
+      TellyScaffoldController controller = new TellyScaffoldController();
+      controller.pause("GUI", quiet);
+      check(controller.phase() == TellyScaffoldController.Phase.IDLE, "GUI pauses to resumable idle, not permanent HALT");
+      controller.pause("no blocks", quiet);
+      check(controller.phase() == TellyScaffoldController.Phase.IDLE, "item failure can be retried after selecting blocks");
+      controller.reset();
+      check(controller.phase() == TellyScaffoldController.Phase.IDLE, "disable clears the complete cycle");
+      for (Direction heading : new Direction[] {Direction.NORTH, Direction.SOUTH, Direction.WEST, Direction.EAST}) {
+         check(TellyScaffoldController.cardinal(TellyScaffoldController.headingYaw(heading)) == heading, "heading round trip");
+      }
       for (var setting : module.getSettings()) {
          if (setting instanceof NumberSetting number) {
             check(Double.isFinite(number.get()) && number.get() >= number.getMin()

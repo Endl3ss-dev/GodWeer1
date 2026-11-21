@@ -265,9 +265,8 @@ public final class ScaffoldTrainingRecorder {
       report.proposedSettings().forEach((key, value) -> info(key + " -> " + value));
       report.warnings().forEach(ScaffoldTrainingRecorder::info);
       this.reviewed = true;
-      info(report.applicable() ? "Confirm these proposals: .scafftrain apply (does NOT enable Scaffold)"
-         : "assisted".equals(report.mode()) ? "Assisted sequence measurements saved; human rotation calibration requires a separate unassisted normal recording."
-         : "Not applicable. Record normal construction at 20 TPS with enough ground placements and rotations.");
+      this.tellyProposals(this.settings()).forEach((key, value) -> info("Telly proposal: " + key + " -> " + value));
+      info("Only compatible turn/return speeds can be confirmed with apply; sneak/release delays are ignored. Assisted recordings remain non-applicable.");
    }
 
    public void apply() {
@@ -276,18 +275,20 @@ public final class ScaffoldTrainingRecorder {
          throw new IllegalStateException("First finish a valid normal recording and review .scafftrain report");
       }
       Map<String, NumberSetting> settings = this.settings();
+      Map<String, Double> proposals = this.tellyProposals(settings);
+      if (proposals.isEmpty()) throw new IllegalStateException("No compatible Telly rotation proposals; record ground/air rotations first");
       Map<String, Double> previous = new LinkedHashMap<>();
       // Validate the full proposal before mutating anything.
-      this.pending.proposedSettings().forEach((key, value) -> {
+      proposals.forEach((key, value) -> {
          NumberSetting setting = settings.get(key);
          if (setting == null || !Double.isFinite(value) || value < setting.getMin() || value > setting.getMax()) {
             throw new IllegalStateException("Invalid proposal: " + key);
          }
          previous.put(key, setting.get());
       });
-      this.pending.proposedSettings().forEach((key, value) -> settings.get(key).set(value));
+      proposals.forEach((key, value) -> settings.get(key).set(value));
       this.backup = previous;
-      this.applied = this.pending.proposedSettings();
+      this.applied = proposals;
       this.reviewed = false;
       if (SkycoreClient.config() != null) SkycoreClient.config().save();
       info("Profile applied; Scaffold remains OFF. Undo before restarting: .scafftrain undo");
@@ -314,11 +315,30 @@ public final class ScaffoldTrainingRecorder {
    }
 
    private Map<String, NumberSetting> settings() {
-      List<String> allowed = List.of("Turn Speed", "Pitch Speed", "Return Speed", "Sneak Delay", "Release Delay", "Jump Turn Speed");
+      List<String> allowed = List.of("Telly Turn Speed", "Telly Return Speed");
       Map<String, NumberSetting> result = new LinkedHashMap<>();
       for (var setting : SkycoreClient.modules().get(ScaffoldModule.class).orElseThrow().getSettings()) {
          if (setting instanceof NumberSetting number && allowed.contains(setting.getName())) result.put(setting.getName(), number);
       }
+      return result;
+   }
+
+   private Map<String, Double> tellyProposals(Map<String, NumberSetting> settings) {
+      Map<String, Double> result = new LinkedHashMap<>();
+      var source = this.pending.proposedSettings();
+      Double turn = source.get("Jump Turn Speed");
+      if (turn == null && source.containsKey("Turn Speed") && source.containsKey("Pitch Speed")) {
+         turn = Math.min(source.get("Turn Speed"), source.get("Pitch Speed"));
+      }
+      if (turn != null) result.put("Telly Turn Speed", turn);
+      if (source.containsKey("Return Speed")) result.put("Telly Return Speed", source.get("Return Speed"));
+      result.replaceAll((key, value) -> {
+         NumberSetting setting = settings.get(key);
+         double clamped = Math.max(setting.getMin(), Math.min(setting.getMax(), value));
+         if (setting.getStep() > 0) clamped = setting.getMin()
+            + Math.round((clamped - setting.getMin()) / setting.getStep()) * setting.getStep();
+         return Math.max(setting.getMin(), Math.min(setting.getMax(), clamped));
+      });
       return result;
    }
 

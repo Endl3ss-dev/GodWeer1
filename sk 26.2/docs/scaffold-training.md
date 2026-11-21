@@ -1,3 +1,10 @@
+> Обновление Telly-only: запись/stop/report/apply/undo сохранены. Apply теперь
+> переносит только совместимые скорости: Jump Turn Speed (или минимум ground
+> yaw/pitch) → Telly Turn Speed, Return Speed → Telly Return Speed. Значения
+> ограничиваются новыми диапазонами и показываются в report; sneak/release не
+> применяются. Assisted по-прежнему неприменим. Остальное описание старого
+> edge-профиля ниже — историческое. Актуально: [telly-scaffold.md](telly-scaffold.md).
+
 # Scaffold training — запись и калибровка с подтверждением
 
 Это статистический помощник, **не нейросеть** и не replay ручной траектории.
