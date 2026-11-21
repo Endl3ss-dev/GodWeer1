@@ -5,6 +5,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ClipContext;
@@ -16,6 +17,7 @@ import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.Vec2;
 import net.skycore.client.SkycoreClient;
 import net.skycore.client.combat.Rotation;
 import net.skycore.client.combat.RotationManager;
@@ -36,15 +38,21 @@ public final class ScaffoldModule extends ClientModule {
    private final BooleanSetting returnView = this.add(new BooleanSetting("Return View", "Return to the approach view before releasing movement", true));
    private final BooleanSetting requireMove = this.add(new BooleanSetting("Require Movement", "Only start a bridge cycle while moving", true));
    private final NumberSetting edgeDistance = number("Edge Distance", "Look ahead for missing ground", 0.22, 0.05, 0.4, 0.01, " blocks");
-   private final NumberSetting yawSpeed = number("Turn Speed", "Maximum visible yaw change per tick", 18, 2, 60, 1, " deg/tick");
-   private final NumberSetting pitchSpeed = number("Pitch Speed", "Maximum visible pitch change per tick", 12, 2, 45, 1, " deg/tick");
-   private final NumberSetting returnSpeed = number("Return Speed", "Maximum view return change per tick", 24, 2, 60, 1, " deg/tick");
-   private final NumberSetting sneakDelay = number("Sneak Delay", "Minimum crouch ticks before placement", 2, 1, 10, 1, " ticks");
-   private final NumberSetting placeDelay = number("Place Delay", "Aligned ticks before placement", 1, 0, 10, 1, " ticks");
-   private final NumberSetting releaseDelay = number("Release Delay", "Extra crouch ticks after observing a placed block", 2, 0, 10, 1, " ticks");
+   private final NumberSetting yawSpeed = number("Turn Speed", "Maximum visible yaw change per tick", 30, 2, 60, 1, " deg/tick");
+   private final NumberSetting pitchSpeed = number("Pitch Speed", "Maximum visible pitch change per tick", 24, 2, 45, 1, " deg/tick");
+   private final NumberSetting returnSpeed = number("Return Speed", "Maximum view return change per tick", 40, 2, 60, 1, " deg/tick");
+   private final NumberSetting sneakDelay = number("Sneak Delay", "Minimum crouch ticks before placement", 1, 1, 10, 1, " ticks");
+   private final NumberSetting placeDelay = number("Place Delay", "Aligned ticks before placement", 0, 0, 10, 1, " ticks");
+   private final NumberSetting releaseDelay = number("Release Delay", "Extra crouch ticks after observing a placed block", 0, 0, 10, 1, " ticks");
    private final NumberSetting retryDelay = number("Retry Delay", "Ticks before retrying a failed cycle", 5, 1, 20, 1, " ticks");
    private final NumberSetting timeout = number("Cycle Timeout", "Maximum aiming or placement-wait ticks", 60, 20, 120, 1, " ticks");
    private final NumberSetting reach = number("Place Reach", "Maximum distance to the clicked face", 4.0, 2, 4.5, 0.1, " blocks");
+
+   private final NumberSetting aimSamples = number("Aim Samples", "Points per axis on each visible support face", 5, 3, 7, 1, " points");
+   private final NumberSetting smoothing = number("Turn Smoothing", "Slow down near the desired angle; 1 is constant speed", 0.5, 0.15, 1, 0.05, "");
+   private final BooleanSetting jumpAssist = this.add(new BooleanSetting("Jump Assist", "Place at bridge height during a manual jump; no auto jump or tower", false));
+   private final NumberSetting jumpTurnSpeed = number("Jump Turn Speed", "Maximum yaw/pitch step while jumping", 60, 10, 120, 1, " deg/tick");
+   private final NumberSetting jumpLookAhead = number("Jump Look Ahead", "Horizontal motion prediction for an airborne placement", 1, 0, 2, 0.25, " ticks");
 
    private enum Phase { WALK, AIM, WAIT, RETURN }
    private Phase phase = Phase.WALK;
@@ -62,10 +70,21 @@ public final class ScaffoldModule extends ClientModule {
    private int retryTicks;
    private boolean edge;
    private boolean inputReady;
+   private boolean jumpArmed;
+   private boolean jumpCycle;
+   private boolean leftGround;
+   private int jumpTicks;
+   private int bridgeY;
+   private Vec3 takeoff;
+   private float jumpHeading;
+   private float jumpPitch;
+   private boolean jumpViewPending;
 
    public ScaffoldModule() {
       super("Scaffold", "Crouches at edges, visibly aims, places a bridge block and returns the view", ModuleCategory.MOVEMENT);
       this.returnSpeed.visibleWhen(() -> this.returnView.get());
+      this.jumpTurnSpeed.visibleWhen(() -> this.jumpAssist.get());
+      this.jumpLookAhead.visibleWhen(() -> this.jumpAssist.get());
    }
 
    private NumberSetting number(String name, String description, double value, double min, double max, double step, String suffix) {
@@ -98,6 +117,9 @@ public final class ScaffoldModule extends ClientModule {
       this.cycleOrigin = null;
       this.edge = false;
       this.inputReady = false;
+      this.jumpArmed = this.jumpCycle = this.leftGround = this.jumpViewPending = false;
+      this.jumpTicks = 0;
+      this.takeoff = null;
       this.phaseTicks = this.crouchTicks = this.alignedTicks = this.placedTicks = this.retryTicks = 0;
    }
 
@@ -121,13 +143,23 @@ public final class ScaffoldModule extends ClientModule {
          this.world = mc.level;
          this.player = mc.player;
       }
+      if (mc.player.getAbilities().flying) {
+         this.reset();
+         return;
+      }
+      if (this.jumpAssist.get() && (this.jumpArmed
+         || (mc.player.onGround() && event.keyPresses().jump() && this.phase != Phase.RETURN))) {
+         if (this.onJumpInput(mc, event)) return;
+      }
       if (this.cycleOrigin != null && this.phase != Phase.WALK
          && this.cycleOrigin.distanceToSqr(mc.player.position()) > 0.75 * 0.75) {
          this.reset();
          return;
       }
-      // Leave jumping/falling/flying to the player; this is not a tower or a fall rescue.
-      if (!mc.player.onGround() || event.keyPresses().jump() || mc.player.getAbilities().flying) {
+      // With jump assist, finish the grounded view return before a held jump
+      // takes off again; otherwise W could launch backwards relative to the bridge.
+      if (!mc.player.onGround() || (event.keyPresses().jump()
+         && (!this.jumpAssist.get() || this.phase != Phase.RETURN))) {
          this.reset();
          return;
       }
@@ -175,6 +207,74 @@ public final class ScaffoldModule extends ClientModule {
       }
    }
 
+   /** Arm only on an observed grounded jump input; never activate on an arbitrary fall. */
+   private boolean onJumpInput(Minecraft mc, PlayerInputEvent event) {
+      if (!this.jumpArmed) {
+         // Do not inherit a ground aim, stale target or forced sneak into takeoff.
+         this.phase = Phase.WALK;
+         this.placement = null;
+         this.cycleOrigin = null;
+         this.jumpArmed = true;
+         this.jumpCycle = false;
+         this.leftGround = false;
+         this.jumpViewPending = false;
+         this.jumpTicks = 0;
+         this.takeoff = mc.player.position();
+         this.bridgeY = BlockPos.containing(this.takeoff.x, this.takeoff.y - 0.5, this.takeoff.z).getY();
+         this.jumpHeading = mc.player.getYRot();
+         this.jumpPitch = mc.player.getXRot();
+      }
+      if (!mc.player.onGround()) this.leftGround = true;
+      if (this.leftGround && mc.player.onGround()) {
+         // Landed: return the view if a jump cycle was in progress, then resume edge mode.
+         this.jumpArmed = false;
+         this.jumpCycle = false;
+         this.cycleOrigin = mc.player.position();
+         if (this.jumpViewPending || this.phase != Phase.WALK) this.setPhase(Phase.RETURN);
+         this.jumpViewPending = false;
+         return false;
+      }
+      if (++this.jumpTicks > 30 || mc.player.getY() < this.takeoff.y - 0.15
+         || mc.player.position().distanceToSqr(this.takeoff) > 16) {
+         this.reset();
+         return true;
+      }
+      this.inputReady = true;
+      this.edge = false;
+      // On the takeoff input leave jump, shift and sprint entirely to vanilla.
+      if (!this.leftGround) return true;
+      if (this.phase == Phase.WALK && this.retryTicks == 0) {
+         Vec3 motion = mc.player.getDeltaMovement();
+         double prediction = this.jumpLookAhead.get();
+         BlockPos current = BlockPos.containing(mc.player.getX(), this.bridgeY, mc.player.getZ());
+         BlockPos ahead = BlockPos.containing(mc.player.getX() + motion.x * prediction,
+            this.bridgeY, mc.player.getZ() + motion.z * prediction);
+         Placement candidate = this.findPlacement(mc, current);
+         if (candidate == null && !ahead.equals(current)) candidate = this.findPlacement(mc, ahead);
+         if (candidate != null && this.findSlot(mc, candidate.target()) >= 0) {
+            this.placement = candidate;
+            this.cycleOrigin = mc.player.position();
+            this.approachYaw = this.jumpHeading;
+            this.approachPitch = this.jumpPitch;
+            this.jumpViewPending = true;
+            this.jumpCycle = true;
+            this.setPhase(Phase.AIM);
+         }
+      }
+      if (this.phase != Phase.WALK || this.jumpViewPending) {
+         // Preserve the world-space WASD heading while the visible camera turns.
+         // No velocity, position, jump, or sneak packets are manufactured here.
+         Vec3 direction = inputDirection(event.moveVector().x, event.moveVector().y, this.jumpHeading);
+         Vec2 corrected = localInput(direction, mc.player.getYRot());
+         Input keys = event.keyPresses();
+         event.setMoveVector(corrected);
+         event.setKeyPresses(new Input(corrected.y > 0.01F, corrected.y < -0.01F,
+            corrected.x > 0.01F, corrected.x < -0.01F, keys.jump(), keys.shift(), false));
+         mc.player.setSprinting(false);
+      }
+      return true;
+   }
+
    @Override
    protected void onTick() {
       Minecraft mc = Minecraft.getInstance();
@@ -187,7 +287,8 @@ public final class ScaffoldModule extends ClientModule {
       this.inputReady = false;
       if (this.retryTicks > 0) this.retryTicks--;
       if (this.phase == Phase.WALK) return;
-      if (!mc.player.onGround() || this.placement == null) {
+      if ((!mc.player.onGround() && !this.jumpCycle)
+         || (this.placement == null && this.phase != Phase.RETURN)) {
          this.reset();
          return;
       }
@@ -198,10 +299,11 @@ public final class ScaffoldModule extends ClientModule {
             this.reset();
             return;
          }
-         if (!this.returnView.get() || this.rotate(mc, this.approachYaw, this.approachPitch,
-            this.returnSpeed.get().floatValue(), this.returnSpeed.get().floatValue())) {
+         float speed = this.jumpCycle ? this.jumpTurnSpeed.get().floatValue() : this.returnSpeed.get().floatValue();
+         if (!this.returnView.get() || this.rotate(mc, this.approachYaw, this.approachPitch, speed, speed)) {
             this.setPhase(Phase.WALK);
             this.placement = null;
+            this.jumpCycle = false;
          }
          return;
       }
@@ -212,7 +314,17 @@ public final class ScaffoldModule extends ClientModule {
       if (this.phase == Phase.WAIT) {
          // This observes the client world (including prediction), not a server acknowledgement.
          if (!mc.level.getBlockState(this.placement.target()).canBeReplaced()) {
-            if (++this.placedTicks > this.releaseDelay.get().intValue()) this.finishCycle(false);
+            if (++this.placedTicks > (this.jumpCycle ? 0 : this.releaseDelay.get().intValue())) {
+               if (this.jumpCycle) {
+                  // Stay looking at the bridge until landing: returning between airborne
+                  // placements wastes the short jump window and reverses WASD repeatedly.
+                  this.setPhase(Phase.WALK);
+                  this.placement = null;
+                  this.jumpCycle = false;
+               } else {
+                  this.finishCycle(false);
+               }
+            }
          } else {
             this.placedTicks = 0;
          }
@@ -222,18 +334,26 @@ public final class ScaffoldModule extends ClientModule {
          this.finishCycle(true);
          return;
       }
-      Rotation rotation = Rotation.lookingAt(this.placement.hit().getLocation(), mc.player.getEyePosition());
-      boolean aligned = this.rotate(mc, rotation.getYaw(), rotation.getPitch(),
-         this.yawSpeed.get().floatValue(), this.pitchSpeed.get().floatValue());
       BlockHitResult actualHit = this.viewHit(mc);
-      if (!aligned || !sameFace(actualHit, this.placement.hit())) {
+      // Any point on the intended face is sufficient. Do not force the crosshair
+      // all the way to a sample after it has already reached a valid placement ray.
+      if (!sameFace(actualHit, this.placement.hit())) {
+         Placement refreshed = this.findPlacement(mc, this.placement.target());
+         if (refreshed == null) {
+            this.finishCycle(true);
+            return;
+         }
+         this.placement = refreshed;
+         Rotation rotation = Rotation.lookingAt(this.placement.hit().getLocation(), mc.player.getEyePosition());
+         float yawLimit = this.jumpCycle ? this.jumpTurnSpeed.get().floatValue() : this.yawSpeed.get().floatValue();
+         float pitchLimit = this.jumpCycle ? this.jumpTurnSpeed.get().floatValue() : this.pitchSpeed.get().floatValue();
+         this.rotate(mc, rotation.getYaw(), rotation.getPitch(), yawLimit, pitchLimit);
          this.alignedTicks = 0;
+         // Click no earlier than the next tick: let vanilla transmit the visible view first.
          return;
       }
-      // Always keep one full vanilla movement tick between reaching the angle and
-      // using the block, even at delay 0: do not place before that view has been sent.
-      if (this.crouchTicks < this.sneakDelay.get().intValue()
-         || ++this.alignedTicks <= Math.max(1, this.placeDelay.get().intValue())) return;
+      if ((!this.jumpCycle && this.crouchTicks < this.sneakDelay.get().intValue())
+         || ++this.alignedTicks <= (this.jumpCycle ? 0 : this.placeDelay.get().intValue())) return;
       int originalSlot = mc.player.getInventory().getSelectedSlot();
       int slot = this.findSlot(mc, this.placement.target());
       if (slot < 0) {
@@ -265,15 +385,32 @@ public final class ScaffoldModule extends ClientModule {
    }
 
    private boolean rotate(Minecraft mc, float yaw, float pitch, float yawLimit, float pitchLimit) {
-      float nextYaw = stepAngle(mc.player.getYRot(), yaw, yawLimit);
-      float nextPitch = mc.player.getXRot() + Mth.clamp(pitch - mc.player.getXRot(), -pitchLimit, pitchLimit);
+      float nextYaw = stepAngle(mc.player.getYRot(), yaw, yawLimit, this.smoothing.get().floatValue());
+      float nextPitch = mc.player.getXRot() + smoothStep(pitch - mc.player.getXRot(), pitchLimit, this.smoothing.get().floatValue());
       mc.player.setYRot(nextYaw);
       mc.player.setXRot(Mth.clamp(nextPitch, -90.0F, 90.0F));
       return Math.abs(Mth.wrapDegrees(yaw - nextYaw)) < 0.1F && Math.abs(pitch - nextPitch) < 0.1F;
    }
 
-   static float stepAngle(float current, float target, float limit) {
-      return current + Mth.clamp(Mth.wrapDegrees(target - current), -limit, limit);
+   static float stepAngle(float current, float target, float limit, float smoothing) {
+      return current + smoothStep(Mth.wrapDegrees(target - current), limit, smoothing);
+   }
+
+   static float smoothStep(float delta, float limit, float smoothing) {
+      float step = Math.min(Math.abs(delta), Math.min(limit, Math.max(0.15F, Math.abs(delta) * smoothing)));
+      return Math.copySign(step, delta);
+   }
+
+   static Vec2 localInput(Vec3 worldDirection, float yaw) {
+      double angle = Math.toRadians(yaw);
+      return new Vec2((float)(worldDirection.x * Math.cos(angle) + worldDirection.z * Math.sin(angle)),
+         (float)(worldDirection.z * Math.cos(angle) - worldDirection.x * Math.sin(angle)));
+   }
+
+   static double angularCost(float yaw, float pitch, Rotation rotation) {
+      // Compare actual view rays: yaw degrees alone overestimate turns near straight down.
+      double dot = Vec3.directionFromRotation(pitch, yaw).dot(rotation.toVector());
+      return Math.toDegrees(Math.acos(Mth.clamp(dot, -1.0, 1.0)));
    }
 
    static Vec3 inputDirection(float strafe, float forward, float yaw) {
@@ -318,19 +455,54 @@ public final class ScaffoldModule extends ClientModule {
       if (!this.validTarget(mc, target)) return null;
       Vec3 eye = mc.player.getEyePosition();
       double range = Math.min(this.reach.get(), mc.player.blockInteractionRange());
+      BlockHitResult current = this.viewHit(mc);
+      if (current.getType() == HitResult.Type.BLOCK && !current.isInside()
+         && current.getBlockPos().relative(current.getDirection()).equals(target)
+         && this.validSupport(mc, current.getBlockPos())) {
+         return new Placement(target, current);
+      }
+      Placement best = null;
+      double bestCost = Double.POSITIVE_INFINITY;
+      int samples = this.aimSamples.get().intValue();
       for (Direction face : Direction.values()) {
          BlockPos support = target.relative(face.getOpposite());
          if (!this.validSupport(mc, support)) continue;
-         // Aim near the upper side edge: easier to see while crouched on a bridge.
-         Vec3 point = Vec3.atCenterOf(support).add(Vec3.atLowerCornerOf(face.getUnitVec3i()).scale(0.5));
-         if (face.getStepY() == 0) point = point.add(0, 0.3, 0);
-         if (eye.distanceToSqr(point) > range * range) continue;
-         BlockHitResult expected = new BlockHitResult(point, face, support, false);
-         BlockHitResult visible = mc.level.clip(new ClipContext(eye, point.add(point.subtract(eye).normalize().scale(0.01)),
-            ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, mc.player));
-         if (sameFace(visible, expected)) return new Placement(target, expected);
+         Vec3 normal = Vec3.atLowerCornerOf(face.getUnitVec3i());
+         Vec3 centre = Vec3.atCenterOf(support).add(normal.scale(0.5));
+         // Back-facing faces cannot be clicked. Avoid an entire grid of useless raycasts.
+         if (eye.subtract(centre).dot(normal) <= 0.0001) continue;
+         for (int i = 0; i < samples; i++) {
+            for (int j = 0; j < samples; j++) {
+               double u = 0.08 + 0.84 * i / (samples - 1.0);
+               double v = 0.08 + 0.84 * j / (samples - 1.0);
+               Vec3 point = facePoint(support, face, u, v);
+               if (eye.distanceToSqr(point) > range * range) continue;
+               Rotation rotation = Rotation.lookingAt(point, eye);
+               double cost = angularCost(mc.player.getYRot(), mc.player.getXRot(), rotation);
+               if (cost >= bestCost) continue;
+               BlockHitResult expected = new BlockHitResult(point, face, support, false);
+               BlockHitResult visible = mc.level.clip(new ClipContext(eye,
+                  point.add(point.subtract(eye).normalize().scale(0.01)),
+                  ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, mc.player));
+               if (sameFace(visible, expected)) {
+                  bestCost = cost;
+                  best = new Placement(target, expected);
+               }
+            }
+         }
       }
-      return null;
+      return best;
+   }
+
+   static Vec3 facePoint(BlockPos support, Direction face, double u, double v) {
+      return Vec3.atLowerCornerOf(support).add(switch (face) {
+         case DOWN -> new Vec3(u, 0, v);
+         case UP -> new Vec3(u, 1, v);
+         case NORTH -> new Vec3(u, v, 0);
+         case SOUTH -> new Vec3(u, v, 1);
+         case WEST -> new Vec3(0, v, u);
+         case EAST -> new Vec3(1, v, u);
+      });
    }
 
    private BlockHitResult viewHit(Minecraft mc) {
