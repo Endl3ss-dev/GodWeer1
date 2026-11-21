@@ -27,6 +27,7 @@ public final class ScaffoldModule extends ClientModule {
    private final TellyScaffoldController telly = new TellyScaffoldController();
    private Subscription inputSubscription;
    private final BooleanSetting autoJump = this.add(new BooleanSetting("Telly Auto Jump", "Jump before the edge; otherwise use manual Space", true));
+   private final BooleanSetting smartStop = this.add(new BooleanSetting("Telly Smart Stop", "Predict landing; finish short jumps on the reachable support and brake instead of forcing the block limit", true));
    private final BooleanSetting sprint = this.add(new BooleanSetting("Telly Sprint", "Sprint during approach and takeoff", true));
    private final BooleanSetting autoSwitch = this.add(new BooleanSetting("Telly Auto Switch", "Select full building blocks from hotbar; restore selection when done", true));
    private final BooleanSetting swing = this.add(new BooleanSetting("Telly Swing", "Swing after accepted interaction", true));
@@ -36,7 +37,7 @@ public final class ScaffoldModule extends ClientModule {
    private final NumberSetting startTick = number("Telly Start Tick", "Earliest airborne tick for an aligned placement", 1, 0, 8, 1, " ticks");
    private final NumberSetting cps = number("Telly CPS", "Maximum wall-clock placement attempts; unsafe rays are skipped", 15, 1, 15, 1, " cps");
    private final BooleanSetting camLock = this.add(new BooleanSetting("Cam Lock", "Camera follows the Scaffold head; OFF allows mouse free-look", true));
-   private final BooleanSetting returnToView = this.add(new BooleanSetting("Telly Return To View", "Return to view saved at takeoff; OFF uses the X-axis approach direction", true));
+   private final BooleanSetting returnToView = this.add(new BooleanSetting("Telly Return To View", "Return to view saved at takeoff; OFF uses the chosen X/Z approach direction", true));
    private final NumberSetting returnPitch = number("Telly Return Pitch", "Pitch for fixed-direction return", 20, -60, 80, 1, " deg");
    private final NumberSetting turnSpeed = number("Telly Turn Speed", "Head speed per 50ms, updated every frame", 180, 15, 180, 5, " deg/tick");
    private final NumberSetting returnSpeed = number("Telly Return Speed", "Head return speed per 50ms", 180, 15, 180, 5, " deg/tick");
@@ -54,13 +55,13 @@ public final class ScaffoldModule extends ClientModule {
 
    record TellySettings(boolean autoJump, boolean sprint, boolean autoSwitch, boolean swing, boolean diagnostics,
                         double jumpDistance, int blocks, int startTick, double cps,
-                        float turnSpeed, float returnSpeed, float smoothing, double reach, int samples, boolean camLock, boolean returnToView, float returnPitch) { }
+                        float turnSpeed, float returnSpeed, float smoothing, double reach, int samples, boolean camLock, boolean returnToView, float returnPitch, boolean smartStop) { }
 
    TellySettings tellySettings() {
       return new TellySettings(this.autoJump.get(), this.sprint.get(), this.autoSwitch.get(), this.swing.get(),
          this.diagnostics.get(), this.jumpDistance.get(), this.blockCount.get().intValue(), this.startTick.get().intValue(),
          this.cps.get(), this.turnSpeed.get().floatValue(), this.returnSpeed.get().floatValue(),
-         this.smoothing.get().floatValue(), this.reach.get(), this.aimSamples.get().intValue(), this.camLock.get(), this.returnToView.get(), this.returnPitch.get().floatValue());
+         this.smoothing.get().floatValue(), this.reach.get(), this.aimSamples.get().intValue(), this.camLock.get(), this.returnToView.get(), this.returnPitch.get().floatValue(), this.smartStop.get());
    }
 
    @Override
@@ -97,9 +98,9 @@ public final class ScaffoldModule extends ClientModule {
       return this.freeCameraActive() && this.telly.mouseTurn(yaw, pitch);
    }
 
-   /** X-side support face only; prefer central samples, never top/bottom faces. */
+   /** Horizontal support face only; prefer central samples, never top/bottom faces. */
    static BlockHitResult findTellyHit(Minecraft mc, BlockPos target, Direction heading, double reach, int samples) {
-      if (!validTarget(mc, target) || (heading != Direction.EAST && heading != Direction.WEST)) return null;
+      if (!validTarget(mc, target) || heading == Direction.UP || heading == Direction.DOWN) return null;
       BlockPos support = target.relative(heading.getOpposite());
       if (!validSupport(mc, support)) return null;
       Vec3 eye = mc.player.getEyePosition();

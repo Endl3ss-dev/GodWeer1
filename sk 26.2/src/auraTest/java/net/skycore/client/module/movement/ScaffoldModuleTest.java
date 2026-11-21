@@ -32,20 +32,38 @@ public final class ScaffoldModuleTest {
       check(!TellyScaffoldController.cpsReady(99, 100), "no early click");
       check(TellyScaffoldController.cpsReady(100, 100), "deadline click allowed");
       check(TellyScaffoldController.cpsReady(100000, 100), "lag allows one attempt, caller schedules from now");
-      check(TellyScaffoldController.xHeading(-90, false) == Direction.EAST, "W moves east");
-      check(TellyScaffoldController.xHeading(-90, true) == Direction.WEST, "S reverses east approach");
-      check(TellyScaffoldController.xHeading(90, false) == Direction.WEST, "W moves west");
-      check(TellyScaffoldController.xHeading(90, true) == Direction.EAST, "S reverses west approach");
-      check(TellyScaffoldController.xHeading(0, false) != TellyScaffoldController.xHeading(0, true), "Z-facing fallback reverses too");
+      check(TellyScaffoldController.movementHeading(-90, false) == Direction.EAST, "W moves east");
+      check(TellyScaffoldController.movementHeading(-90, true) == Direction.WEST, "S reverses east approach");
+      check(TellyScaffoldController.movementHeading(90, false) == Direction.WEST, "W moves west");
+      check(TellyScaffoldController.movementHeading(90, true) == Direction.EAST, "S reverses west approach");
+      check(TellyScaffoldController.movementHeading(0, false) == Direction.SOUTH && TellyScaffoldController.movementHeading(0, true) == Direction.NORTH, "Z approach reverses too");
       BlockPos rowTarget = new BlockPos(1, 63, 0);
       check(TellyScaffoldController.placementHit(new BlockHitResult(new Vec3(1, 63.5, 0.5), Direction.EAST,
-         new BlockPos(0, 63, 0), false), rowTarget, 63, 0), "central X-side click allowed");
+         new BlockPos(0, 63, 0), false), rowTarget, 0, 63, 0, Direction.EAST), "central X-side click allowed");
       check(!TellyScaffoldController.placementHit(new BlockHitResult(new Vec3(1, 63.99, 0.01), Direction.EAST,
-         new BlockPos(0, 63, 0), false), rowTarget, 63, 0), "edge click rejected");
+         new BlockPos(0, 63, 0), false), rowTarget, 0, 63, 0, Direction.EAST), "edge click rejected");
       check(!TellyScaffoldController.placementHit(new BlockHitResult(new Vec3(0.5, 64, 0.5), Direction.UP,
-         new BlockPos(0, 63, 0), false), new BlockPos(0, 64, 0), 63, 0), "never build upward");
-      check(!TellyScaffoldController.flatXTarget(new BlockPos(1, 64, 0), 63, 0), "jump cannot change bridge Y");
-      check(!TellyScaffoldController.flatXTarget(new BlockPos(1, 63, 1), 63, 0), "cannot widen bridge along Z");
+         new BlockPos(0, 63, 0), false), new BlockPos(0, 64, 0), 0, 63, 0, Direction.EAST), "never build upward");
+      check(!TellyScaffoldController.flatTarget(new BlockPos(1, 64, 0), 0, 63, 0, Direction.EAST), "jump cannot change bridge Y");
+      check(!TellyScaffoldController.flatTarget(new BlockPos(1, 63, 1), 0, 63, 0, Direction.EAST), "cannot widen bridge along Z");
+      check(TellyScaffoldController.placementHit(new BlockHitResult(new Vec3(0.5, 63.5, 1), Direction.SOUTH,
+         new BlockPos(0, 63, 0), false), new BlockPos(0, 63, 1), 0, 63, 0, Direction.SOUTH), "central Z face allowed");
+      check(!TellyScaffoldController.flatTarget(new BlockPos(1, 63, 1), 0, 63, 0, Direction.SOUTH), "Z bridge cannot drift along X");
+      check(TellyScaffoldController.runAligned(90, Direction.WEST), "sprint head aligned with travel");
+      check(!TellyScaffoldController.runAligned(-90, Direction.WEST), "S must turn before sprint launch");
+      check(TellyLandingPlan.requiredBlocks(1, 0, 2, 0, 1, 0, 4) == 2, "short jump needs two blocks, not four");
+      check(TellyLandingPlan.requiredBlocks(-1, 0, -2, 0, -1, 0, 4) == 2, "negative X landing");
+      check(TellyLandingPlan.requiredBlocks(0, -1, 0, -2, 0, -1, 4) == 2, "negative Z landing");
+      check(TellyLandingPlan.requiredBlocks(1, 0, 8, 0, 1, 0, 4) == 4, "requested upper bound retained");
+      check(TellyLandingPlan.requiredBlocks(1, 0, 0, 0, 1, 0, 4) == 0, "landing on existing platform needs no new block");
+      var fast = TellyLandingPlan.predict(0.5, 64, 0.5, 0.36, 0.42, 0, 64, 1, 0, false);
+      var slow = TellyLandingPlan.predict(0.5, 64, 0.5, 0.10, 0.42, 0, 64, 1, 0, false);
+      check(fast.reachedPlane() && fast.ticks() > 5 && fast.ticks() < 20, "finite jump prediction");
+      check(fast.x() > slow.x(), "landing depends on actual horizontal motion");
+      var brake = TellyLandingPlan.predict(0.5, 65, 0.5, 0.2, -0.1, 0, 64, 1, 0, true);
+      var drive = TellyLandingPlan.predict(0.5, 65, 0.5, 0.2, -0.1, 0, 64, 1, 0, false);
+      check(brake.x() < drive.x(), "braking removes ongoing forward acceleration");
+      check(TellyLandingPlan.shortLanding(2, 4) && !TellyLandingPlan.shortLanding(4, 4), "only shortened cycles latch smart stop");
       check(TellyScaffoldController.cardinal(0) == Direction.SOUTH, "telly south");
       check(TellyScaffoldController.cardinal(90) == Direction.WEST, "telly west");
       check(TellyScaffoldController.cardinal(-90) == Direction.EAST, "telly east");
@@ -135,14 +153,14 @@ public final class ScaffoldModuleTest {
       ScaffoldModule module = new ScaffoldModule();
       check(module.getCategory() == ModuleCategory.MOVEMENT, "movement category");
       check(!module.isEnabled(), "disabled by default");
-      check(module.getSettings().size() == 17, "only Telly controls registered");
+      check(module.getSettings().size() == 18, "only Telly controls registered");
       for (var setting : module.getSettings()) check((setting.getName().startsWith("Telly ") || setting.getName().equals("Cam Lock")), "no legacy mode controls");
       var defaults = module.tellySettings();
       check(defaults.autoJump() && defaults.autoSwitch() && defaults.diagnostics(), "usable Telly defaults");
       check(defaults.startTick() == 1 && defaults.cps() == 15 && defaults.blocks() == 3, "responsive defaults");
       check(defaults.jumpDistance() < 0.85, "do not jump a whole block before edge");
       var quiet = new ScaffoldModule.TellySettings(true, true, true, true, false,
-         0.3, 3, 1, 15, 180, 180, 1, 4.5, 5, true, true, 20);
+         0.3, 3, 1, 15, 180, 180, 1, 4.5, 5, true, true, 20, true);
       TellyScaffoldController controller = new TellyScaffoldController();
       controller.pause("GUI", quiet);
       check(controller.phase() == TellyScaffoldController.Phase.IDLE, "GUI pauses to resumable idle, not permanent HALT");
