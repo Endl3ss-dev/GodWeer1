@@ -7,6 +7,7 @@ import net.skycore.client.combat.Rotation;
 import net.minecraft.world.phys.Vec3;
 import net.minecraft.world.phys.BlockHitResult;
 import net.skycore.client.module.ModuleCategory;
+import net.skycore.client.setting.ModeSetting;
 import net.skycore.client.setting.NumberSetting;
 
 /** Headless geometry/settings smoke tests; not a simulation of vanilla edge clamping. */
@@ -157,8 +158,17 @@ public final class ScaffoldModuleTest {
       ScaffoldModule module = new ScaffoldModule();
       check(module.getCategory() == ModuleCategory.MOVEMENT, "movement category");
       check(!module.isEnabled(), "disabled by default");
-      check(module.getSettings().size() == 18, "only Telly controls registered");
-      for (var setting : module.getSettings()) check((setting.getName().startsWith("Telly ") || setting.getName().equals("Cam Lock")), "no legacy mode controls");
+      check(module.getSettings().size() > 18, "Scaffold exposes placement modes and Telly controls");
+      boolean hasStrictMode = false, hasStrictDelay = false, hasSwitch = false, hasTellySetting = false;
+      for (var setting : module.getSettings()) {
+         if (setting instanceof ModeSetting mode && setting.getName().equals("Mode")) {
+            hasStrictMode = mode.getDefault().equals("NCPStrict") && mode.getModes().contains("NCPStrict");
+         }
+         if (setting.getName().equals("MinPlaceDelay")) hasStrictDelay = true;
+         if (setting.getName().equals("Switch")) hasSwitch = true;
+         if (setting.getName().equals("Telly Turn Speed")) hasTellySetting = true;
+      }
+      check(hasStrictMode && hasStrictDelay && hasSwitch && hasTellySetting, "NCPStrict settings and Telly integration registered");
       var defaults = module.tellySettings();
       check(defaults.autoJump() && defaults.autoSwitch() && defaults.diagnostics(), "usable Telly defaults");
       check(defaults.startTick() == 1 && defaults.cps() == 15 && defaults.blocks() == 3, "responsive defaults");
