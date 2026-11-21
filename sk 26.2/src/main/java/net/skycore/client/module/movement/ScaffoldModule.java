@@ -33,6 +33,9 @@ import net.skycore.client.util.InventoryHelper;
 
 /** Visible, edge-triggered bridge building. Never sends synthetic rotation packets. */
 public final class ScaffoldModule extends ClientModule {
+   private final BooleanSetting tellyMode = this.add(new BooleanSetting("Telly Mode", "Experimental SP20TPS/1x: hold W, auto jump, flat row placements and visible view return; toggle off/on after interruptions", false));
+   private final TellyScaffoldController telly = new TellyScaffoldController();
+   private boolean activeTellyMode;
    private final BooleanSetting autoSwitch = this.add(new BooleanSetting("Auto Switch", "Temporarily select building blocks from the hotbar", true));
    private final BooleanSetting swing = this.add(new BooleanSetting("Swing", "Swing after an accepted placement interaction", true));
    private final BooleanSetting returnView = this.add(new BooleanSetting("Return View", "Return to the approach view before releasing movement", true));
@@ -110,6 +113,7 @@ public final class ScaffoldModule extends ClientModule {
    }
 
    private void reset() {
+      this.telly.reset();
       this.phase = Phase.WALK;
       this.placement = null;
       this.world = null;
@@ -134,6 +138,16 @@ public final class ScaffoldModule extends ClientModule {
 
    private void onInput(PlayerInputEvent event) {
       Minecraft mc = Minecraft.getInstance();
+      if (this.activeTellyMode != this.tellyMode.get()) {
+         this.reset();
+         this.activeTellyMode = this.tellyMode.get();
+      }
+      if (this.tellyMode.get()) {
+         if (!this.isEnabled() || !this.available(mc)) this.telly.interrupt();
+         else this.telly.input(mc, event, this);
+         return;
+      }
+      this.telly.reset();
       if (!this.isEnabled() || !this.available(mc)) {
          this.reset();
          return;
@@ -278,6 +292,15 @@ public final class ScaffoldModule extends ClientModule {
    @Override
    protected void onTick() {
       Minecraft mc = Minecraft.getInstance();
+      if (this.activeTellyMode != this.tellyMode.get()) {
+         this.reset();
+         this.activeTellyMode = this.tellyMode.get();
+      }
+      if (this.tellyMode.get()) {
+         if (!this.available(mc)) this.telly.interrupt();
+         else this.telly.tick(mc, this);
+         return;
+      }
       if (!this.available(mc) || this.world != mc.level || this.player != mc.player) {
          this.reset();
          return;
@@ -521,7 +544,7 @@ public final class ScaffoldModule extends ClientModule {
          ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, mc.player));
    }
 
-   private static boolean sameFace(BlockHitResult actual, BlockHitResult expected) {
+   static boolean sameFace(BlockHitResult actual, BlockHitResult expected) {
       return actual.getType() == HitResult.Type.BLOCK && actual.getBlockPos().equals(expected.getBlockPos())
          && actual.getDirection() == expected.getDirection() && !actual.isInside();
    }

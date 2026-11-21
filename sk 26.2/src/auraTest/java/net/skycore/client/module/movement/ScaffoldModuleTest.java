@@ -27,6 +27,13 @@ public final class ScaffoldModuleTest {
    }
 
    public static void main(String[] args) {
+      check(TellyScaffoldController.placementTick(0) == 4, "first dataset placement tick");
+      check(TellyScaffoldController.placementTick(1) == 7, "second dataset placement tick");
+      check(TellyScaffoldController.placementTick(2) == 10, "third dataset placement tick");
+      check(TellyScaffoldController.cardinal(0) == Direction.SOUTH, "telly south");
+      check(TellyScaffoldController.cardinal(90) == Direction.WEST, "telly west");
+      check(TellyScaffoldController.cardinal(-90) == Direction.EAST, "telly east");
+      check(TellyScaffoldController.cardinal(540) == Direction.NORTH, "telly wrapped north");
       direction(0, 1, 0, 0, 1);
       direction(0, 1, 90, -1, 0);
       direction(0, 1, 180, 0, -1);
