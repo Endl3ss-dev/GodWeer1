@@ -5,6 +5,7 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.skycore.client.combat.Rotation;
 import net.minecraft.world.phys.Vec3;
+import net.minecraft.world.phys.BlockHitResult;
 import net.skycore.client.module.ModuleCategory;
 import net.skycore.client.setting.NumberSetting;
 
@@ -99,6 +100,14 @@ public final class ScaffoldModuleTest {
       check(!ScaffoldCoachModule.lineTarget(new BlockPos(-1, 63, 2), 0, 2, Direction.EAST), "no backwards row");
       check(ScaffoldCoachModule.lineTarget(new BlockPos(0, 63, -8), 0, 2, Direction.NORTH), "forward negative Z row");
       check(!ScaffoldCoachModule.lineTarget(new BlockPos(0, 63, 2), 0, 2, Direction.UP), "no tower row");
+      check(!ScaffoldCoachModule.manualHitAllowed(BlockHitResult.miss(Vec3.ZERO, Direction.UP, BlockPos.ZERO)),
+         "manual miss must not dispatch block use");
+      check(ScaffoldCoachModule.manualHitAllowed(new BlockHitResult(new Vec3(8, 65, 3), Direction.UP,
+         new BlockPos(8, 64, 3), false)), "manual top-face click outside the practice Y reaches vanilla");
+      check(ScaffoldCoachModule.manualHitAllowed(new BlockHitResult(new Vec3(-1, 63.5, 3), Direction.WEST,
+         new BlockPos(-1, 63, 3), false)), "manual click outside the practice row reaches vanilla");
+      check(ScaffoldCoachModule.manualHitAllowed(new BlockHitResult(new Vec3(0, 64, 0), Direction.UP,
+         new BlockPos(0, 63, 0), true)), "inside-hit placement context belongs to vanilla, not Coach");
       check(!ScaffoldCoachModule.INSTANCE.isEnabled(), "coach disabled by default");
       ScaffoldModule module = new ScaffoldModule();
       check(module.getCategory() == ModuleCategory.MOVEMENT, "movement category");
