@@ -1,0 +1,105 @@
+package net.skycore.client.module.combat;
+
+import java.util.concurrent.ThreadLocalRandom;
+import java.util.random.RandomGenerator;
+import net.skycore.client.setting.BooleanSetting;
+import net.skycore.client.setting.ModeSetting;
+import net.skycore.client.setting.NumberSetting;
+import net.skycore.client.setting.Setting;
+
+/** Client-thread scheduler for 1.8 clicks and the temporary post-hit pause. */
+final class AuraClicks {
+   static final String NO_DELAY = "1.8 NoDelay";
+
+   final ModeSetting mode = new ModeSetting("Click mode", "1.12", "1.12", "1.8", NO_DELAY);
+   final ModeSetting pattern = new ModeSetting("CPS mode", "Static CPS", "Static CPS", "Custom CPS");
+   final NumberSetting fixed = new NumberSetting("Clicks per second", 10, 1, 35, 1);
+   final NumberSetting min = new NumberSetting("Min clicks per second", 8, 1, 35, 1);
+   final NumberSetting max = new NumberSetting("Max clicks per second", 12, 1, 35, 1);
+   final BooleanSetting tickHits = new BooleanSetting("Tick hits", false);
+   final NumberSetting minPauseMs = new NumberSetting("Min pause duration", "Minimum temporary Attack Aura pause after a hit (milliseconds).", 0.1, 0.0, 0.45, 0.01, " ms");
+   final NumberSetting maxPauseMs = new NumberSetting("Max pause duration", "Maximum temporary Attack Aura pause after a hit (milliseconds).", 0.1, 0.0, 0.45, 0.01, " ms");
+   final Setting<?>[] settings = {mode, pattern, fixed, min, max, tickHits, minPauseMs, maxPauseMs};
+   private final RandomGenerator random;
+   private boolean scheduled;
+   private long nextClick;
+   private boolean pauseScheduled;
+   private long pauseUntil;
+
+   AuraClicks() {
+      this(ThreadLocalRandom.current());
+   }
+
+   AuraClicks(RandomGenerator random) {
+      this.random = random;
+      pattern.visibleWhen(this::usesCps);
+      fixed.visibleWhen(() -> usesCps() && pattern.is("Static CPS"));
+      min.visibleWhen(() -> usesCps() && pattern.is("Custom CPS"));
+      max.visibleWhen(min::isVisible);
+      tickHits.visibleWhen(this::usesCps);
+      minPauseMs.visibleWhen(() -> usesCps() && tickHits.get());
+      maxPauseMs.visibleWhen(minPauseMs::isVisible);
+   }
+
+   boolean usesCps() {
+      return mode.is("1.8");
+   }
+
+   /** MotherHack-style NoDelay clock: bursts of attacks per tick instead of a CPS schedule. */
+   boolean usesBurst() {
+      return mode.is(NO_DELAY);
+   }
+
+   boolean ready(long now) {
+      return !scheduled || now - nextClick >= 0;
+   }
+
+   void recordClick(long now) {
+      int cps = fixed.get().intValue();
+      boolean variable = false;
+      if (pattern.is("Custom CPS")) {
+         // Adapted from Rockstar/src/main/java/moscow/rockstar/module/combat/Aura.java#getAttackDelayMs (inclusive, order-independent bounds).
+         int a = min.get().intValue();
+         int b = max.get().intValue();
+         variable = a != b;
+         cps = variable ? random.nextInt(Math.min(a, b), Math.max(a, b) + 1) : a;
+      }
+      long period = Math.round(1_000_000_000.0 / cps);
+      // A fixed rate can absorb modest frame lateness without drifting. A variable delay starts
+      // at the real click so the next sampled interval is never shortened below the custom bounds.
+      // Leave at least a third of a fixed beat between clicks; drop entire missed beats, never queue a burst.
+      long late = now - nextClick;
+      long credit = !variable && scheduled && late >= 0 && late < period ? Math.min(late, period * 2 / 3) : 0;
+      nextClick = now + period - credit;
+      scheduled = true;
+
+      long pause = tickHits.get() ? randomPauseNanos() : 0;
+      this.pauseUntil = now + pause;
+      this.pauseScheduled = pause > 0;
+   }
+
+   boolean isTemporarilyPaused(long now) {
+      if (!pauseScheduled) {
+         return false;
+      }
+      if (!usesCps() || !tickHits.get()) {
+         pauseScheduled = false;
+         return false;
+      }
+      return now - pauseUntil < 0;
+   }
+
+   private long randomPauseNanos() {
+      int first = (int)Math.round(minPauseMs.get() * 100.0);
+      int second = (int)Math.round(maxPauseMs.get() * 100.0);
+      int lower = Math.min(first, second);
+      int upper = Math.max(first, second);
+      int hundredthsOfMs = lower == upper ? lower : random.nextInt(lower, upper + 1);
+      return hundredthsOfMs * 10_000L;
+   }
+
+   void reset() {
+      scheduled = false;
+      pauseScheduled = false;
+   }
+}

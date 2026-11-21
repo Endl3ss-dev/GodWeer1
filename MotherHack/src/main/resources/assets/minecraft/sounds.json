@@ -1,0 +1,23 @@
+
+  {
+  "entity.ender_dragon.death": {
+    "sounds": [
+      {
+        "name": "entity/enderdragon/death",
+        "volume": 3.5,
+        "stream": true
+      },
+      {
+        "name": "entity/enderdragon/death",
+        "volume": 3.5,
+        "stream": true
+      },
+      {
+        "name": "entity/enderdragon/death",
+        "volume": 3.5,
+        "stream": true
+      }
+    ],
+    "subtitle": "subtitles.entity.ender_dragon.death"
+  }
+}

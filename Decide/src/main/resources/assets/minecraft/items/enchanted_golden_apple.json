@@ -1,0 +1,1303 @@
+{
+  "model": {
+    "type": "minecraft:select",
+    "property": "minecraft:custom_model_data",
+    "index": 0,
+    "cases": [
+      {
+        "when": "decide:item_skin:apple_ench_01",
+        "model": {
+          "type": "minecraft:condition",
+          "property": "minecraft:using_item",
+          "on_false": {
+            "type": "minecraft:model",
+            "model": "decide:item_skin/apple_ench_01_whole"
+          },
+          "on_true": {
+            "type": "minecraft:range_dispatch",
+            "property": "minecraft:use_duration",
+            "entries": [
+              {
+                "threshold": 0.25,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_01_bite1"
+                }
+              },
+              {
+                "threshold": 0.5,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_01_bite2"
+                }
+              },
+              {
+                "threshold": 0.75,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_01_bite3"
+                }
+              }
+            ],
+            "fallback": {
+              "type": "minecraft:model",
+              "model": "decide:item_skin/apple_ench_01_whole"
+            },
+            "scale": 0.05
+          }
+        }
+      },
+      {
+        "when": "decide:item_skin:apple_ench_02",
+        "model": {
+          "type": "minecraft:condition",
+          "property": "minecraft:using_item",
+          "on_false": {
+            "type": "minecraft:model",
+            "model": "decide:item_skin/apple_ench_02_whole"
+          },
+          "on_true": {
+            "type": "minecraft:range_dispatch",
+            "property": "minecraft:use_duration",
+            "entries": [
+              {
+                "threshold": 0.25,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_02_bite1"
+                }
+              },
+              {
+                "threshold": 0.5,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_02_bite2"
+                }
+              },
+              {
+                "threshold": 0.75,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_02_bite3"
+                }
+              }
+            ],
+            "fallback": {
+              "type": "minecraft:model",
+              "model": "decide:item_skin/apple_ench_02_whole"
+            },
+            "scale": 0.05
+          }
+        }
+      },
+      {
+        "when": "decide:item_skin:apple_ench_03",
+        "model": {
+          "type": "minecraft:condition",
+          "property": "minecraft:using_item",
+          "on_false": {
+            "type": "minecraft:model",
+            "model": "decide:item_skin/apple_ench_03_whole"
+          },
+          "on_true": {
+            "type": "minecraft:range_dispatch",
+            "property": "minecraft:use_duration",
+            "entries": [
+              {
+                "threshold": 0.25,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_03_bite1"
+                }
+              },
+              {
+                "threshold": 0.5,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_03_bite2"
+                }
+              },
+              {
+                "threshold": 0.75,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_03_bite3"
+                }
+              }
+            ],
+            "fallback": {
+              "type": "minecraft:model",
+              "model": "decide:item_skin/apple_ench_03_whole"
+            },
+            "scale": 0.05
+          }
+        }
+      },
+      {
+        "when": "decide:item_skin:apple_ench_04",
+        "model": {
+          "type": "minecraft:condition",
+          "property": "minecraft:using_item",
+          "on_false": {
+            "type": "minecraft:model",
+            "model": "decide:item_skin/apple_ench_04_whole"
+          },
+          "on_true": {
+            "type": "minecraft:range_dispatch",
+            "property": "minecraft:use_duration",
+            "entries": [
+              {
+                "threshold": 0.25,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_04_bite1"
+                }
+              },
+              {
+                "threshold": 0.5,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_04_bite2"
+                }
+              },
+              {
+                "threshold": 0.75,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_04_bite3"
+                }
+              }
+            ],
+            "fallback": {
+              "type": "minecraft:model",
+              "model": "decide:item_skin/apple_ench_04_whole"
+            },
+            "scale": 0.05
+          }
+        }
+      },
+      {
+        "when": "decide:item_skin:apple_ench_05",
+        "model": {
+          "type": "minecraft:condition",
+          "property": "minecraft:using_item",
+          "on_false": {
+            "type": "minecraft:model",
+            "model": "decide:item_skin/apple_ench_05_whole"
+          },
+          "on_true": {
+            "type": "minecraft:range_dispatch",
+            "property": "minecraft:use_duration",
+            "entries": [
+              {
+                "threshold": 0.25,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_05_bite1"
+                }
+              },
+              {
+                "threshold": 0.5,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_05_bite2"
+                }
+              },
+              {
+                "threshold": 0.75,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_05_bite3"
+                }
+              }
+            ],
+            "fallback": {
+              "type": "minecraft:model",
+              "model": "decide:item_skin/apple_ench_05_whole"
+            },
+            "scale": 0.05
+          }
+        }
+      },
+      {
+        "when": "decide:item_skin:apple_ench_06",
+        "model": {
+          "type": "minecraft:condition",
+          "property": "minecraft:using_item",
+          "on_false": {
+            "type": "minecraft:model",
+            "model": "decide:item_skin/apple_ench_06_whole"
+          },
+          "on_true": {
+            "type": "minecraft:range_dispatch",
+            "property": "minecraft:use_duration",
+            "entries": [
+              {
+                "threshold": 0.25,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_06_bite1"
+                }
+              },
+              {
+                "threshold": 0.5,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_06_bite2"
+                }
+              },
+              {
+                "threshold": 0.75,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_06_bite3"
+                }
+              }
+            ],
+            "fallback": {
+              "type": "minecraft:model",
+              "model": "decide:item_skin/apple_ench_06_whole"
+            },
+            "scale": 0.05
+          }
+        }
+      },
+      {
+        "when": "decide:item_skin:apple_ench_07",
+        "model": {
+          "type": "minecraft:condition",
+          "property": "minecraft:using_item",
+          "on_false": {
+            "type": "minecraft:model",
+            "model": "decide:item_skin/apple_ench_07_whole"
+          },
+          "on_true": {
+            "type": "minecraft:range_dispatch",
+            "property": "minecraft:use_duration",
+            "entries": [
+              {
+                "threshold": 0.25,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_07_bite1"
+                }
+              },
+              {
+                "threshold": 0.5,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_07_bite2"
+                }
+              },
+              {
+                "threshold": 0.75,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_07_bite3"
+                }
+              }
+            ],
+            "fallback": {
+              "type": "minecraft:model",
+              "model": "decide:item_skin/apple_ench_07_whole"
+            },
+            "scale": 0.05
+          }
+        }
+      },
+      {
+        "when": "decide:item_skin:apple_ench_08",
+        "model": {
+          "type": "minecraft:condition",
+          "property": "minecraft:using_item",
+          "on_false": {
+            "type": "minecraft:model",
+            "model": "decide:item_skin/apple_ench_08_whole"
+          },
+          "on_true": {
+            "type": "minecraft:range_dispatch",
+            "property": "minecraft:use_duration",
+            "entries": [
+              {
+                "threshold": 0.25,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_08_bite1"
+                }
+              },
+              {
+                "threshold": 0.5,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_08_bite2"
+                }
+              },
+              {
+                "threshold": 0.75,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_08_bite3"
+                }
+              }
+            ],
+            "fallback": {
+              "type": "minecraft:model",
+              "model": "decide:item_skin/apple_ench_08_whole"
+            },
+            "scale": 0.05
+          }
+        }
+      },
+      {
+        "when": "decide:item_skin:apple_ench_09",
+        "model": {
+          "type": "minecraft:condition",
+          "property": "minecraft:using_item",
+          "on_false": {
+            "type": "minecraft:model",
+            "model": "decide:item_skin/apple_ench_09_whole"
+          },
+          "on_true": {
+            "type": "minecraft:range_dispatch",
+            "property": "minecraft:use_duration",
+            "entries": [
+              {
+                "threshold": 0.25,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_09_bite1"
+                }
+              },
+              {
+                "threshold": 0.5,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_09_bite2"
+                }
+              },
+              {
+                "threshold": 0.75,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_09_bite3"
+                }
+              }
+            ],
+            "fallback": {
+              "type": "minecraft:model",
+              "model": "decide:item_skin/apple_ench_09_whole"
+            },
+            "scale": 0.05
+          }
+        }
+      },
+      {
+        "when": "decide:item_skin:apple_ench_10",
+        "model": {
+          "type": "minecraft:condition",
+          "property": "minecraft:using_item",
+          "on_false": {
+            "type": "minecraft:model",
+            "model": "decide:item_skin/apple_ench_10_whole"
+          },
+          "on_true": {
+            "type": "minecraft:range_dispatch",
+            "property": "minecraft:use_duration",
+            "entries": [
+              {
+                "threshold": 0.25,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_10_bite1"
+                }
+              },
+              {
+                "threshold": 0.5,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_10_bite2"
+                }
+              },
+              {
+                "threshold": 0.75,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_10_bite3"
+                }
+              }
+            ],
+            "fallback": {
+              "type": "minecraft:model",
+              "model": "decide:item_skin/apple_ench_10_whole"
+            },
+            "scale": 0.05
+          }
+        }
+      },
+      {
+        "when": "decide:item_skin:apple_ench_11",
+        "model": {
+          "type": "minecraft:condition",
+          "property": "minecraft:using_item",
+          "on_false": {
+            "type": "minecraft:model",
+            "model": "decide:item_skin/apple_ench_11_whole"
+          },
+          "on_true": {
+            "type": "minecraft:range_dispatch",
+            "property": "minecraft:use_duration",
+            "entries": [
+              {
+                "threshold": 0.25,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_11_bite1"
+                }
+              },
+              {
+                "threshold": 0.5,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_11_bite2"
+                }
+              },
+              {
+                "threshold": 0.75,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_11_bite3"
+                }
+              }
+            ],
+            "fallback": {
+              "type": "minecraft:model",
+              "model": "decide:item_skin/apple_ench_11_whole"
+            },
+            "scale": 0.05
+          }
+        }
+      },
+      {
+        "when": "decide:item_skin:apple_ench_12",
+        "model": {
+          "type": "minecraft:condition",
+          "property": "minecraft:using_item",
+          "on_false": {
+            "type": "minecraft:model",
+            "model": "decide:item_skin/apple_ench_12_whole"
+          },
+          "on_true": {
+            "type": "minecraft:range_dispatch",
+            "property": "minecraft:use_duration",
+            "entries": [
+              {
+                "threshold": 0.25,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_12_bite1"
+                }
+              },
+              {
+                "threshold": 0.5,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_12_bite2"
+                }
+              },
+              {
+                "threshold": 0.75,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_12_bite3"
+                }
+              }
+            ],
+            "fallback": {
+              "type": "minecraft:model",
+              "model": "decide:item_skin/apple_ench_12_whole"
+            },
+            "scale": 0.05
+          }
+        }
+      },
+      {
+        "when": "decide:item_skin:apple_ench_13",
+        "model": {
+          "type": "minecraft:condition",
+          "property": "minecraft:using_item",
+          "on_false": {
+            "type": "minecraft:model",
+            "model": "decide:item_skin/apple_ench_13_whole"
+          },
+          "on_true": {
+            "type": "minecraft:range_dispatch",
+            "property": "minecraft:use_duration",
+            "entries": [
+              {
+                "threshold": 0.25,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_13_bite1"
+                }
+              },
+              {
+                "threshold": 0.5,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_13_bite2"
+                }
+              },
+              {
+                "threshold": 0.75,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_13_bite3"
+                }
+              }
+            ],
+            "fallback": {
+              "type": "minecraft:model",
+              "model": "decide:item_skin/apple_ench_13_whole"
+            },
+            "scale": 0.05
+          }
+        }
+      },
+      {
+        "when": "decide:item_skin:apple_ench_14",
+        "model": {
+          "type": "minecraft:condition",
+          "property": "minecraft:using_item",
+          "on_false": {
+            "type": "minecraft:model",
+            "model": "decide:item_skin/apple_ench_14_whole"
+          },
+          "on_true": {
+            "type": "minecraft:range_dispatch",
+            "property": "minecraft:use_duration",
+            "entries": [
+              {
+                "threshold": 0.25,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_14_bite1"
+                }
+              },
+              {
+                "threshold": 0.5,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_14_bite2"
+                }
+              },
+              {
+                "threshold": 0.75,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_14_bite3"
+                }
+              }
+            ],
+            "fallback": {
+              "type": "minecraft:model",
+              "model": "decide:item_skin/apple_ench_14_whole"
+            },
+            "scale": 0.05
+          }
+        }
+      },
+      {
+        "when": "decide:item_skin:apple_ench_15",
+        "model": {
+          "type": "minecraft:condition",
+          "property": "minecraft:using_item",
+          "on_false": {
+            "type": "minecraft:model",
+            "model": "decide:item_skin/apple_ench_15_whole"
+          },
+          "on_true": {
+            "type": "minecraft:range_dispatch",
+            "property": "minecraft:use_duration",
+            "entries": [
+              {
+                "threshold": 0.25,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_15_bite1"
+                }
+              },
+              {
+                "threshold": 0.5,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_15_bite2"
+                }
+              },
+              {
+                "threshold": 0.75,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_15_bite3"
+                }
+              }
+            ],
+            "fallback": {
+              "type": "minecraft:model",
+              "model": "decide:item_skin/apple_ench_15_whole"
+            },
+            "scale": 0.05
+          }
+        }
+      },
+      {
+        "when": "decide:item_skin:apple_ench_16",
+        "model": {
+          "type": "minecraft:condition",
+          "property": "minecraft:using_item",
+          "on_false": {
+            "type": "minecraft:model",
+            "model": "decide:item_skin/apple_ench_16_whole"
+          },
+          "on_true": {
+            "type": "minecraft:range_dispatch",
+            "property": "minecraft:use_duration",
+            "entries": [
+              {
+                "threshold": 0.25,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_16_bite1"
+                }
+              },
+              {
+                "threshold": 0.5,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_16_bite2"
+                }
+              },
+              {
+                "threshold": 0.75,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_16_bite3"
+                }
+              }
+            ],
+            "fallback": {
+              "type": "minecraft:model",
+              "model": "decide:item_skin/apple_ench_16_whole"
+            },
+            "scale": 0.05
+          }
+        }
+      },
+      {
+        "when": "decide:item_skin:apple_ench_17",
+        "model": {
+          "type": "minecraft:condition",
+          "property": "minecraft:using_item",
+          "on_false": {
+            "type": "minecraft:model",
+            "model": "decide:item_skin/apple_ench_17_whole"
+          },
+          "on_true": {
+            "type": "minecraft:range_dispatch",
+            "property": "minecraft:use_duration",
+            "entries": [
+              {
+                "threshold": 0.25,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_17_bite1"
+                }
+              },
+              {
+                "threshold": 0.5,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_17_bite2"
+                }
+              },
+              {
+                "threshold": 0.75,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_17_bite3"
+                }
+              }
+            ],
+            "fallback": {
+              "type": "minecraft:model",
+              "model": "decide:item_skin/apple_ench_17_whole"
+            },
+            "scale": 0.05
+          }
+        }
+      },
+      {
+        "when": "decide:item_skin:apple_ench_18",
+        "model": {
+          "type": "minecraft:condition",
+          "property": "minecraft:using_item",
+          "on_false": {
+            "type": "minecraft:model",
+            "model": "decide:item_skin/apple_ench_18_whole"
+          },
+          "on_true": {
+            "type": "minecraft:range_dispatch",
+            "property": "minecraft:use_duration",
+            "entries": [
+              {
+                "threshold": 0.25,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_18_bite1"
+                }
+              },
+              {
+                "threshold": 0.5,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_18_bite2"
+                }
+              },
+              {
+                "threshold": 0.75,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_18_bite3"
+                }
+              }
+            ],
+            "fallback": {
+              "type": "minecraft:model",
+              "model": "decide:item_skin/apple_ench_18_whole"
+            },
+            "scale": 0.05
+          }
+        }
+      },
+      {
+        "when": "decide:item_skin:apple_ench_19",
+        "model": {
+          "type": "minecraft:condition",
+          "property": "minecraft:using_item",
+          "on_false": {
+            "type": "minecraft:model",
+            "model": "decide:item_skin/apple_ench_19_whole"
+          },
+          "on_true": {
+            "type": "minecraft:range_dispatch",
+            "property": "minecraft:use_duration",
+            "entries": [
+              {
+                "threshold": 0.25,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_19_bite1"
+                }
+              },
+              {
+                "threshold": 0.5,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_19_bite2"
+                }
+              },
+              {
+                "threshold": 0.75,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_19_bite3"
+                }
+              }
+            ],
+            "fallback": {
+              "type": "minecraft:model",
+              "model": "decide:item_skin/apple_ench_19_whole"
+            },
+            "scale": 0.05
+          }
+        }
+      },
+      {
+        "when": "decide:item_skin:apple_ench_20",
+        "model": {
+          "type": "minecraft:condition",
+          "property": "minecraft:using_item",
+          "on_false": {
+            "type": "minecraft:model",
+            "model": "decide:item_skin/apple_ench_20_whole"
+          },
+          "on_true": {
+            "type": "minecraft:range_dispatch",
+            "property": "minecraft:use_duration",
+            "entries": [
+              {
+                "threshold": 0.25,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_20_bite1"
+                }
+              },
+              {
+                "threshold": 0.5,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_20_bite2"
+                }
+              },
+              {
+                "threshold": 0.75,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_20_bite3"
+                }
+              }
+            ],
+            "fallback": {
+              "type": "minecraft:model",
+              "model": "decide:item_skin/apple_ench_20_whole"
+            },
+            "scale": 0.05
+          }
+        }
+      },
+      {
+        "when": "decide:item_skin:apple_ench_21",
+        "model": {
+          "type": "minecraft:condition",
+          "property": "minecraft:using_item",
+          "on_false": {
+            "type": "minecraft:model",
+            "model": "decide:item_skin/apple_ench_21_whole"
+          },
+          "on_true": {
+            "type": "minecraft:range_dispatch",
+            "property": "minecraft:use_duration",
+            "entries": [
+              {
+                "threshold": 0.25,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_21_bite1"
+                }
+              },
+              {
+                "threshold": 0.5,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_21_bite2"
+                }
+              },
+              {
+                "threshold": 0.75,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_21_bite3"
+                }
+              }
+            ],
+            "fallback": {
+              "type": "minecraft:model",
+              "model": "decide:item_skin/apple_ench_21_whole"
+            },
+            "scale": 0.05
+          }
+        }
+      },
+      {
+        "when": "decide:item_skin:apple_ench_22",
+        "model": {
+          "type": "minecraft:condition",
+          "property": "minecraft:using_item",
+          "on_false": {
+            "type": "minecraft:model",
+            "model": "decide:item_skin/apple_ench_22_whole"
+          },
+          "on_true": {
+            "type": "minecraft:range_dispatch",
+            "property": "minecraft:use_duration",
+            "entries": [
+              {
+                "threshold": 0.25,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_22_bite1"
+                }
+              },
+              {
+                "threshold": 0.5,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_22_bite2"
+                }
+              },
+              {
+                "threshold": 0.75,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_22_bite3"
+                }
+              }
+            ],
+            "fallback": {
+              "type": "minecraft:model",
+              "model": "decide:item_skin/apple_ench_22_whole"
+            },
+            "scale": 0.05
+          }
+        }
+      },
+      {
+        "when": "decide:item_skin:apple_ench_23",
+        "model": {
+          "type": "minecraft:condition",
+          "property": "minecraft:using_item",
+          "on_false": {
+            "type": "minecraft:model",
+            "model": "decide:item_skin/apple_ench_23_whole"
+          },
+          "on_true": {
+            "type": "minecraft:range_dispatch",
+            "property": "minecraft:use_duration",
+            "entries": [
+              {
+                "threshold": 0.25,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_23_bite1"
+                }
+              },
+              {
+                "threshold": 0.5,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_23_bite2"
+                }
+              },
+              {
+                "threshold": 0.75,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_23_bite3"
+                }
+              }
+            ],
+            "fallback": {
+              "type": "minecraft:model",
+              "model": "decide:item_skin/apple_ench_23_whole"
+            },
+            "scale": 0.05
+          }
+        }
+      },
+      {
+        "when": "decide:item_skin:apple_ench_24",
+        "model": {
+          "type": "minecraft:condition",
+          "property": "minecraft:using_item",
+          "on_false": {
+            "type": "minecraft:model",
+            "model": "decide:item_skin/apple_ench_24_whole"
+          },
+          "on_true": {
+            "type": "minecraft:range_dispatch",
+            "property": "minecraft:use_duration",
+            "entries": [
+              {
+                "threshold": 0.25,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_24_bite1"
+                }
+              },
+              {
+                "threshold": 0.5,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_24_bite2"
+                }
+              },
+              {
+                "threshold": 0.75,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_24_bite3"
+                }
+              }
+            ],
+            "fallback": {
+              "type": "minecraft:model",
+              "model": "decide:item_skin/apple_ench_24_whole"
+            },
+            "scale": 0.05
+          }
+        }
+      },
+      {
+        "when": "decide:item_skin:apple_ench_25",
+        "model": {
+          "type": "minecraft:condition",
+          "property": "minecraft:using_item",
+          "on_false": {
+            "type": "minecraft:model",
+            "model": "decide:item_skin/apple_ench_25_whole"
+          },
+          "on_true": {
+            "type": "minecraft:range_dispatch",
+            "property": "minecraft:use_duration",
+            "entries": [
+              {
+                "threshold": 0.25,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_25_bite1"
+                }
+              },
+              {
+                "threshold": 0.5,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_25_bite2"
+                }
+              },
+              {
+                "threshold": 0.75,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_25_bite3"
+                }
+              }
+            ],
+            "fallback": {
+              "type": "minecraft:model",
+              "model": "decide:item_skin/apple_ench_25_whole"
+            },
+            "scale": 0.05
+          }
+        }
+      },
+      {
+        "when": "decide:item_skin:apple_ench_26",
+        "model": {
+          "type": "minecraft:condition",
+          "property": "minecraft:using_item",
+          "on_false": {
+            "type": "minecraft:model",
+            "model": "decide:item_skin/apple_ench_26_whole"
+          },
+          "on_true": {
+            "type": "minecraft:range_dispatch",
+            "property": "minecraft:use_duration",
+            "entries": [
+              {
+                "threshold": 0.25,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_26_bite1"
+                }
+              },
+              {
+                "threshold": 0.5,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_26_bite2"
+                }
+              },
+              {
+                "threshold": 0.75,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_26_bite3"
+                }
+              }
+            ],
+            "fallback": {
+              "type": "minecraft:model",
+              "model": "decide:item_skin/apple_ench_26_whole"
+            },
+            "scale": 0.05
+          }
+        }
+      },
+      {
+        "when": "decide:item_skin:apple_ench_27",
+        "model": {
+          "type": "minecraft:condition",
+          "property": "minecraft:using_item",
+          "on_false": {
+            "type": "minecraft:model",
+            "model": "decide:item_skin/apple_ench_27_whole"
+          },
+          "on_true": {
+            "type": "minecraft:range_dispatch",
+            "property": "minecraft:use_duration",
+            "entries": [
+              {
+                "threshold": 0.25,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_27_bite1"
+                }
+              },
+              {
+                "threshold": 0.5,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_27_bite2"
+                }
+              },
+              {
+                "threshold": 0.75,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_27_bite3"
+                }
+              }
+            ],
+            "fallback": {
+              "type": "minecraft:model",
+              "model": "decide:item_skin/apple_ench_27_whole"
+            },
+            "scale": 0.05
+          }
+        }
+      },
+      {
+        "when": "decide:item_skin:apple_ench_28",
+        "model": {
+          "type": "minecraft:condition",
+          "property": "minecraft:using_item",
+          "on_false": {
+            "type": "minecraft:model",
+            "model": "decide:item_skin/apple_ench_28_whole"
+          },
+          "on_true": {
+            "type": "minecraft:range_dispatch",
+            "property": "minecraft:use_duration",
+            "entries": [
+              {
+                "threshold": 0.25,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_28_bite1"
+                }
+              },
+              {
+                "threshold": 0.5,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_28_bite2"
+                }
+              },
+              {
+                "threshold": 0.75,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_28_bite3"
+                }
+              }
+            ],
+            "fallback": {
+              "type": "minecraft:model",
+              "model": "decide:item_skin/apple_ench_28_whole"
+            },
+            "scale": 0.05
+          }
+        }
+      },
+      {
+        "when": "decide:item_skin:apple_ench_29",
+        "model": {
+          "type": "minecraft:condition",
+          "property": "minecraft:using_item",
+          "on_false": {
+            "type": "minecraft:model",
+            "model": "decide:item_skin/apple_ench_29_whole"
+          },
+          "on_true": {
+            "type": "minecraft:range_dispatch",
+            "property": "minecraft:use_duration",
+            "entries": [
+              {
+                "threshold": 0.25,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_29_bite1"
+                }
+              },
+              {
+                "threshold": 0.5,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_29_bite2"
+                }
+              },
+              {
+                "threshold": 0.75,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_29_bite3"
+                }
+              }
+            ],
+            "fallback": {
+              "type": "minecraft:model",
+              "model": "decide:item_skin/apple_ench_29_whole"
+            },
+            "scale": 0.05
+          }
+        }
+      },
+      {
+        "when": "decide:item_skin:apple_ench_30",
+        "model": {
+          "type": "minecraft:condition",
+          "property": "minecraft:using_item",
+          "on_false": {
+            "type": "minecraft:model",
+            "model": "decide:item_skin/apple_ench_30_whole"
+          },
+          "on_true": {
+            "type": "minecraft:range_dispatch",
+            "property": "minecraft:use_duration",
+            "entries": [
+              {
+                "threshold": 0.25,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_30_bite1"
+                }
+              },
+              {
+                "threshold": 0.5,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_30_bite2"
+                }
+              },
+              {
+                "threshold": 0.75,
+                "model": {
+                  "type": "minecraft:model",
+                  "model": "decide:item_skin/apple_ench_30_bite3"
+                }
+              }
+            ],
+            "fallback": {
+              "type": "minecraft:model",
+              "model": "decide:item_skin/apple_ench_30_whole"
+            },
+            "scale": 0.05
+          }
+        }
+      }
+    ],
+    "fallback": {
+      "type": "minecraft:model",
+      "model": "minecraft:item/enchanted_golden_apple"
+    }
+  }
+}

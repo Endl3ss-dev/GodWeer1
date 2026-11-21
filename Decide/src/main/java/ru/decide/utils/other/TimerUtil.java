@@ -1,0 +1,175 @@
+/*
+ * Decompiled with CFR 0.152.
+ * 
+ * Could not load the following classes:
+ *  lombok.Generated
+ *  net.fabricmc.api.EnvType
+ *  net.fabricmc.api.Environment
+ */
+package ru.decide.utils.other;
+
+import lombok.Generated;
+import net.fabricmc.api.EnvType;
+import net.fabricmc.api.Environment;
+
+@Environment(value=EnvType.CLIENT)
+public class TimerUtil {
+    private long startTime;
+    public long lastMS = System.currentTimeMillis();
+
+    public void reset() {
+        this.lastMS = System.currentTimeMillis();
+    }
+
+    public boolean isReached(long time) {
+        return System.currentTimeMillis() - this.lastMS > time;
+    }
+
+    public void setLastMS(long newValue) {
+        this.lastMS = System.currentTimeMillis() + newValue;
+    }
+
+    public void setTime(long time) {
+        this.lastMS = time;
+    }
+
+    public boolean finished(double delay) {
+        return (double)System.currentTimeMillis() - delay >= (double)this.startTime;
+    }
+
+    public boolean every(double delay) {
+        boolean finished = this.finished(delay);
+        if (finished) {
+            this.reset();
+        }
+        return finished;
+    }
+
+    public long elapsedTime() {
+        return System.currentTimeMillis() - this.startTime;
+    }
+
+    public void setMs(long ms) {
+        this.startTime = System.currentTimeMillis() - ms;
+    }
+
+    public long getTime() {
+        return System.currentTimeMillis() - this.lastMS;
+    }
+
+    public boolean isRunning() {
+        return System.currentTimeMillis() - this.lastMS <= 0L;
+    }
+
+    public boolean hasTimeElapsed(long l) {
+        return System.currentTimeMillis() - this.lastMS > l;
+    }
+
+    public boolean hasTimeElapsed() {
+        return this.lastMS < System.currentTimeMillis();
+    }
+
+    public boolean hasTimeElapsed(long time, boolean reset) {
+        if (System.currentTimeMillis() - this.lastMS > time) {
+            if (reset) {
+                this.reset();
+            }
+            return true;
+        }
+        return false;
+    }
+
+    public boolean hasReached(double milliseconds) {
+        return (double)this.getTimePassed() >= milliseconds;
+    }
+
+    public long getTimePassed() {
+        return System.currentTimeMillis() - this.lastMS;
+    }
+
+    public long setTimePassed(int delay) {
+        return System.currentTimeMillis() + (long)delay;
+    }
+
+    public long getLastMS() {
+        return this.lastMS;
+    }
+
+    public void setLastMC() {
+        this.lastMS = System.currentTimeMillis();
+    }
+
+    public boolean finished(long delay) {
+        return System.currentTimeMillis() - this.lastMS >= delay;
+    }
+
+    public boolean every(long delay) {
+        if (System.currentTimeMillis() - this.lastMS >= delay) {
+            this.reset();
+            return true;
+        }
+        return false;
+    }
+
+    public boolean passed(long ms) {
+        return System.currentTimeMillis() - this.lastMS >= ms;
+    }
+
+    @Generated
+    public long getStartTime() {
+        return this.startTime;
+    }
+
+    @Environment(value=EnvType.CLIENT)
+    public static class legacyTime {
+        private long lastMS;
+
+        private legacyTime() {
+            this.reset();
+        }
+
+        public static legacyTime create() {
+            return new legacyTime();
+        }
+
+        public void reset() {
+            this.lastMS = System.currentTimeMillis();
+        }
+
+        public long elapsedTime() {
+            return System.currentTimeMillis() - this.lastMS;
+        }
+
+        public boolean hasReached(long time) {
+            return this.elapsedTime() >= time;
+        }
+
+        public boolean hasReached(long time, boolean reset) {
+            boolean hasElapsed;
+            boolean bl = hasElapsed = this.elapsedTime() >= time;
+            if (hasElapsed && reset) {
+                this.reset();
+            }
+            return hasElapsed;
+        }
+
+        public boolean hasReached(double ms) {
+            return (double)this.elapsedTime() >= ms;
+        }
+
+        public boolean delay(long ms) {
+            boolean hasDelayElapsed;
+            boolean bl = hasDelayElapsed = this.elapsedTime() - ms >= 0L;
+            if (hasDelayElapsed) {
+                this.reset();
+            }
+            return hasDelayElapsed;
+        }
+
+        @Generated
+        public void setLastMS(long lastMS) {
+            this.lastMS = lastMS;
+        }
+    }
+}
+
