@@ -5,6 +5,8 @@
 
 Запись ручного строительства и подбор профиля с подтверждением: см.
 [scaffold-training.md](scaffold-training.md), локальная команда `.scafftrain`.
+Отдельный singleplayer-тренажёр плоского Telly с замедлением и доводкой:
+[scaffold-coach.md](scaffold-coach.md).
 
 ## Обычный мост
 

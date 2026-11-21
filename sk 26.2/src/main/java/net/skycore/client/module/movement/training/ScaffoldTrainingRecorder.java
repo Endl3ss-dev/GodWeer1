@@ -16,6 +16,7 @@ import java.util.UUID;
 import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.TimeUnit;
 import net.fabricmc.fabric.api.client.event.lifecycle.v1.ClientLifecycleEvents;
+import org.lwjgl.glfw.GLFW;
 import net.minecraft.client.Minecraft;
 import net.minecraft.world.entity.player.Input;
 import net.skycore.client.SkycoreClient;
@@ -28,6 +29,8 @@ import net.skycore.client.event.ClientTickEvent;
 import net.skycore.client.event.PlayerInputEvent;
 import net.skycore.client.module.ClientModule;
 import net.skycore.client.module.movement.ScaffoldModule;
+import net.skycore.client.module.movement.ScaffoldCoachModule;
+import net.skycore.client.util.ResetSpeedHelper;
 import net.skycore.client.setting.NumberSetting;
 import net.skycore.client.util.SendDonationHelper;
 
@@ -62,6 +65,7 @@ public final class ScaffoldTrainingRecorder {
       SkycoreClient.events().subscribe(ClientRenderEvent.class, event -> this.sample(event.client()));
       SkycoreClient.events().subscribe(BlockUseObservationEvent.class, this::observe);
       ClientLifecycleEvents.CLIENT_STOPPING.register(client -> {
+         ScaffoldCoachModule.INSTANCE.setEnabled(false);
          Session session = this.active != null ? this.active : this.finishing;
          this.stop("client-stopping");
          if (session != null) {
@@ -76,10 +80,12 @@ public final class ScaffoldTrainingRecorder {
       });
    }
 
-   private String contamination() {
+   private String contamination(boolean allowCoach) {
       for (ClientModule module : SkycoreClient.modules().enabled()) {
+         if (allowCoach && module == ScaffoldCoachModule.INSTANCE) continue;
          if (module.affectsGameplay()) return "Disable gameplay modules before recording: " + module.getName();
       }
+      if (!allowCoach && Math.abs(ResetSpeedHelper.getSpeed() - 1) > 0.001F) return "Normal recording requires normal client time";
       if (RotationController.isActive() || RotationManager.INSTANCE.isRotating() || ServerRotationManager.INSTANCE.isRotating()) {
          return "Wait until automatic rotations stop";
       }
@@ -92,10 +98,13 @@ public final class ScaffoldTrainingRecorder {
       if (mc.player == null || mc.level == null || mc.getSingleplayerServer() == null) {
          throw new IllegalStateException("Recording is allowed only in your singleplayer world");
       }
-      String problem = this.contamination();
+      String problem = this.contamination("assisted".equals(mode));
       if (problem != null) throw new IllegalStateException(problem);
+      if ("assisted".equals(mode) && !ScaffoldCoachModule.INSTANCE.isEnabled()) {
+         throw new IllegalStateException("First enable .scafftrain coach on at 20 TPS");
+      }
       float expected = "slow".equals(mode) ? 3 : 20;
-      if ((!"slow".equals(mode) && !"normal".equals(mode))
+      if ((!"slow".equals(mode) && !"normal".equals(mode) && !"assisted".equals(mode))
          || !Float.isFinite(mc.level.tickRateManager().tickrate())
          || Math.abs(mc.level.tickRateManager().tickrate() - expected) > 0.1F
          || mc.level.tickRateManager().isFrozen()) {
@@ -134,7 +143,7 @@ public final class ScaffoldTrainingRecorder {
          this.stop("error-rate-changed");
          return false;
       }
-      String problem = this.contamination();
+      String problem = this.contamination("assisted".equals(s.mode));
       if (problem != null) {
          this.stop("error-contaminated: " + problem);
          return false;
@@ -144,7 +153,12 @@ public final class ScaffoldTrainingRecorder {
          this.stop("error-invalid-pose");
          return false;
       }
+      if ("assisted".equals(s.mode) && !ScaffoldCoachModule.INSTANCE.isEnabled()) {
+         this.stop("coach-disabled");
+         return false;
+      }
       boolean usable = !mc.isPaused() && !mc.level.tickRateManager().isFrozen() && mc.gui.screen() == null
+         && GLFW.glfwGetWindowAttrib(mc.getWindow().handle(), GLFW.GLFW_FOCUSED) == GLFW.GLFW_TRUE
          && mc.player.isAlive() && !mc.player.isSpectator() && !mc.player.isPassenger()
          && !mc.player.getAbilities().flying && !mc.player.isFallFlying();
       if (!usable) {
@@ -185,11 +199,12 @@ public final class ScaffoldTrainingRecorder {
       }
       ScaffoldTrainingAnalysis.Sample sample = new ScaffoldTrainingAnalysis.Sample(now - s.started,
          this.clientTick, mc.level.getGameTime(), mc.level.tickRateManager().tickrate(), s.segment,
+         ResetSpeedHelper.getSpeed(), ScaffoldCoachModule.INSTANCE.isEnabled(),
          player.getX(), player.getY(), player.getZ(), player.getYRot(), player.getXRot(), player.onGround(),
          this.input.shift(), this.input.jump(), this.input.forward(), this.input.backward(),
          this.input.left(), this.input.right(), this.input.sprint(), player.getInventory().getSelectedSlot());
       s.samples.add(sample);
-      this.offer("sample", new Frame(sample, player.getMainHandItem().getItem().toString()));
+      this.offer("sample", new Frame(sample, player.getMainHandItem().getItem().toString(), ScaffoldCoachModule.INSTANCE.snapshot()));
    }
 
    private void observe(BlockUseObservationEvent event) {
@@ -237,7 +252,7 @@ public final class ScaffoldTrainingRecorder {
             + ", attempts=" + this.active.attempts.size() + ", seconds="
             + TimeUnit.NANOSECONDS.toSeconds(System.nanoTime() - this.active.started));
       } else {
-         info(this.finalizing ? "Saving recording..." : "Not recording. Commands: start slow | start normal | stop | report | apply | undo");
+         info(this.finalizing ? "Saving recording..." : "Not recording. Commands: coach on/off/slow/height/status | start slow/normal/assisted | stop | report | apply | undo");
       }
    }
 
@@ -246,10 +261,12 @@ public final class ScaffoldTrainingRecorder {
       var report = this.pending;
       info("Report " + report.session() + ": " + report.mode() + ", bridge placements="
          + report.bridgePlacements() + ", motion=" + report.motionSamples() + ", applicable=" + report.applicable());
+      report.styleStatistics().forEach((key, value) -> info("Sequence " + key + " = " + value));
       report.proposedSettings().forEach((key, value) -> info(key + " -> " + value));
       report.warnings().forEach(ScaffoldTrainingRecorder::info);
       this.reviewed = true;
       info(report.applicable() ? "Confirm these proposals: .scafftrain apply (does NOT enable Scaffold)"
+         : "assisted".equals(report.mode()) ? "Assisted sequence measurements saved; human rotation calibration requires a separate unassisted normal recording."
          : "Not applicable. Record normal construction at 20 TPS with enough ground placements and rotations.");
    }
 
@@ -310,7 +327,7 @@ public final class ScaffoldTrainingRecorder {
    }
 
    private record Row(String type, Object data) { }
-   private record Frame(ScaffoldTrainingAnalysis.Sample state, String mainHandItem) { }
+   private record Frame(ScaffoldTrainingAnalysis.Sample state, String mainHandItem, ScaffoldCoachModule.State coach) { }
    private record UseFrame(ScaffoldTrainingAnalysis.Placement observation, float yaw, float pitch,
                            String hand, String item) { }
 
@@ -343,7 +360,7 @@ public final class ScaffoldTrainingRecorder {
       public void run() {
          try (BufferedWriter writer = Files.newBufferedWriter(this.folder.resolve(this.id + ".jsonl"),
             StandardCharsets.UTF_8, StandardOpenOption.CREATE_NEW, StandardOpenOption.WRITE)) {
-            writer.write(JSON.toJson(new Row("session", Map.of("schema", 1, "id", this.id,
+            writer.write(JSON.toJson(new Row("session", Map.of("schema", 2, "id", this.id,
                "mode", this.mode, "minecraft", "26.2", "clock", "relative monotonic nanoseconds",
                "placementAuthority", "local prediction only"))));
             writer.newLine();

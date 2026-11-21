@@ -88,6 +88,18 @@ public final class ScaffoldModuleTest {
             }
          }
       }
+      near(ScaffoldModule.smoothStep(180, 0, 0.5F), 0, "zero frame time cannot rotate");
+      check(!ScaffoldCoachModule.clockConflict(false, 1, 0.25F), "can borrow idle clock");
+      check(!ScaffoldCoachModule.clockConflict(true, 0.25F, 0.25F), "own clock can be restored");
+      check(ScaffoldCoachModule.clockConflict(true, 2, 0.25F), "must not reset a foreign timer");
+      check(ScaffoldCoachModule.clockConflict(false, 0.5F, 0.25F), "must not claim occupied clock");
+      check(ScaffoldCoachModule.clockConflict(true, Float.NaN, 0.25F), "invalid clock is a conflict");
+      check(ScaffoldCoachModule.lineTarget(new BlockPos(8, 63, 2), 0, 2, Direction.EAST), "forward flat X row");
+      check(!ScaffoldCoachModule.lineTarget(new BlockPos(8, 63, 3), 0, 2, Direction.EAST), "no sideways detour");
+      check(!ScaffoldCoachModule.lineTarget(new BlockPos(-1, 63, 2), 0, 2, Direction.EAST), "no backwards row");
+      check(ScaffoldCoachModule.lineTarget(new BlockPos(0, 63, -8), 0, 2, Direction.NORTH), "forward negative Z row");
+      check(!ScaffoldCoachModule.lineTarget(new BlockPos(0, 63, 2), 0, 2, Direction.UP), "no tower row");
+      check(!ScaffoldCoachModule.INSTANCE.isEnabled(), "coach disabled by default");
       ScaffoldModule module = new ScaffoldModule();
       check(module.getCategory() == ModuleCategory.MOVEMENT, "movement category");
       check(!module.isEnabled(), "disabled by default");
