@@ -5,6 +5,7 @@ import java.io.IOException;
 import net.skycore.client.SkycoreClient;
 import net.minecraft.client.multiplayer.ClientSuggestionProvider;
 import net.skycore.client.module.movement.training.ScaffoldTrainingRecorder;
+import net.skycore.client.module.movement.ScaffoldCoachModule;
 
 /** Local-only command; never sends these commands or datasets to a server. */
 public final class ScaffoldTrainCommand extends ClientCommand {
@@ -29,7 +30,14 @@ public final class ScaffoldTrainCommand extends ClientCommand {
       builder.then(literal("status").executes(context -> { recorder.status(); return 1; }));
       builder.then(literal("start")
          .then(literal("slow").executes(context -> { start("slow"); return 1; }))
-         .then(literal("normal").executes(context -> { start("normal"); return 1; })));
+         .then(literal("normal").executes(context -> { start("normal"); return 1; }))
+         .then(literal("assisted").executes(context -> { start("assisted"); return 1; })));
+      builder.then(literal("coach")
+         .then(literal("on").executes(context -> { ScaffoldCoachModule.INSTANCE.setEnabled(true); return 1; }))
+         .then(literal("off").executes(context -> { ScaffoldCoachModule.INSTANCE.setEnabled(false); return 1; }))
+         .then(literal("slow").executes(context -> { ScaffoldCoachModule.INSTANCE.toggleSlow(); return 1; }))
+         .then(literal("height").executes(context -> { ScaffoldCoachModule.INSTANCE.resetHeight(); return 1; }))
+         .then(literal("status").executes(context -> { ScaffoldCoachModule.INSTANCE.status(); return 1; })));
       builder.then(literal("stop").executes(context -> { recorder.stop("manual"); return 1; }));
       builder.then(literal("report").executes(context -> { recorder.report(); return 1; }));
       builder.then(literal("apply").executes(context -> { recorder.apply(); return 1; }));

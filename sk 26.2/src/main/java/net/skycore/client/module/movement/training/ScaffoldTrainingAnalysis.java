@@ -4,13 +4,15 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.HashSet;
+import java.util.Set;
 
 /** Offline, bounded-session statistics. No Minecraft state, ML, or cross-TPS extrapolation. */
 public final class ScaffoldTrainingAnalysis {
    private ScaffoldTrainingAnalysis() { }
 
    public record Sample(long nanos, long clientTick, long worldTick, float tickRate, int segment,
-                        double x, double y, double z, float yaw, float pitch,
+                        float clientSpeed, boolean assisted, double x, double y, double z, float yaw, float pitch,
                         boolean grounded, boolean shift, boolean jump, boolean forward,
                         boolean backward, boolean left, boolean right, boolean sprint, int slot) { }
 
@@ -22,7 +24,7 @@ public final class ScaffoldTrainingAnalysis {
    public record Report(int schema, String session, String mode, String stopReason,
                         int samples, int attempts, int bridgePlacements, int motionSamples,
                         double durationSeconds, boolean applicable, List<String> warnings,
-                        Map<String, Double> proposedSettings) { }
+                        Map<String, Double> proposedSettings, Map<String, Double> styleStatistics) { }
 
    public static Report analyze(String id, String mode, String reason,
                                 List<Sample> samples, List<Placement> attempts) {
@@ -33,7 +35,8 @@ public final class ScaffoldTrainingAnalysis {
       int nearest = 0;
       boolean rateValid = true;
       for (Sample sample : samples) {
-         rateValid &= Float.isFinite(sample.tickRate()) && Math.abs(sample.tickRate() - 20) < 0.1;
+         rateValid &= Float.isFinite(sample.tickRate()) && Math.abs(sample.tickRate() - 20) < 0.1
+            && Float.isFinite(sample.clientSpeed()) && Math.abs(sample.clientSpeed() - 1) < 0.001 && !sample.assisted();
       }
       for (int i = 1; i < samples.size() && !uses.isEmpty(); i++) {
          Sample previous = samples.get(i - 1), current = samples.get(i);
@@ -77,7 +80,7 @@ public final class ScaffoldTrainingAnalysis {
       }
       List<String> warnings = new ArrayList<>();
       if (reason.startsWith("error")) warnings.add("Recording interrupted by an error: " + reason);
-      if (!"normal".equals(mode) || !rateValid) warnings.add("Only a stable 20 TPS normal recording can produce an applicable profile; slow data is not rescaled.");
+      if (!"normal".equals(mode) || !rateValid) warnings.add("Only an unassisted 20 TPS / 1x normal recording can produce an applicable profile; slow and coached data are not rescaled.");
       if (uses.size() < 30) warnings.add("Need at least 30 locally observed bridge placements.");
       if (yaw.size() < 20 || pitch.size() < 20) warnings.add("Need at least 20 ground yaw and 20 ground pitch motion samples near placements.");
       double duration = samples.size() < 2 ? 0 : (samples.getLast().nanos() - samples.getFirst().nanos()) / 1e9;
@@ -95,9 +98,63 @@ public final class ScaffoldTrainingAnalysis {
       warnings.add("Placement observations include client prediction, not server acknowledgement.");
       warnings.add("Quantiles approximate your controls; smoothing, edge distance and aim policy are not learned.");
       if (air.size() < 20) warnings.add("Jump data insufficient: Jump Turn Speed is left unchanged.");
-      return new Report(1, id, mode, reason, samples.size(), attempts.size(), uses.size(),
-         yaw.size() + pitch.size() + air.size(), duration, applicable, List.copyOf(warnings), Map.copyOf(proposed));
+      return new Report(2, id, mode, reason, samples.size(), attempts.size(), uses.size(),
+         yaw.size() + pitch.size() + air.size(), duration, applicable, List.copyOf(warnings), Map.copyOf(proposed), summarizeStyle(samples, uses));
    }
+
+   /** Sequence measurements remain useful for coached data, without treating assisted aim as human. */
+   private static Map<String, Double> summarizeStyle(List<Sample> samples, List<Placement> uses) {
+      int start = -1, completed = 0, three = 0, flat = 0, totalBlocks = 0, useCursor = 0;
+      double yawSum = 0, secondsSum = 0, ticksSum = 0;
+      for (int i = 1; i < samples.size(); i++) {
+         Sample previous = samples.get(i - 1), current = samples.get(i);
+         if (previous.segment() != current.segment()) {
+            start = -1;
+            continue;
+         }
+         if (previous.grounded() && !current.grounded()) start = i - 1;
+         if (start < 0 || !current.grounded() || previous.grounded()) continue;
+         Sample takeoff = samples.get(start);
+         int blocks = 0, firstY = 0;
+         Set<Position> unique = new HashSet<>();
+         boolean sameY = true;
+         while (useCursor < uses.size() && uses.get(useCursor).nanos() < takeoff.nanos()) useCursor++;
+         for (int j = useCursor; j < uses.size() && uses.get(j).nanos() <= current.nanos(); j++) {
+            Placement use = uses.get(j);
+            if (use.grounded() || !unique.add(new Position(use.x(), use.y(), use.z()))) continue;
+            if (blocks == 0) firstY = use.y();
+            else sameY &= use.y() == firstY;
+            blocks++;
+         }
+         double excursion = 0;
+         for (int j = start; j <= i; j++) excursion = Math.max(excursion, Math.abs(wrap(samples.get(j).yaw() - takeoff.yaw())));
+         completed++;
+         if (blocks >= 3) three++;
+         if (blocks > 0 && sameY) flat++;
+         totalBlocks += blocks;
+         yawSum += excursion;
+         secondsSum += (current.nanos() - takeoff.nanos()) / 1e9;
+         ticksSum += current.clientTick() - takeoff.clientTick();
+         start = -1;
+      }
+      Map<String, Double> metrics = new LinkedHashMap<>();
+      metrics.put("completedJumps", (double)completed);
+      if (completed > 0) {
+         metrics.put("observedPlacementsPerJump", (double)totalBlocks / completed);
+         metrics.put("threeOrMoreBlockJumps", (double)three);
+         metrics.put("flatJumps", (double)flat);
+         metrics.put("meanYawExcursionDegrees", yawSum / completed);
+         metrics.put("meanJumpRealSeconds", secondsSum / completed);
+         metrics.put("meanJumpClientTicks", ticksSum / completed);
+      }
+      if (!uses.isEmpty()) {
+         int y = uses.getFirst().y();
+         metrics.put("observedFixedYFraction", (double)uses.stream().filter(use -> use.y() == y).count() / uses.size());
+      }
+      return Map.copyOf(metrics);
+   }
+
+   private record Position(int x, int y, int z) { }
 
    private static double distanceSquared(Sample a, Sample b) {
       double x = a.x() - b.x(), y = a.y() - b.y(), z = a.z() - b.z();

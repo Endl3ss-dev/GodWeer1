@@ -330,7 +330,7 @@ public final class ScaffoldModule extends ClientModule {
          }
          return;
       }
-      if (!this.validTarget(mc, this.placement.target()) || !this.validSupport(mc, this.placement.hit().getBlockPos())) {
+      if (!validTarget(mc, this.placement.target()) || !validSupport(mc, this.placement.hit().getBlockPos())) {
          this.finishCycle(true);
          return;
       }
@@ -437,13 +437,13 @@ public final class ScaffoldModule extends ClientModule {
          && item.getBlock().defaultBlockState().isCollisionShapeFullBlock(mc.level, target);
    }
 
-   private boolean validTarget(Minecraft mc, BlockPos target) {
+   static boolean validTarget(Minecraft mc, BlockPos target) {
       return target.getY() >= mc.level.getMinY() && mc.level.getWorldBorder().isWithinBounds(target)
          && mc.level.getBlockState(target).canBeReplaced()
          && !new AABB(target).intersects(mc.player.getBoundingBox());
    }
 
-   private boolean validSupport(Minecraft mc, BlockPos support) {
+   static boolean validSupport(Minecraft mc, BlockPos support) {
       BlockState state = mc.level.getBlockState(support);
       return !state.canBeReplaced() && state.getFluidState().isEmpty()
          && !(state.getBlock() instanceof EntityBlock) && !state.is(Blocks.CRAFTING_TABLE)
@@ -452,21 +452,26 @@ public final class ScaffoldModule extends ClientModule {
    }
 
    private Placement findPlacement(Minecraft mc, BlockPos target) {
-      if (!this.validTarget(mc, target)) return null;
+      BlockHitResult hit = findHit(mc, target, this.reach.get(), this.aimSamples.get().intValue());
+      return hit == null ? null : new Placement(target, hit);
+   }
+
+   // Shared geometry only: the singleplayer coach does not run the Scaffold state machine.
+   static BlockHitResult findHit(Minecraft mc, BlockPos target, double requestedReach, int samples) {
+      if (!validTarget(mc, target)) return null;
       Vec3 eye = mc.player.getEyePosition();
-      double range = Math.min(this.reach.get(), mc.player.blockInteractionRange());
-      BlockHitResult current = this.viewHit(mc);
+      double range = Math.min(requestedReach, mc.player.blockInteractionRange());
+      BlockHitResult current = viewHit(mc, requestedReach);
       if (current.getType() == HitResult.Type.BLOCK && !current.isInside()
          && current.getBlockPos().relative(current.getDirection()).equals(target)
-         && this.validSupport(mc, current.getBlockPos())) {
-         return new Placement(target, current);
+         && validSupport(mc, current.getBlockPos())) {
+         return current;
       }
-      Placement best = null;
+      BlockHitResult best = null;
       double bestCost = Double.POSITIVE_INFINITY;
-      int samples = this.aimSamples.get().intValue();
       for (Direction face : Direction.values()) {
          BlockPos support = target.relative(face.getOpposite());
-         if (!this.validSupport(mc, support)) continue;
+         if (!validSupport(mc, support)) continue;
          Vec3 normal = Vec3.atLowerCornerOf(face.getUnitVec3i());
          Vec3 centre = Vec3.atCenterOf(support).add(normal.scale(0.5));
          // Back-facing faces cannot be clicked. Avoid an entire grid of useless raycasts.
@@ -486,7 +491,7 @@ public final class ScaffoldModule extends ClientModule {
                   ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, mc.player));
                if (sameFace(visible, expected)) {
                   bestCost = cost;
-                  best = new Placement(target, expected);
+                  best = expected;
                }
             }
          }
@@ -506,8 +511,12 @@ public final class ScaffoldModule extends ClientModule {
    }
 
    private BlockHitResult viewHit(Minecraft mc) {
+      return viewHit(mc, this.reach.get());
+   }
+
+   static BlockHitResult viewHit(Minecraft mc, double requestedReach) {
       Vec3 eye = mc.player.getEyePosition();
-      double range = Math.min(this.reach.get(), mc.player.blockInteractionRange());
+      double range = Math.min(requestedReach, mc.player.blockInteractionRange());
       return mc.level.clip(new ClipContext(eye, eye.add(mc.player.getLookAngle().scale(range)),
          ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, mc.player));
    }
