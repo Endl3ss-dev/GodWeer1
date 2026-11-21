@@ -52,11 +52,13 @@ public final class ScaffoldCoachModule extends ClientModule {
    private Object world, player;
    private int bridgeY, originX, originZ;
    private Direction heading = Direction.SOUTH;
-   private boolean slow = true, clockOwned, ready, useArmed, wasGrounded, aimApplied;
+   private boolean slow = true, clockOwned, ready, wasGrounded, aimApplied;
    private float ownedSpeed = 1;
    private long lastFrame, lastSearch, nextClick;
    private int cycle, jumpBlocks;
    private BlockHitResult target;
+   private String lastUseStatus = "Ручных кликов ещё не было";
+   private boolean flightPaused;
 
    private ScaffoldCoachModule() {
       super("Scaffold Coach", "Singleplayer flat Telly rehearsal: client slow motion, held-key aim and real-time manual clicks", ModuleCategory.MOVEMENT);
@@ -66,11 +68,10 @@ public final class ScaffoldCoachModule extends ClientModule {
    @Override
    protected void onEnable() {
       Minecraft mc = Minecraft.getInstance();
-      if (!this.localWorld(mc) || !mc.player.onGround() || mc.player.getAbilities().flying
-         || !ScaffoldModule.validSupport(mc, mc.player.blockPosition().below()) || this.conflict() != null
-         || Math.abs(ResetSpeedHelper.getSpeed() - 1) > 0.001F) {
+      String failure = this.enableFailure(mc);
+      if (failure != null) {
          this.setEnabled(false);
-         info("Enable on a solid full-block platform in singleplayer at 20 TPS, with gameplay modules OFF and normal client timer.");
+         info(failure);
          return;
       }
       this.world = mc.level;
@@ -84,7 +85,8 @@ public final class ScaffoldCoachModule extends ClientModule {
       this.cycle = this.jumpBlocks = 0;
       this.jumpPositions.clear();
       this.lastFrame = this.lastSearch = this.nextClick = 0;
-      this.useArmed = this.ready = false;
+      this.ready = this.flightPaused = false;
+      this.lastUseStatus = "Ручных кликов ещё не было";
       this.subscriptions.add(SkycoreClient.events().subscribe(KeyEvent.class, this::onKey));
       this.subscriptions.add(SkycoreClient.events().subscribe(WorldChangeEvent.class, event -> this.setEnabled(false)));
       this.subscriptions.add(SkycoreClient.events().subscribe(BlockUseObservationEvent.class, this::onPlacement));
@@ -100,7 +102,22 @@ public final class ScaffoldCoachModule extends ClientModule {
       this.jumpPositions.clear();
       this.world = this.player = null;
       this.target = null;
-      this.ready = this.aimApplied = this.useArmed = false;
+      this.ready = this.aimApplied = false;
+   }
+
+   private String enableFailure(Minecraft mc) {
+      if (mc.player == null || mc.level == null || mc.gameMode == null) return "Сначала зайди в одиночный мир.";
+      if (mc.getSingleplayerServer() == null) return "Coach доступен только в одиночном мире.";
+      if (!Float.isFinite(mc.level.tickRateManager().tickrate()) || Math.abs(mc.level.tickRateManager().tickrate() - 20) >= 0.1F) {
+         return "Нужно 20 TPS: выполни /tick rate 20.";
+      }
+      if (mc.player.getAbilities().flying) return "Сейчас включён creative flight. Выключи его двойным Space и встань на платформу только для включения Coach. Дальше обычные прыжки разрешены.";
+      if (!mc.player.onGround()) return "Для включения Coach встань на платформу: нужно запомнить её Y. После включения можно прыгать и строиться в воздухе.";
+      if (!ScaffoldModule.validSupport(mc, mc.player.blockPosition().below())) return "Под ногами нет подходящего полного блока. Для старта встань, например, на камень.";
+      String other = this.conflict();
+      if (other != null) return "Мешает модуль или автоповорот: " + other + ". Отключи его перед Coach.";
+      if (clockConflict(false, ResetSpeedHelper.getSpeed(), 1)) return "Клиентский timer не 1x. Сначала отключи другой таймер.";
+      return null;
    }
 
    private boolean localWorld(Minecraft mc) {
@@ -164,6 +181,9 @@ public final class ScaffoldCoachModule extends ClientModule {
          info("Coach OFF: world/TPS changed or gameplay/rotation conflict. Server TPS was not modified.");
          return;
       }
+      boolean flying = mc.player.getAbilities().flying;
+      if (flying && !this.flightPaused) info("Creative flight: доводка и замедление на паузе; RMB работает через обычный Minecraft. Для Telly используй обычный прыжок.");
+      this.flightPaused = flying;
       if (!Float.isFinite(mc.player.getYRot()) || !Float.isFinite(mc.player.getXRot())) {
          this.setEnabled(false);
          return;
@@ -177,7 +197,6 @@ public final class ScaffoldCoachModule extends ClientModule {
       if (!this.ready) {
          this.releaseClock();
          this.target = null;
-         this.useArmed = false;
          this.lastFrame = now;
          return;
       }
@@ -223,14 +242,12 @@ public final class ScaffoldCoachModule extends ClientModule {
       } else this.target = null;
       // Native click dispatch is tick-bound. In this SP-only coach, dispatch actual
       // RMB intent in wall-clock time and suppress only its duplicate vanilla path.
-      if (this.heldBlock(mc)) {
+      if (this.realtimeBlockItem(mc)) {
+         boolean down = mc.options.keyUse.isDown();
          boolean clicked = false;
          while (mc.options.keyUse.consumeClick()) clicked = true;
-         boolean down = mc.options.keyUse.isDown();
-         boolean armed = this.useArmed;
-         if (!down) this.useArmed = true;
-         if (armed && (clicked || down) && (this.nextClick == 0 || now - this.nextClick >= 0)) this.manualUse(mc, now);
-      } else this.useArmed = false;
+         if ((clicked || down) && (this.nextClick == 0 || now - this.nextClick >= 0)) this.manualUse(mc, now);
+      }
    }
 
    private BlockHitResult findTarget(Minecraft mc) {
@@ -254,8 +271,18 @@ public final class ScaffoldCoachModule extends ClientModule {
       return best;
    }
 
+   private boolean hasBlockItem(Minecraft mc) {
+      return !mc.player.getMainHandItem().isEmpty() && mc.player.getMainHandItem().getItem() instanceof BlockItem;
+   }
+
+   private boolean realtimeBlockItem(Minecraft mc) {
+      // Subclasses may override use() (e.g. water placement), so leave their
+      // complete native use-item dispatch intact rather than swallowing it.
+      return this.hasBlockItem(mc) && mc.player.getMainHandItem().getItem().getClass() == BlockItem.class;
+   }
+
    private boolean heldBlock(Minecraft mc) {
-      if (mc.player.getMainHandItem().isEmpty() || !(mc.player.getMainHandItem().getItem() instanceof BlockItem item)) return false;
+      if (!this.hasBlockItem(mc) || !(mc.player.getMainHandItem().getItem() instanceof BlockItem item)) return false;
       return !(item.getBlock() instanceof FallingBlock) && !(item.getBlock() instanceof EntityBlock)
          && item.getBlock().defaultBlockState().isCollisionShapeFullBlock(mc.level, mc.player.blockPosition());
    }
@@ -263,23 +290,30 @@ public final class ScaffoldCoachModule extends ClientModule {
    /** True only for the exact native path replaced by manualUse. */
    public boolean handlesUse() {
       Minecraft mc = Minecraft.getInstance();
-      return this.isEnabled() && this.ready && this.usable(mc) && this.conflict() == null && this.heldBlock(mc);
+      return this.isEnabled() && this.ready && this.usable(mc)
+         && this.conflict() == null && this.realtimeBlockItem(mc);
    }
 
    private void manualUse(Minecraft mc, long now) {
       BlockHitResult hit = ScaffoldModule.viewHit(mc, 4.5);
-      if (hit.getType() != HitResult.Type.BLOCK || hit.isInside()) return;
-      BlockPos destination = hit.getBlockPos().relative(hit.getDirection());
-      if (destination.getY() != this.bridgeY
-         || (this.lockLine.get() && !lineTarget(destination, this.originX, this.originZ, this.heading))
-         || !ScaffoldModule.validTarget(mc, destination)
-         || !ScaffoldModule.validSupport(mc, hit.getBlockPos())) return;
+      if (!manualHitAllowed(hit)) {
+         this.lastUseStatus = "Прицел не попал в блок в пределах reach.";
+         return;
+      }
+      // Fixed Y/row and solid-support filters belong ONLY to aim guidance.
+      // A real manual click must still reach vanilla placement/context checks:
+      // top faces, side rows, replaceable targets, slabs and interactive supports.
       this.nextClick = now + this.clickDelay.get().longValue() * 1_000_000L;
       // Send the ACTUAL position/view before the manual interaction, since the next
       // ordinary client movement tick may be delayed. No virtual look or fake block.
       mc.player.connection.send(new PosRot(mc.player.getX(), mc.player.getY(), mc.player.getZ(),
          mc.player.getYRot(), mc.player.getXRot(), mc.player.onGround(), mc.player.horizontalCollision));
-      if (mc.gameMode.useItemOn(mc.player, InteractionHand.MAIN_HAND, hit).consumesAction()) mc.player.swing(InteractionHand.MAIN_HAND);
+      if (mc.gameMode.useItemOn(mc.player, InteractionHand.MAIN_HAND, hit).consumesAction()) {
+         this.lastUseStatus = "Minecraft принял взаимодействие (это не server acknowledgement).";
+         mc.player.swing(InteractionHand.MAIN_HAND);
+      } else {
+         this.lastUseStatus = "Minecraft отклонил взаимодействие; проверь коллизию, предмет и место установки.";
+      }
    }
 
    private void onPlacement(BlockUseObservationEvent event) {
@@ -297,6 +331,10 @@ public final class ScaffoldCoachModule extends ClientModule {
    private void releaseClock() {
       if (this.clockOwned && !clockConflict(true, ResetSpeedHelper.getSpeed(), this.ownedSpeed)) ResetSpeedHelper.resetSpeed();
       this.clockOwned = false;
+   }
+
+   static boolean manualHitAllowed(BlockHitResult hit) {
+      return hit.getType() == HitResult.Type.BLOCK;
    }
 
    static boolean lineTarget(BlockPos pos, int originX, int originZ, Direction heading) {
@@ -318,6 +356,11 @@ public final class ScaffoldCoachModule extends ClientModule {
 
    public void status() {
       info(this.snapshot().toString());
+      info("Последний ручной RMB: " + this.lastUseStatus);
+      Minecraft mc = Minecraft.getInstance();
+      if (mc.player != null && mc.player.getAbilities().flying) {
+         info("Creative flight: Coach на паузе, обычные клики Minecraft не блокируются.");
+      }
    }
 
    public record State(boolean enabled, boolean slowed, boolean aimApplied, float clientSpeed,
