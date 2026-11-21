@@ -39,8 +39,8 @@ public final class ScaffoldModule extends ClientModule {
    private final BooleanSetting camLock = this.add(new BooleanSetting("Cam Lock", "Camera follows the Scaffold head; OFF allows mouse free-look", true));
    private final BooleanSetting returnToView = this.add(new BooleanSetting("Telly Return To View", "Return to view saved at takeoff; OFF uses the chosen X/Z approach direction", true));
    private final NumberSetting returnPitch = number("Telly Return Pitch", "Pitch for fixed-direction return", 20, -60, 80, 1, " deg");
-   private final NumberSetting turnSpeed = number("Telly Turn Speed", "Head speed per 50ms, updated every frame", 180, 15, 180, 5, " deg/tick");
-   private final NumberSetting returnSpeed = number("Telly Return Speed", "Head return speed per 50ms", 180, 15, 180, 5, " deg/tick");
+   private final NumberSetting turnSpeed = number("Telly Turn Speed", "Head step before the normal movement packet", 180, 15, 180, 5, " deg/tick");
+   private final NumberSetting returnSpeed = number("Telly Return Speed", "Head return step per movement tick", 180, 15, 180, 5, " deg/tick");
    private final NumberSetting smoothing = number("Telly Smoothing", "1 gives constant bounded turn speed", 1, 0.2, 1, 0.05, "");
    private final NumberSetting reach = number("Telly Reach", "Native interaction range still applies", 4.5, 2, 4.5, 0.1, " blocks");
    private final NumberSetting aimSamples = number("Telly Aim Samples", "Face samples per axis", 5, 3, 7, 1, " points");
@@ -89,6 +89,14 @@ public final class ScaffoldModule extends ClientModule {
 
    public void onFrame(long now) {
       if (this.isEnabled()) this.telly.frame(Minecraft.getInstance(), this, this.tellySettings(), now);
+   }
+
+   public void beforeMovement() {
+      if (this.isEnabled()) this.telly.beforeMovement(Minecraft.getInstance(), this, this.tellySettings(), System.nanoTime());
+   }
+
+   public void afterMovement() {
+      if (this.isEnabled()) this.telly.afterMovement(Minecraft.getInstance(), this, this.tellySettings(), System.nanoTime());
    }
 
    public boolean freeCameraActive() { return this.isEnabled() && this.telly.freeCameraActive(); }

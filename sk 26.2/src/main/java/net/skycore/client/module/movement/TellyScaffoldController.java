@@ -3,7 +3,6 @@ package net.skycore.client.module.movement;
 import net.minecraft.client.Minecraft;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
-import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket.PosRot;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Input;
@@ -54,6 +53,8 @@ final class TellyScaffoldController {
    private boolean airborne;
    private Vec3 lastPosition;
    private String lastMessage;
+   private PlacementIntent intent;
+   private record PlacementIntent(BlockPos target, BlockHitResult hit, float yaw, float pitch, Vec3 position, int tick) { }
 
    void reset() {
       this.clearCycle();
@@ -68,6 +69,7 @@ final class TellyScaffoldController {
          mc.player.setXRot(this.freePitch);
       }
       this.cameraFree = false;
+      this.intent = null;
       this.lastFrameNanos = this.lastInputNanos = 0;
       this.phase = Phase.IDLE;
       this.world = this.player = null;
@@ -288,6 +290,16 @@ final class TellyScaffoldController {
    }
 
    void frame(Minecraft mc, ClientModule owner, ScaffoldModule.TellySettings settings, long now) {
+      // Rendering validates lifecycle/free-look only; it never places or emits movement packets.
+      if (this.phase == Phase.IDLE) return;
+      String error = this.failure(mc, owner);
+      if (error != null) { this.pause(error, settings); return; }
+      if (this.lastInputNanos == 0 || now - this.lastInputNanos > 250_000_000L)
+         this.pause("нет свежего ввода; цикл сброшен", settings);
+   }
+
+   void beforeMovement(Minecraft mc, ClientModule owner, ScaffoldModule.TellySettings settings, long now) {
+      this.intent = null;
       if (this.phase == Phase.IDLE) return;
       String error = this.failure(mc, owner);
       if (error != null) { this.pause(error, settings); return; }
@@ -346,21 +358,44 @@ final class TellyScaffoldController {
       if (!ScaffoldModule.sameFace(actual, target) || !placementHit(actual, this.next, this.rowX, this.rowY, this.rowZ, this.heading)
          || this.airTicks < settings.startTick() || !cpsReady(now, this.nextUseNanos)
          || !ScaffoldModule.validTarget(mc, this.next)) return;
+      this.intent = new PlacementIntent(this.next, target, mc.player.getYRot(), mc.player.getXRot(),
+         mc.player.position(), mc.player.tickCount);
+   }
+
+   void afterMovement(Minecraft mc, ClientModule owner, ScaffoldModule.TellySettings settings, long now) {
+      PlacementIntent prepared = this.intent;
+      this.intent = null; // One movement callback can authorize at most one use.
+      if (prepared == null) return;
+      String error = this.failure(mc, owner);
+      if (error != null) { this.pause(error, settings); return; }
+      if (this.phase != Phase.BUILD || this.next == null || !this.next.equals(prepared.target())
+         || mc.player.onGround() || mc.player.tickCount != prepared.tick()
+         || mc.player.position().distanceToSqr(prepared.position()) > 1.0e-8
+         || !sameView(prepared.yaw(), prepared.pitch(), mc.player.getYRot(), mc.player.getXRot())
+         || !cpsReady(now, this.nextUseNanos) || !ScaffoldModule.validTarget(mc, prepared.target())
+         || !ScaffoldModule.validSupport(mc, prepared.hit().getBlockPos())) return;
+      // Fresh world/raycast after ordinary sendPosition. No injected PosRot and
+      // no reuse of a face prepared in a different position/tick/view.
+      BlockHitResult actual = ScaffoldModule.viewHit(mc, settings.reach());
+      if (!ScaffoldModule.sameFace(actual, prepared.hit())
+         || !placementHit(actual, prepared.target(), this.rowX, this.rowY, this.rowZ, this.heading)) return;
       int slot = this.slot(mc, settings);
       if (slot < 0) { this.pause("строительные блоки закончились", settings); return; }
       int originalSlot = mc.player.getInventory().getSelectedSlot();
       try {
          InventoryHelper.selectHotbarSlot(slot);
-         mc.player.connection.send(new PosRot(mc.player.getX(), mc.player.getY(), mc.player.getZ(),
-            mc.player.getYRot(), mc.player.getXRot(), mc.player.onGround(), mc.player.horizontalCollision));
          this.nextUseNanos = now + cpsInterval(settings.cps());
          if (mc.gameMode.useItemOn(mc.player, InteractionHand.MAIN_HAND, actual).consumesAction()) {
             if (settings.swing()) mc.player.swing(InteractionHand.MAIN_HAND);
-            this.pending = this.next;
+            this.pending = prepared.target();
          }
       } finally {
          InventoryHelper.selectHotbarSlot(originalSlot);
       }
+   }
+
+   static boolean sameView(float yaw, float pitch, float actualYaw, float actualPitch) {
+      return Math.abs(Mth.wrapDegrees(yaw - actualYaw)) < 0.01F && Math.abs(pitch - actualPitch) < 0.01F;
    }
 
    boolean freeCameraActive() {

@@ -27,6 +27,10 @@ public final class ScaffoldModuleTest {
    }
 
    public static void main(String[] args) {
+      check(TellyScaffoldController.sameView(179, 60, -181, 60), "packet view accepts equivalent yaw wrap");
+      check(!TellyScaffoldController.sameView(90, 60, 91, 60), "changed yaw invalidates pending placement");
+      check(!TellyScaffoldController.sameView(90, 60, 90, 61), "changed pitch invalidates pending placement");
+      check(!TellyScaffoldController.sameView(Float.NaN, 60, 90, 60), "invalid rotation never authorizes use");
       check(TellyScaffoldController.cpsInterval(15) == 66_666_667L, "15 CPS wall-clock period");
       check(TellyScaffoldController.cpsInterval(100) == TellyScaffoldController.cpsInterval(15), "CPS capped at 15");
       check(!TellyScaffoldController.cpsReady(99, 100), "no early click");
