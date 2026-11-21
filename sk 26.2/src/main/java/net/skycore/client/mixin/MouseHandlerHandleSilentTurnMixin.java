@@ -4,6 +4,8 @@ import net.minecraft.client.Minecraft;
 import net.minecraft.client.MouseHandler;
 import net.minecraft.client.player.LocalPlayer;
 import net.skycore.client.combat.RotationController;
+import net.skycore.client.SkycoreClient;
+import net.skycore.client.module.movement.ScaffoldModule;
 import org.spongepowered.asm.mixin.Final;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Shadow;
@@ -18,6 +20,8 @@ public abstract class MouseHandlerHandleSilentTurnMixin {
 
    @Redirect(method = "turnPlayer", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/player/LocalPlayer;turn(DD)V"))
    private void skycore$handleSilentTurn(LocalPlayer player, double angle, double angle2) {
+      if (this.minecraft.gui.screen() == null && SkycoreClient.modules().get(ScaffoldModule.class)
+         .map(module -> module.mouseTurn(angle, angle2)).orElse(false)) return;
       if (this.minecraft.gui.screen() != null || !RotationController.onMouseTurn(angle, angle2)) {
          player.turn(angle, angle2);
       }

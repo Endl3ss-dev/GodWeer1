@@ -40,9 +40,12 @@ final class TellyScaffoldController {
    private int airTicks;
    private int launchTicks;
    private int blocks;
-   private int waitTicks;
    private int cycleTicks;
-   private int sincePlace;
+   private boolean backward;
+   private int rowY, rowZ;
+   private long nextUseNanos, lastFrameNanos, lastInputNanos;
+   private boolean cameraFree;
+   private float freeYaw, freePitch;
    private boolean fresh;
    private boolean airborne;
    private Vec3 lastPosition;
@@ -51,17 +54,25 @@ final class TellyScaffoldController {
    void reset() {
       this.clearCycle();
       this.lastMessage = null;
+      this.nextUseNanos = 0;
    }
 
    private void clearCycle() {
+      Minecraft mc = Minecraft.getInstance();
+      if (this.cameraFree && mc != null && this.world == mc.level && this.player == mc.player && mc.player != null) {
+         mc.player.setYRot(this.freeYaw);
+         mc.player.setXRot(this.freePitch);
+      }
+      this.cameraFree = false;
+      this.lastFrameNanos = this.lastInputNanos = 0;
       this.phase = Phase.IDLE;
       this.world = this.player = null;
       this.heading = null;
       this.lastPosition = null;
       this.next = this.pending = null;
       this.fresh = this.airborne = false;
-      this.airTicks = this.blocks = this.waitTicks = this.launchTicks = this.cycleTicks = 0;
-      this.sincePlace = 100;
+      this.airTicks = this.blocks = this.launchTicks = this.cycleTicks = 0;
+
    }
 
    Phase phase() { return this.phase; }
@@ -78,7 +89,7 @@ final class TellyScaffoldController {
       if (mc.player == null || mc.level == null || mc.gameMode == null) return "ожидание мира";
       if (mc.getSingleplayerServer() == null) return "пока поддерживается только одиночный мир";
       if (mc.gui.screen() != null || mc.isPaused()
-         || GLFW.glfwGetWindowAttrib(mc.getWindow().handle(), GLFW.GLFW_FOCUSED) != GLFW.GLFW_TRUE) return "пауза GUI/фокуса; закрой меню и удерживай W на платформе";
+         || GLFW.glfwGetWindowAttrib(mc.getWindow().handle(), GLFW.GLFW_FOCUSED) != GLFW.GLFW_TRUE) return "пауза GUI/фокуса; закрой меню и удерживай W или S на платформе";
       if (mc.level.tickRateManager().isFrozen() || !Float.isFinite(mc.level.tickRateManager().tickrate())
          || Math.abs(mc.level.tickRateManager().tickrate() - 20) > 0.1) return "нужно /tick rate 20";
       if (!Float.isFinite(ResetSpeedHelper.getSpeed()) || Math.abs(ResetSpeedHelper.getSpeed() - 1) > 0.001) return "отключи замедление Coach/Timer: нужен клиент 1x";
@@ -101,8 +112,8 @@ final class TellyScaffoldController {
       String error = this.failure(mc, owner);
       if (error != null) { this.pause(error, settings); return; }
       Input physical = event.keyPresses();
-      if (!physical.forward() || physical.backward() || physical.left() || physical.right() || physical.shift()) {
-         this.pause("удерживай только W; Space разрешён при ручном прыжке", settings);
+      if (physical.forward() == physical.backward() || physical.left() || physical.right() || physical.shift()) {
+         this.pause("удерживай W или S; Space разрешён при ручном прыжке", settings);
          return;
       }
       if (this.phase == Phase.IDLE) {
@@ -112,15 +123,30 @@ final class TellyScaffoldController {
             this.pause("для старта встань на полный твёрдый блок", settings);
             return;
          }
-         this.heading = cardinal(mc.player.getYRot());
+         this.backward = physical.backward();
+         this.heading = xHeading(mc.player.getYRot(), this.backward);
+         this.rowY = support.getY();
+         this.rowZ = support.getZ();
+         this.freeYaw = mc.player.getYRot();
+         this.freePitch = mc.player.getXRot();
+         this.cameraFree = !settings.camLock();
          this.world = mc.level;
          this.player = mc.player;
          this.floorY = mc.player.getY();
-         this.forwardYaw = headingYaw(this.heading);
+         this.forwardYaw = mc.player.getYRot();
          this.forwardPitch = mc.player.getXRot();
          this.next = support.relative(this.heading);
          this.phase = Phase.RUN;
          this.lastMessage = null;
+      }
+      if (physical.backward() != this.backward) {
+         this.pause("направление W/S изменилось; новый старт с платформы", settings);
+         return;
+      }
+      this.lastInputNanos = System.nanoTime();
+      if (Math.abs(mc.player.getZ() - (this.rowZ + 0.5)) > 0.8) {
+         this.pause("выход из фиксированного ряда X", settings);
+         return;
       }
       if (this.lastPosition != null && this.lastPosition.distanceToSqr(mc.player.position()) > 2.25) {
          this.pause("скачок позиции; цикл сброшен", settings);
@@ -139,7 +165,7 @@ final class TellyScaffoldController {
                this.pause("сход с края без прыжка; новый старт с платформы", settings);
                return;
             }
-            this.beginJump();
+            this.beginJump(mc, settings);
          }
          this.airborne = true;
          this.airTicks++;
@@ -152,7 +178,7 @@ final class TellyScaffoldController {
       if (this.phase == Phase.RUN) {
          // Rebase the next gap from current support on a long runway; don't retain
          // an unreachable target many blocks behind or beyond the player.
-         BlockPos support = BlockPos.containing(mc.player.getX(), this.next.getY(), mc.player.getZ());
+         BlockPos support = new BlockPos(Mth.floor(mc.player.getX()), this.rowY, this.rowZ);
          if (ScaffoldModule.validSupport(mc, support)) this.next = support.relative(this.heading);
          for (int i = 0; i < 8 && ScaffoldModule.validSupport(mc, this.next); i++) this.next = this.next.relative(this.heading);
          BlockPos probe = BlockPos.containing(mc.player.getX() + this.heading.getStepX() * settings.jumpDistance(),
@@ -163,7 +189,7 @@ final class TellyScaffoldController {
                this.pause("нет полных строительных блоков в доступном слоте", settings);
                return;
             }
-            if (settings.autoJump() || physical.jump()) this.beginJump();
+            if (settings.autoJump() || physical.jump()) this.beginJump(mc, settings);
          }
       }
       if (this.phase == Phase.TAKEOFF && ++this.launchTicks > 5) {
@@ -183,17 +209,20 @@ final class TellyScaffoldController {
       Vec3 worldMove = new Vec3(this.heading.getStepX(), 0, this.heading.getStepZ());
       Vec2 local = ScaffoldModule.localInput(worldMove, mc.player.getYRot());
       boolean jump = mc.player.onGround() && this.phase == Phase.TAKEOFF && (settings.autoJump() || physical.jump());
-      boolean sprint = settings.sprint() && (this.phase == Phase.RUN || jump);
+      boolean sprint = settings.sprint() && !this.backward && (this.phase == Phase.RUN || jump);
       event.setMoveVector(local);
       event.setKeyPresses(new Input(local.y > 0.01F, local.y < -0.01F,
          local.x > 0.01F, local.x < -0.01F, jump, false, sprint));
       mc.player.setSprinting(sprint);
    }
 
-   private void beginJump() {
+   private void beginJump(Minecraft mc, ScaffoldModule.TellySettings settings) {
+      this.forwardYaw = settings.returnToView() ? (this.cameraFree ? this.freeYaw : mc.player.getYRot())
+         : headingYaw(this.heading) + (this.backward ? 180 : 0);
+      this.forwardPitch = settings.returnToView() ? (this.cameraFree ? this.freePitch : mc.player.getXRot()) : settings.returnPitch();
       this.phase = Phase.TAKEOFF;
       this.airTicks = this.blocks = this.launchTicks = this.cycleTicks = 0;
-      this.sincePlace = 100;
+
       this.pending = null;
       this.airborne = false;
    }
@@ -204,16 +233,32 @@ final class TellyScaffoldController {
       if (error != null) { this.pause(error, settings); return; }
       if (!this.fresh) return;
       this.fresh = false;
-      if (this.phase == Phase.IDLE || this.next == null) return;
-      if (this.phase == Phase.RUN || this.phase == Phase.RETURN) {
-         if (this.rotate(mc, this.forwardYaw, this.forwardPitch, settings.returnSpeed(), settings.smoothing())
-            && this.phase == Phase.RETURN && mc.player.onGround()) {
+      // Movement/air counters belong to input ticks; aim/CPS belong to frame time.
+   }
+
+   void frame(Minecraft mc, ClientModule owner, ScaffoldModule.TellySettings settings, long now) {
+      if (this.phase == Phase.IDLE) return;
+      String error = this.failure(mc, owner);
+      if (error != null) { this.pause(error, settings); return; }
+      if (this.lastInputNanos == 0 || now - this.lastInputNanos > 250_000_000L) {
+         this.pause("нет свежего ввода; цикл сброшен", settings);
+         return;
+      }
+      if (this.cameraFree != !settings.camLock()) {
+         this.freeYaw = mc.player.getYRot();
+         this.freePitch = mc.player.getXRot();
+         this.cameraFree = !settings.camLock();
+      }
+      float ticks = this.lastFrameNanos == 0 ? 1 : (float)Math.min(1, Math.max(0, (now - this.lastFrameNanos) / 50_000_000.0));
+      this.lastFrameNanos = now;
+      if (this.phase == Phase.RETURN) {
+         if (this.rotate(mc, this.forwardYaw, this.forwardPitch, settings.returnSpeed() * ticks, settings.smoothing())
+            && mc.player.onGround()) {
             this.phase = Phase.RUN;
             this.airTicks = this.cycleTicks = 0;
          }
          return;
       }
-      this.sincePlace++;
       if (this.pending != null) {
          if (ScaffoldModule.validSupport(mc, this.pending)) {
             this.blocks++;
@@ -221,39 +266,51 @@ final class TellyScaffoldController {
             this.pending = null;
             if (this.blocks >= settings.blocks()) { this.phase = Phase.RETURN; return; }
          } else {
-            if (++this.waitTicks > 4) this.pause("Minecraft не подтвердил даже локальное появление блока", settings);
+            // Timeout measured in real time, not number of rendered frames.
+            if (now - this.nextUseNanos > 250_000_000L) this.pause("блок не появился локально", settings);
             return;
          }
       }
-      if (this.phase != Phase.BUILD || mc.player.onGround()) return;
-      BlockHitResult target = ScaffoldModule.findHit(mc, this.next, settings.reach(), settings.samples());
+      if (this.phase != Phase.BUILD || mc.player.onGround() || this.next == null) return;
+      if (!flatXTarget(this.next, this.rowY, this.rowZ)) { this.pause("защита фиксированного Y/Z", settings); return; }
+      BlockHitResult target = ScaffoldModule.findTellyHit(mc, this.next, this.heading, settings.reach(), settings.samples());
       if (target == null) return;
+      Rotation look = Rotation.lookingAt(target.getLocation(), mc.player.getEyePosition());
+      this.rotate(mc, look.getYaw(), look.getPitch(), settings.turnSpeed() * ticks, settings.smoothing());
+      // Recast AFTER rotation, not next game tick. Never use the old camera ray.
       BlockHitResult actual = ScaffoldModule.viewHit(mc, settings.reach());
-      if (!ScaffoldModule.sameFace(actual, target)) {
-         Rotation look = Rotation.lookingAt(target.getLocation(), mc.player.getEyePosition());
-         this.rotate(mc, look.getYaw(), look.getPitch(), settings.turnSpeed(), settings.smoothing());
-         return;
-      }
-      if (!canPlace(this.airTicks, settings.startTick(), this.sincePlace, settings.interval())
+      if (!ScaffoldModule.sameFace(actual, target) || !placementHit(actual, this.next, this.rowY, this.rowZ)
+         || this.airTicks < settings.startTick() || !cpsReady(now, this.nextUseNanos)
          || !ScaffoldModule.validTarget(mc, this.next)) return;
       int slot = this.slot(mc, settings);
       if (slot < 0) { this.pause("строительные блоки закончились", settings); return; }
       int originalSlot = mc.player.getInventory().getSelectedSlot();
       try {
          InventoryHelper.selectHotbarSlot(slot);
-         // END_CLIENT_TICK runs after the normal movement packet. Synchronize only
-         // the actual current position/view before useItemOn, as Coach already does.
          mc.player.connection.send(new PosRot(mc.player.getX(), mc.player.getY(), mc.player.getZ(),
             mc.player.getYRot(), mc.player.getXRot(), mc.player.onGround(), mc.player.horizontalCollision));
-         this.sincePlace = 0;
+         this.nextUseNanos = now + cpsInterval(settings.cps());
          if (mc.gameMode.useItemOn(mc.player, InteractionHand.MAIN_HAND, actual).consumesAction()) {
             if (settings.swing()) mc.player.swing(InteractionHand.MAIN_HAND);
             this.pending = this.next;
-            this.waitTicks = 0;
          }
       } finally {
          InventoryHelper.selectHotbarSlot(originalSlot);
       }
+   }
+
+   boolean freeCameraActive() {
+      Minecraft mc = Minecraft.getInstance();
+      return this.cameraFree && this.phase != Phase.IDLE && mc != null && mc.player != null
+         && this.world == mc.level && this.player == mc.player && mc.gui.screen() == null;
+   }
+   float freeYaw() { return this.freeYaw; }
+   float freePitch() { return this.freePitch; }
+   boolean mouseTurn(double yaw, double pitch) {
+      if (!this.freeCameraActive()) return false;
+      this.freeYaw += (float)(yaw * 0.15);
+      this.freePitch = Mth.clamp(this.freePitch + (float)(pitch * 0.15), -90, 90);
+      return true;
    }
 
    private int slot(Minecraft mc, ScaffoldModule.TellySettings settings) {
@@ -273,11 +330,29 @@ final class TellyScaffoldController {
    private boolean rotate(Minecraft mc, float yaw, float pitch, float limit, float smoothing) {
       mc.player.setYRot(ScaffoldModule.stepAngle(mc.player.getYRot(), yaw, limit, smoothing));
       mc.player.setXRot(Mth.clamp(mc.player.getXRot() + ScaffoldModule.smoothStep(pitch - mc.player.getXRot(), limit, smoothing), -90, 90));
+      mc.player.setYHeadRot(mc.player.getYRot());
       return Math.abs(Mth.wrapDegrees(yaw - mc.player.getYRot())) < 1 && Math.abs(pitch - mc.player.getXRot()) < 1;
    }
 
-   static boolean canPlace(int airTick, int startTick, int sincePlace, int interval) {
-      return airTick >= startTick && sincePlace >= interval;
+   static long cpsInterval(double cps) { return (long)Math.ceil(1_000_000_000.0 / Math.max(1, Math.min(15, cps))); }
+   static boolean cpsReady(long now, long next) { return next == 0 || now - next >= 0; }
+   static boolean flatXTarget(BlockPos target, int y, int z) { return target.getY() == y && target.getZ() == z; }
+   static boolean placementHit(BlockHitResult hit, BlockPos target, int y, int z) {
+      return hit.getType() == net.minecraft.world.phys.HitResult.Type.BLOCK && !hit.isInside()
+         && (hit.getDirection() == Direction.EAST || hit.getDirection() == Direction.WEST)
+         && hit.getBlockPos().relative(hit.getDirection()).equals(target) && flatXTarget(target, y, z)
+         && centralHit(hit);
+   }
+   static boolean centralHit(BlockHitResult hit) {
+      double u = hit.getLocation().y - hit.getBlockPos().getY();
+      double v = hit.getLocation().z - hit.getBlockPos().getZ();
+      return u >= 0.2 && u <= 0.8 && v >= 0.2 && v <= 0.8;
+   }
+   static Direction xHeading(float yaw, boolean backward) {
+      double x = -Math.sin(Math.toRadians(yaw));
+      if (Math.abs(x) < 0.0001) x = 1; // Facing Z: deterministic X fallback.
+      if (backward) x = -x;
+      return x < 0 ? Direction.WEST : Direction.EAST;
    }
 
    static float headingYaw(Direction direction) {

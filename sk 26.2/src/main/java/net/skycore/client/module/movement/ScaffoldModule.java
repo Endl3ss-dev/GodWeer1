@@ -34,9 +34,12 @@ public final class ScaffoldModule extends ClientModule {
    private final NumberSetting jumpDistance = number("Telly Jump Distance", "Distance ahead used to detect the edge", 0.3, 0.1, 0.8, 0.05, " blocks");
    private final NumberSetting blockCount = number("Telly Blocks", "Maximum unique blocks per jump, not a guarantee", 3, 1, 4, 1, " blocks");
    private final NumberSetting startTick = number("Telly Start Tick", "Earliest airborne tick for an aligned placement", 1, 0, 8, 1, " ticks");
-   private final NumberSetting clickInterval = number("Telly Place Interval", "Minimum client ticks between successful placements", 1, 1, 5, 1, " ticks");
-   private final NumberSetting turnSpeed = number("Telly Turn Speed", "Visible yaw/pitch step while placing", 90, 15, 180, 5, " deg/tick");
-   private final NumberSetting returnSpeed = number("Telly Return Speed", "Visible camera return step", 90, 15, 180, 5, " deg/tick");
+   private final NumberSetting cps = number("Telly CPS", "Maximum wall-clock placement attempts; unsafe rays are skipped", 15, 1, 15, 1, " cps");
+   private final BooleanSetting camLock = this.add(new BooleanSetting("Cam Lock", "Camera follows the Scaffold head; OFF allows mouse free-look", true));
+   private final BooleanSetting returnToView = this.add(new BooleanSetting("Telly Return To View", "Return to view saved at takeoff; OFF uses the X-axis approach direction", true));
+   private final NumberSetting returnPitch = number("Telly Return Pitch", "Pitch for fixed-direction return", 20, -60, 80, 1, " deg");
+   private final NumberSetting turnSpeed = number("Telly Turn Speed", "Head speed per 50ms, updated every frame", 180, 15, 180, 5, " deg/tick");
+   private final NumberSetting returnSpeed = number("Telly Return Speed", "Head return speed per 50ms", 180, 15, 180, 5, " deg/tick");
    private final NumberSetting smoothing = number("Telly Smoothing", "1 gives constant bounded turn speed", 1, 0.2, 1, 0.05, "");
    private final NumberSetting reach = number("Telly Reach", "Native interaction range still applies", 4.5, 2, 4.5, 0.1, " blocks");
    private final NumberSetting aimSamples = number("Telly Aim Samples", "Face samples per axis", 5, 3, 7, 1, " points");
@@ -50,14 +53,14 @@ public final class ScaffoldModule extends ClientModule {
    }
 
    record TellySettings(boolean autoJump, boolean sprint, boolean autoSwitch, boolean swing, boolean diagnostics,
-                        double jumpDistance, int blocks, int startTick, int interval,
-                        float turnSpeed, float returnSpeed, float smoothing, double reach, int samples) { }
+                        double jumpDistance, int blocks, int startTick, double cps,
+                        float turnSpeed, float returnSpeed, float smoothing, double reach, int samples, boolean camLock, boolean returnToView, float returnPitch) { }
 
    TellySettings tellySettings() {
       return new TellySettings(this.autoJump.get(), this.sprint.get(), this.autoSwitch.get(), this.swing.get(),
          this.diagnostics.get(), this.jumpDistance.get(), this.blockCount.get().intValue(), this.startTick.get().intValue(),
-         this.clickInterval.get().intValue(), this.turnSpeed.get().floatValue(), this.returnSpeed.get().floatValue(),
-         this.smoothing.get().floatValue(), this.reach.get(), this.aimSamples.get().intValue());
+         this.cps.get(), this.turnSpeed.get().floatValue(), this.returnSpeed.get().floatValue(),
+         this.smoothing.get().floatValue(), this.reach.get(), this.aimSamples.get().intValue(), this.camLock.get(), this.returnToView.get(), this.returnPitch.get().floatValue());
    }
 
    @Override
@@ -81,6 +84,44 @@ public final class ScaffoldModule extends ClientModule {
    @Override
    protected void onTick() {
       this.telly.tick(Minecraft.getInstance(), this, this.tellySettings());
+   }
+
+   public void onFrame(long now) {
+      if (this.isEnabled()) this.telly.frame(Minecraft.getInstance(), this, this.tellySettings(), now);
+   }
+
+   public boolean freeCameraActive() { return this.isEnabled() && this.telly.freeCameraActive(); }
+   public float freeCameraYaw() { return this.telly.freeYaw(); }
+   public float freeCameraPitch() { return this.telly.freePitch(); }
+   public boolean mouseTurn(double yaw, double pitch) {
+      return this.freeCameraActive() && this.telly.mouseTurn(yaw, pitch);
+   }
+
+   /** X-side support face only; prefer central samples, never top/bottom faces. */
+   static BlockHitResult findTellyHit(Minecraft mc, BlockPos target, Direction heading, double reach, int samples) {
+      if (!validTarget(mc, target) || (heading != Direction.EAST && heading != Direction.WEST)) return null;
+      BlockPos support = target.relative(heading.getOpposite());
+      if (!validSupport(mc, support)) return null;
+      Vec3 eye = mc.player.getEyePosition();
+      double range = Math.min(reach, mc.player.blockInteractionRange());
+      Vec3 centre = facePoint(support, heading, 0.5, 0.5);
+      BlockHitResult best = null;
+      double bestCost = Double.POSITIVE_INFINITY;
+      // Test centre explicitly even when the configured grid has an even size.
+      for (int index = -1; index < samples * samples; index++) {
+         double u = index < 0 ? 0.5 : 0.25 + 0.5 * (index / samples) / (samples - 1.0);
+         double v = index < 0 ? 0.5 : 0.25 + 0.5 * (index % samples) / (samples - 1.0);
+         Vec3 point = facePoint(support, heading, u, v);
+         if (eye.distanceToSqr(point) > range * range) continue;
+         double cost = point.distanceToSqr(centre);
+         if (cost >= bestCost) continue;
+         BlockHitResult expected = new BlockHitResult(point, heading, support, false);
+         BlockHitResult visible = mc.level.clip(new ClipContext(eye,
+            point.add(point.subtract(eye).normalize().scale(0.001)),
+            ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, mc.player));
+         if (sameFace(visible, expected)) { best = expected; bestCost = cost; }
+      }
+      return best;
    }
 
    static float stepAngle(float current, float target, float limit, float smoothing) {

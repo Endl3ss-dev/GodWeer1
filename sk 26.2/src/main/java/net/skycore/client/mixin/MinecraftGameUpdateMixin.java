@@ -7,6 +7,7 @@ import net.skycore.client.event.CancellableEvent;
 import net.skycore.client.event.WorldChangeEvent;
 import net.skycore.client.module.ClientModule;
 import net.skycore.client.module.movement.ScaffoldCoachModule;
+import net.skycore.client.module.movement.ScaffoldModule;
 import net.skycore.client.module.combat.AttackAuraModule;
 import net.skycore.client.module.combat.AutoExplosionModule;
 import org.spongepowered.asm.mixin.Mixin;
@@ -22,7 +23,9 @@ public abstract class MinecraftGameUpdateMixin {
 
    @Inject(method = "renderFrame", at = @At("HEAD"))
    private void skycore$gameUpdate(boolean condition, CallbackInfo callbackInfo) {
-      ScaffoldCoachModule.INSTANCE.onFrame(System.nanoTime());
+      long scaffoldNow = System.nanoTime();
+      ScaffoldCoachModule.INSTANCE.onFrame(scaffoldNow);
+      SkycoreClient.modules().get(ScaffoldModule.class).ifPresent(module -> module.onFrame(scaffoldNow));
       AttackAuraModule aura = SkycoreClient.modules().get(AttackAuraModule.class).filter(ClientModule::isEnabled).orElse(null);
       if (aura == null) return;
       long now = System.nanoTime();
