@@ -1,0 +1,31 @@
+{
+  "schema": 2,
+  "session": "cbbad12a-130d-4bb9-bd16-fb6cb0c5a9c9",
+  "mode": "assisted",
+  "stopReason": "manual",
+  "samples": 723,
+  "attempts": 14,
+  "bridgePlacements": 13,
+  "motionSamples": 268,
+  "durationSeconds": 22.8563719,
+  "applicable": false,
+  "warnings": [
+    "Only an unassisted 20 TPS / 1x normal recording can produce an applicable profile; slow and coached data are not rescaled.",
+    "Need at least 30 locally observed bridge placements.",
+    "Need at least 20 ground yaw and 20 ground pitch motion samples near placements.",
+    "Need at least 30 seconds of recording.",
+    "Placement observations include client prediction, not server acknowledgement.",
+    "Quantiles approximate your controls; smoothing, edge distance and aim policy are not learned."
+  ],
+  "proposedSettings": {},
+  "styleStatistics": {
+    "observedFixedYFraction": 0.46153846153846156,
+    "observedPlacementsPerJump": 3.25,
+    "meanJumpClientTicks": 13.0,
+    "completedJumps": 4.0,
+    "flatJumps": 3.0,
+    "threeOrMoreBlockJumps": 4.0,
+    "meanYawExcursionDegrees": 175.196533203125,
+    "meanJumpRealSeconds": 3.7707477000000003
+  }
+}
