@@ -10,7 +10,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.InteractionResult;
-import net.minecraft.world.entity.player.LocalPlayer;
+import net.minecraft.client.player.LocalPlayer;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ClipContext;
@@ -243,7 +243,7 @@ public final class ScaffoldModule extends ClientModule {
          target = new BlockPos(target.getX(), this.lockedY, target.getZ());
          if (this.lockYDelay.get() > 0 && player.getDeltaMovement().y <= 0
             && this.lockYAtNanos != 0
-            && System.nanoTime() - this.lockYAtNanos < millisToNanos(this.lockYDelay.get())) return;
+            && System.nanoTime() - this.lockYAtNanos < millisToNanos(this.lockYDelay.get().longValue())) return;
       }
       if (!validTarget(mc, target)) return;
 
