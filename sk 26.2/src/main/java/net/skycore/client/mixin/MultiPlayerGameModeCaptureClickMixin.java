@@ -14,6 +14,7 @@ import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.BlockHitResult;
 import net.skycore.client.SkycoreClient;
 import net.skycore.client.event.BlockPlaceEvent;
+import net.skycore.client.event.BlockUseObservationEvent;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.Unique;
 import org.spongepowered.asm.mixin.injection.At;
@@ -29,9 +30,26 @@ public abstract class MultiPlayerGameModeCaptureClickMixin {
    @Unique
    private Direction skycore$clickedSide;
 
+   @Unique
+   private BlockPos skycore$trainingTarget;
+   @Unique
+   private BlockState skycore$trainingBefore;
+   @Unique
+   private String skycore$trainingItem;
+
    @Inject(method = "useItemOn", at = @At("HEAD"))
    private void skycore$captureClick(LocalPlayer player, InteractionHand interactionHand, BlockHitResult skycore$clickedPos2, CallbackInfoReturnable<InteractionResult> callbackInfoReturnable) {
       Minecraft instance = Minecraft.getInstance();
+      this.skycore$trainingTarget = null;
+      this.skycore$trainingBefore = null;
+      if (instance.level != null && player != null && skycore$clickedPos2 != null
+         && player.getItemInHand(interactionHand).getItem() instanceof BlockItem) {
+         BlockPos clicked = skycore$clickedPos2.getBlockPos();
+         this.skycore$trainingTarget = instance.level.getBlockState(clicked).canBeReplaced()
+            ? clicked : clicked.relative(skycore$clickedPos2.getDirection());
+         this.skycore$trainingBefore = instance.level.getBlockState(this.skycore$trainingTarget);
+         this.skycore$trainingItem = player.getItemInHand(interactionHand).getItem().toString();
+      }
       if (instance.level != null && skycore$clickedPos2 != null) {
          this.skycore$clickedPos = skycore$clickedPos2.getBlockPos();
          this.skycore$clickedState = instance.level.getBlockState(this.skycore$clickedPos);
@@ -44,6 +62,13 @@ public abstract class MultiPlayerGameModeCaptureClickMixin {
    @Inject(method = "useItemOn", at = @At("RETURN"))
    private void skycore$notifyPlace(LocalPlayer player, InteractionHand interactionHand, BlockHitResult blockHitResult, CallbackInfoReturnable<InteractionResult> callbackInfoReturnable) {
       InteractionResult returnValue = (InteractionResult)callbackInfoReturnable.getReturnValue();
+      Minecraft observedClient = Minecraft.getInstance();
+      if (observedClient.level != null && this.skycore$trainingTarget != null && this.skycore$trainingBefore != null) {
+         BlockState after = observedClient.level.getBlockState(this.skycore$trainingTarget);
+         SkycoreClient.events().post(new BlockUseObservationEvent(this.skycore$trainingTarget, blockHitResult,
+            interactionHand, this.skycore$trainingItem, returnValue != null && returnValue.consumesAction(),
+            !after.equals(this.skycore$trainingBefore) && !after.canBeReplaced()));
+      }
       if (returnValue != null && returnValue.consumesAction()) {
          Minecraft instance = Minecraft.getInstance();
          if (instance.level != null && player != null && this.skycore$clickedState != null && this.skycore$clickedPos != null) {

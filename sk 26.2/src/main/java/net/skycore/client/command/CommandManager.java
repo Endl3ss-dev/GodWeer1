@@ -63,6 +63,7 @@ public final class CommandManager {
       this.registerCommand(new PartyCommand());
       this.registerCommand(new IrcCommand());
       this.registerCommand(new NeuroCommand());
+      this.registerCommand(new ScaffoldTrainCommand());
       this.registerCommand(new PrefixCommand());
       this.registerCommand(FakeplayerCommand.INSTANCE);
       this.registerCommand(new TpCommand());
