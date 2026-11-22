@@ -1,0 +1,50 @@
+/m _SyXaRiK дай гм сын пидора
+/m _SyXaRiK ЦХАВХЦВАХЦАВХВЦА
+/m _SyXaRiK бляять
+/m _SyXaRiK я забыл
+/m _SyXaRiK нееееет
+/m _SyXaRiK я пашутил
+/m _SyXaRiK ето пранк
+/shop
+/m _SyXaRiK my love
+/rtp
+/shop
+/ah
+/rtp
+/sethome
+/rtp
+/sethome
+/spawn
+/warp pvp
+/shop
+/warp pvp
+/shop
+/drug
+/tpa _SyXaRiK
+/home
+/shop
+/rtp
+/warp pvp
+/m _SyXaRiK телепортируй к себе плиис
+/m _SyXaRiK май лов
+/rtp
+/shop
+/ah
+/ah player _SyXaRiK
+/ah
+/shop
+/warp
+/warp SltPvP
+/scale 0.5
+/m tpa
+/tpa KosmarasJUDA
+/scale 1
+/drug
+/shop
+/pay 1500
+/pay KosmarasJUDA 1500
+/tpa KosmarasJUDA
+/shop
+/drugs
+/shop
+/gm 0

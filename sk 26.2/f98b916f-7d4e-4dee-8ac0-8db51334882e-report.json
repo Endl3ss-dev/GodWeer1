@@ -1,0 +1,29 @@
+{
+  "schema": 2,
+  "session": "f98b916f-7d4e-4dee-8ac0-8db51334882e",
+  "mode": "assisted",
+  "stopReason": "manual",
+  "samples": 1311,
+  "attempts": 30,
+  "bridgePlacements": 24,
+  "motionSamples": 569,
+  "durationSeconds": 49.6201966,
+  "applicable": false,
+  "warnings": [
+    "Only an unassisted 20 TPS / 1x normal recording can produce an applicable profile; slow and coached data are not rescaled.",
+    "Need at least 30 locally observed bridge placements.",
+    "Placement observations include client prediction, not server acknowledgement.",
+    "Quantiles approximate your controls; smoothing, edge distance and aim policy are not learned."
+  ],
+  "proposedSettings": {},
+  "styleStatistics": {
+    "observedFixedYFraction": 0.875,
+    "observedPlacementsPerJump": 2.3,
+    "meanJumpClientTicks": 12.2,
+    "completedJumps": 10.0,
+    "flatJumps": 9.0,
+    "threeOrMoreBlockJumps": 5.0,
+    "meanYawExcursionDegrees": 127.8451171875,
+    "meanJumpRealSeconds": 2.8909605400000005
+  }
+}

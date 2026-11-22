@@ -1,0 +1,1 @@
+{"bones":[{"name":"wand","parent":-1,"pivot":[0.50338,0.05573,0.01744],"rotation":[0,0,0],"inverseBind":[1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0,0.0,0.0,0.0,0.0,1.0]}],"animations":{"main":{"loop":true}},"state_machine":{"name":"single","transition_tick_length":10,"anim":"main"},"cosmetic_options":[]}

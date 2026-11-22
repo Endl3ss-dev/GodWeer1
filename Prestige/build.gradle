@@ -1,0 +1,80 @@
+plugins {
+    id 'base'
+    id 'java-base'
+}
+
+group = 'dev.zprestige'
+version = '1.21.11'
+
+java {
+    toolchain.languageVersion = JavaLanguageVersion.of(25)
+}
+
+sourceSets {
+    main { java.setSrcDirs(['src/main/java']); resources.setSrcDirs(['src/main/resources']) }
+    linker { java.setSrcDirs(['src/linker/java']) }
+}
+
+dependencies {
+    compileOnly files(fileTree('libs/compile') { include '*.jar' })
+    linkerImplementation files(fileTree('libs/build') { include '*.jar' })
+}
+
+tasks.withType(JavaCompile).configureEach {
+    options.encoding = 'UTF-8'
+    options.release = 25
+    options.compilerArgs += ['-proc:none']
+}
+tasks.named('compileLinkerJava', JavaCompile) { options.release = 21 }
+
+def linkedClient = layout.buildDirectory.file('linked/client-classes.jar')
+def finalClient = layout.buildDirectory.file('libs/Prestige-1.21.11.jar')
+
+tasks.register('linkClient', JavaExec) {
+    dependsOn tasks.named('compileJava'), tasks.named('compileLinkerJava')
+    classpath = sourceSets.linker.runtimeClasspath
+    mainClass = 'prestige.build.LinkSources'
+    maxHeapSize = '1g'
+    inputs.dir(tasks.named('compileJava', JavaCompile).flatMap { it.destinationDirectory })
+    inputs.file('src/linker/metadata/source-map.json')
+    outputs.file(linkedClient)
+    doFirst {
+        setArgs([
+            tasks.named('compileJava', JavaCompile).get().destinationDirectory.get().asFile.absolutePath,
+            file('src/linker/metadata/source-map.json').absolutePath,
+            linkedClient.get().asFile.absolutePath
+        ])
+    }
+}
+
+// A streamed assembler preserves distinct JVM names such as cm and cM on Windows.
+tasks.register('jar', JavaExec) {
+    dependsOn tasks.named('linkClient'), tasks.named('processResources')
+    classpath = sourceSets.linker.runtimeClasspath
+    mainClass = 'prestige.build.AssembleMod'
+    maxHeapSize = '1g'
+    inputs.file(linkedClient)
+    inputs.dir(tasks.named('processResources').map { it.destinationDir })
+    inputs.file('libs/runtime/classtransform-runtime.jar')
+    outputs.file(finalClient)
+    doFirst {
+        setArgs([
+            linkedClient.get().asFile.absolutePath,
+            tasks.named('processResources').get().destinationDir.absolutePath,
+            file('libs/runtime/classtransform-runtime.jar').absolutePath,
+            finalClient.get().asFile.absolutePath
+        ])
+    }
+}
+
+tasks.named('assemble') { dependsOn tasks.named('jar') }
+
+tasks.register('buildNative', Exec) {
+    description = 'Optionally rebuild the JNI bridge with MSVC x64 and JAVA_HOME.'
+    workingDir = file('src/main/cpp')
+    commandLine 'cmd', '/c', 'build.cmd'
+}
+
+
+tasks.named('processResources') { duplicatesStrategy = DuplicatesStrategy.EXCLUDE }
+

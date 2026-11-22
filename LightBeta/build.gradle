@@ -1,0 +1,161 @@
+plugins {
+    id 'net.fabricmc.fabric-loom-remap' version "${loom_version}"
+    id 'maven-publish'
+    id 'com.gradleup.shadow' version '8.3.5'
+}
+
+version = project.mod_version
+group = project.maven_group
+
+repositories {
+    mavenCentral()
+    maven { name = "ViaVersion"; url = "https://repo.viaversion.com" }
+    maven { name = "Lenni0451"; url = "https://maven.lenni0451.net/everything" }
+    maven { name = "DimasKama"; url = "https://maven.dimaskama.net/releases" }
+    maven {
+        name = "Jitpack"
+        url = "https://jitpack.io"
+        content { includeGroup "com.github.oryxel1" }
+    }
+    maven { name = "Baritone"; url = "https://repo.nea.moe/releases" }
+    maven { name = "Baritone-Meteor"; url = "https://maven.meteordev.org/releases" }
+    maven { name = "Baritone-Meteor-Snapshots"; url = "https://maven.meteordev.org/snapshots" }
+}
+
+configurations {
+    shadowBundle
+}
+
+dependencies {
+    minecraft "com.mojang:minecraft:${project.minecraft_version}"
+    mappings "net.fabricmc:yarn:${project.yarn_mappings}:v2"
+    modImplementation "net.fabricmc:fabric-loader:${project.loader_version}"
+    modImplementation "net.fabricmc.fabric-api:fabric-api:${project.fabric_api_version}"
+
+    compileOnly 'org.projectlombok:lombok:1.18.46'
+    annotationProcessor 'org.projectlombok:lombok:1.18.46'
+
+    def bundledLocalMods = files(
+            'libs/baritone-unoptimized-fabric-1.21.11.jar',
+            'libs/nether-pathfinder-1.1.jar'
+    )
+    implementation 'net.java.dev.jna:jna:5.14.0'
+    implementation 'io.netty:netty-handler-proxy:4.1.82.Final'
+
+    modImplementation("com.squareup.okhttp3:okhttp:4.12.0") { transitive = true }
+    include "com.squareup.okhttp3:okhttp:4.12.0"
+    modImplementation("com.squareup.okio:okio:3.6.0") { transitive = true }
+    include "com.squareup.okio:okio:3.6.0"
+    // Runtime Kotlin .kts script compilation (JSR-223) for the Scripts tab.
+    // NOTE: 1.9.x's JSR-223 engine crashes with "Backend Internal error: Exception during IR
+    // lowering" on even the simplest script, so the scripting stack is pinned to 2.0.21, which
+    // additionally requires kotlinx-coroutines on the compiler classpath.
+    modImplementation("org.jetbrains.kotlin:kotlin-stdlib:${project.kotlin_version}") { transitive = true }
+    include "org.jetbrains.kotlin:kotlin-stdlib:${project.kotlin_version}"
+    modImplementation("org.jetbrains.kotlin:kotlin-scripting-jsr223:${project.kotlin_version}") { transitive = true }
+    include "org.jetbrains.kotlin:kotlin-scripting-jsr223:${project.kotlin_version}"
+    modImplementation("org.jetbrains.kotlin:kotlin-scripting-compiler-embeddable:${project.kotlin_version}") { transitive = true }
+    include "org.jetbrains.kotlin:kotlin-scripting-compiler-embeddable:${project.kotlin_version}"
+    include "org.jetbrains.kotlin:kotlin-scripting-common:${project.kotlin_version}"
+    include "org.jetbrains.kotlin:kotlin-scripting-jvm:${project.kotlin_version}"
+    include "org.jetbrains.kotlin:kotlin-scripting-jvm-host:${project.kotlin_version}"
+    include "org.jetbrains.kotlin:kotlin-scripting-compiler-impl-embeddable:${project.kotlin_version}"
+    include "org.jetbrains.kotlin:kotlin-compiler-embeddable:${project.kotlin_version}"
+    include "org.jetbrains.kotlin:kotlin-reflect:${project.kotlin_version}"
+    include "org.jetbrains.kotlin:kotlin-daemon-embeddable:${project.kotlin_version}"
+    include "org.jetbrains.kotlin:kotlin-script-runtime:${project.kotlin_version}"
+    modImplementation("org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.8.1") { transitive = true }
+    include "org.jetbrains.kotlinx:kotlinx-coroutines-core-jvm:1.8.1"
+    include "org.jetbrains.intellij.deps:trove4j:1.0.20200330"
+    modImplementation("org.json:json:20231013") { transitive = true }
+    include "org.json:json:20231013"
+    modImplementation("org.luaj:luaj-jse:3.0.1") { transitive = true }
+    include "org.luaj:luaj-jse:3.0.1"
+    modImplementation "net.dimaskama:mcef-modern:${project.mcef_modern_version}"
+    include "net.dimaskama:mcef-modern:${project.mcef_modern_version}"
+    modImplementation bundledLocalMods
+
+    modCompileOnly("meteordevelopment:baritone:1.21.11-SNAPSHOT")
+
+    implementation("com.microsoft.onnxruntime:onnxruntime:1.18.0")
+    shadowBundle("com.microsoft.onnxruntime:onnxruntime:1.18.0")
+}
+
+processResources {
+    def version = project.version
+    inputs.property "version", version
+    filesMatching("fabric.mod.json") {
+        expand "version": version
+    }
+
+    exclude "assets/light/models/light_rotation_logs/**"
+    exclude "assets/light/models/*.py"
+    exclude "assets/light/models/light_models/**"
+}
+
+tasks.withType(JavaCompile).configureEach {
+    it.options.release = 21
+}
+
+java {
+    withSourcesJar()
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
+    sourceCompatibility = JavaVersion.VERSION_21
+    targetCompatibility = JavaVersion.VERSION_21
+}
+
+loom {
+    accessWidenerPath = file("src/main/resources/light.accesswidener")
+
+    runs {
+    }
+}
+
+shadowJar {
+    configurations = [project.configurations.shadowBundle]
+    archiveClassifier = "shadow"
+
+    exclude "ai/onnxruntime/native/linux*/**"
+    exclude "ai/onnxruntime/native/osx*/**"
+    exclude "ai/onnxruntime/native/win-x86/**"
+
+    from("LICENSE") {
+        rename { "${it}_${project.name}" }
+    }
+}
+
+remapJar {
+    dependsOn shadowJar
+    inputFile = shadowJar.archiveFile
+}
+
+jar {
+    def projectName = project.name
+    inputs.property "projectName", projectName
+    from("LICENSE") {
+        rename { "${it}_$projectName" }
+    }
+}
+
+// Compiles the script prelude plus representative scripts against the real API, outside the game,
+// so DSL and type errors show up in a normal build instead of only once in-game.
+tasks.register("verifyScripts", JavaExec) {
+    dependsOn tasks.named("classes")
+    group = "verification"
+    description = "Compiles sample .kts scripts against the scripting API"
+    mainClass = "tech.lightclient.scripting.runtime.ScriptVerify"
+    classpath = sourceSets.main.runtimeClasspath
+    systemProperty "kotlin.script.classpath", sourceSets.main.runtimeClasspath.asPath
+}
+
+publishing {
+    publications {
+        create("mavenJava", MavenPublication) {
+            from components.java
+        }
+    }
+    repositories {
+    }
+}

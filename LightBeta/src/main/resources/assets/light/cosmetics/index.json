@@ -1,0 +1,796 @@
+﻿[
+    {
+        "name": "Ushanka (Overhaul)",
+        "path": "cosmetics/figura/head-ushanka/ushanka_overhaul/ushanka.bbmodel",
+        "preview": "cosmetics/figura/head-ushanka/ushanka_overhaul/avatar.png",
+        "type": "head",
+        "root": "cosmetics/figura/head-ushanka/ushanka_overhaul",
+        "files": [
+            "avatar.json",
+            "avatar.png",
+            "script.lua",
+            "soggyscript.lua",
+            "Ushanka.bbmodel"
+        ]
+    },
+    {
+        "name": "Ushanka (Original)",
+        "path": "cosmetics/figura/head-ushanka/ushanka_original/ushanka.bbmodel",
+        "preview": "cosmetics/figura/head-ushanka/ushanka_original/avatar.png",
+        "type": "head",
+        "root": "cosmetics/figura/head-ushanka/ushanka_original",
+        "files": [
+            "avatar.json",
+            "avatar.png",
+            "script.lua",
+            "Ushanka.bbmodel"
+        ]
+    },
+    {
+        "name": "Ushanka (Initial Overhaul)",
+        "path": "cosmetics/figura/head-ushanka/ushanka_initial_overhaul/ushanka.bbmodel",
+        "preview": "cosmetics/figura/head-ushanka/ushanka_initial_overhaul/avatar.png",
+        "type": "head",
+        "root": "cosmetics/figura/head-ushanka/ushanka_initial_overhaul",
+        "files": [
+            "avatar.json",
+            "avatar.png",
+            "script.lua",
+            "soggyscript.lua",
+            "Ushanka.bbmodel"
+        ]
+    },
+    {
+        "name": "Mikie",
+        "path": "cosmetics/figura/mikie/model.bbmodel",
+        "preview": "cosmetics/figura/mikie/avatar.png",
+        "type": "models",
+        "root": "cosmetics/figura/mikie",
+        "files": [
+            "avatar.json",
+            "avatar.png",
+            "eyes.png",
+            "lib/SquAPI.lua",
+            "lib/SquAssets.lua",
+            "lib/swinging_physics.lua",
+            "model.bbmodel",
+            "script.lua",
+            "texture.png"
+        ]
+    },
+    {
+        "name": "Kiana",
+        "path": "cosmetics/figura/kiana/kiana.bbmodel",
+        "preview": "cosmetics/figura/kiana/avatar.png",
+        "type": "models",
+        "root": "cosmetics/figura/kiana",
+        "files": [
+            "avatar.json",
+            "avatar.png",
+            "BatterUp.lua",
+            "GSAnimBlend.lua",
+            "JimmyAnims.lua",
+            "Kiana.bbmodel",
+            "outline.lua",
+            "script.lua",
+            "SquAPI.lua",
+            "swinging_physics.lua",
+            "Trident.bbmodel",
+            "velocity.lua"
+        ]
+    },
+    {
+        "name": "Kal'tsit",
+        "path": "cosmetics/figura/kal_tsit/model.bbmodel",
+        "preview": "cosmetics/figura/kal_tsit/avatar.png",
+        "type": "models",
+        "root": "cosmetics/figura/kal_tsit",
+        "files": [
+            "avatar.json",
+            "avatar.png",
+            "GSAnimBlend.lua",
+            "JimmyAnims.lua",
+            "model.bbmodel",
+            "script.lua",
+            "SquAPI.lua",
+            "SquAssets.lua",
+            "swinging_physics.lua"
+        ]
+    },
+    {
+        "name": "Traffic Cone (Overhaul)",
+        "path": "cosmetics/figura/head-traffic_cone/traffic_cone_overhaul/trafficcone.bbmodel",
+        "preview": "cosmetics/figura/head-traffic_cone/traffic_cone_overhaul/avatar.png",
+        "type": "head",
+        "root": "cosmetics/figura/head-traffic_cone/traffic_cone_overhaul",
+        "files": [
+            "avatar.json",
+            "avatar.png",
+            "script.lua",
+            "soggyscript.lua",
+            "TrafficCone.bbmodel"
+        ]
+    },
+    {
+        "name": "Straw Hat",
+        "path": "cosmetics/figura/head-straw_hat/straw_hat/strawhat.bbmodel",
+        "preview": "cosmetics/figura/head-straw_hat/straw_hat/avatar.png",
+        "type": "head",
+        "root": "cosmetics/figura/head-straw_hat/straw_hat",
+        "files": [
+            "avatar.json",
+            "avatar.png",
+            "script.lua",
+            "soggyscript.lua",
+            "StrawHat.bbmodel"
+        ]
+    },
+    {
+        "name": "Plaid Hat",
+        "path": "cosmetics/figura/head-plaid_hat/plaid_hat/plaidhat.bbmodel",
+        "preview": "cosmetics/figura/head-plaid_hat/plaid_hat/avatar.png",
+        "type": "head",
+        "root": "cosmetics/figura/head-plaid_hat/plaid_hat",
+        "files": [
+            "avatar.json",
+            "avatar.png",
+            "PlaidHat.bbmodel",
+            "script.lua",
+            "soggyscript.lua"
+        ]
+    },
+    {
+        "name": "orange cat on neck",
+        "path": "cosmetics/figura/head-orange_cat_on_neck/model.bbmodel",
+        "preview": "cosmetics/figura/head-orange_cat_on_neck/avatar.png",
+        "type": "head",
+        "root": "cosmetics/figura/head-orange_cat_on_neck",
+        "files": [
+            "avatar.json",
+            "avatar.png",
+            "model.bbmodel",
+            "script.lua",
+            "sounds/meow-2.mp3"
+        ]
+    },
+    {
+        "name": "Traffic Cone (Original)",
+        "path": "cosmetics/figura/head-traffic_cone/traffic_cone_original/trafficcone.bbmodel",
+        "preview": "cosmetics/figura/head-traffic_cone/traffic_cone_original/avatar.png",
+        "type": "head",
+        "root": "cosmetics/figura/head-traffic_cone/traffic_cone_original",
+        "files": [
+            "avatar.json",
+            "avatar.png",
+            "script.lua",
+            "TrafficCone.bbmodel"
+        ]
+    },
+    {
+        "name": "Top Hat (Overhaul)",
+        "path": "cosmetics/figura/head-top_hat/top_hat_overhaul/tophat.bbmodel",
+        "preview": "cosmetics/figura/head-top_hat/top_hat_overhaul/avatar.png",
+        "type": "head",
+        "root": "cosmetics/figura/head-top_hat/top_hat_overhaul",
+        "files": [
+            "avatar.json",
+            "avatar.png",
+            "script.lua",
+            "soggyscript.lua",
+            "TopHat.bbmodel"
+        ]
+    },
+    {
+        "name": "Top Hat (Original)",
+        "path": "cosmetics/figura/head-top_hat/top_hat_original/tophat.bbmodel",
+        "preview": "cosmetics/figura/head-top_hat/top_hat_original/avatar.png",
+        "type": "head",
+        "root": "cosmetics/figura/head-top_hat/top_hat_original",
+        "files": [
+            "avatar.json",
+            "avatar.png",
+            "script.lua",
+            "TopHat.bbmodel"
+        ]
+    },
+    {
+        "name": "Untitled Goose",
+        "path": "cosmetics/figura/untitled_goose/untitled_goose/goose.bbmodel",
+        "preview": "cosmetics/figura/untitled_goose/untitled_goose/avatar.png",
+        "type": "models",
+        "root": "cosmetics/figura/untitled_goose/untitled_goose",
+        "files": [
+            "avatar.json",
+            "avatar.png",
+            "EZAnims.lua",
+            "goose.bbmodel",
+            "goose.png",
+            "GSAnimBlend.lua",
+            "Honk.ogg",
+            "script.lua",
+            "SquAPI.lua",
+            "SquAssets.lua"
+        ]
+    },
+    {
+        "name": "Turbo Granny (Dan Da Dan)",
+        "path": "cosmetics/figura/turbo_granny_dan_da_dan/turbo_granny_dan_da_dan/model.bbmodel",
+        "preview": "cosmetics/figura/turbo_granny_dan_da_dan/turbo_granny_dan_da_dan/avatar.png",
+        "type": "models",
+        "root": "cosmetics/figura/turbo_granny_dan_da_dan/turbo_granny_dan_da_dan",
+        "files": [
+            "avatar.json",
+            "avatar.png",
+            "base.png",
+            "bell.png",
+            "EZAnims.lua",
+            "GSAnimBlend.lua",
+            "model.bbmodel",
+            "plaque.png",
+            "script.lua",
+            "SquAPI.lua",
+            "SquAssets.lua",
+            "swinging_physics.lua"
+        ]
+    },
+    {
+        "name": "Sword by Selerra",
+        "path": "cosmetics/figura/sword_by_salerra/sword_by_salerra/sword.bbmodel",
+        "preview": "cosmetics/figura/sword_by_salerra/sword_by_salerra/avatar.png",
+        "type": "head",
+        "root": "cosmetics/figura/sword_by_salerra/sword_by_salerra",
+        "files": [
+            "avatar.json",
+            "avatar.png",
+            "sword.bbmodel",
+            "sword.png"
+        ]
+    },
+    {
+        "name": "Pidr Griffin",
+        "path": "cosmetics/figura/peter/model.bbmodel",
+        "preview": "cosmetics/figura/peter/avatar.png",
+        "type": "models",
+        "root": "cosmetics/figura/peter",
+        "files": [
+            "avatar.json",
+            "avatar.png",
+            "model.bbmodel",
+            "script.lua",
+            "skin.png"
+        ]
+    },
+    {
+        "name": "Wheelchair",
+        "path": "cosmetics/figura/wheelchair/modelname.bbmodel",
+        "preview": "cosmetics/figura/wheelchair/avatar.png",
+        "type": "models",
+        "root": "cosmetics/figura/wheelchair",
+        "files": [
+            "- HeightAdjuster.lua",
+            "- SKIN.lua",
+            "avatar.json",
+            "avatar.png",
+            "ears.lua",
+            "GSAnimBlend.lua",
+            "JimmyAnims.lua",
+            "MODELNAME.bbmodel",
+            "props.lua",
+            "SquAPI.lua",
+            "SquAPI_modules/animateTexture.lua",
+            "SquAPI_modules/arm.lua",
+            "SquAPI_modules/bounceWalk.lua",
+            "SquAPI_modules/crouch.lua",
+            "SquAPI_modules/ears.lua",
+            "SquAPI_modules/eye.lua",
+            "SquAPI_modules/randimation.lua",
+            "SquAPI_modules/SquAssets.lua",
+            "SquAPI_modules/squishy.lua",
+            "SquAPI_modules/tail.lua",
+            "SquAPI_modules/taur.lua",
+            "SquAPI_modules/VanillaElement.lua",
+            "squishyAPI.lua",
+            "swingingPhysics.lua",
+            "swingphysics script.lua",
+            "textures/book.png",
+            "textures/bottle.png",
+            "textures/hat.png",
+            "textures/sword.png",
+            "textures/texture.png",
+            "textures/TEXTURENAME.png",
+            "textures/Wheelchair.png",
+            "the action_wheel.lua",
+            "weapons/bow.bbmodel",
+            "weapons/sword.bbmodel",
+            "weapons/trident.bbmodel"
+        ]
+    },
+    {
+        "name": "Vampire",
+        "path": "cosmetics/figura/vampire/model.bbmodel",
+        "preview": "cosmetics/figura/vampire/avatar.png",
+        "type": "models",
+        "root": "cosmetics/figura/vampire",
+        "files": [
+            "avatar.json",
+            "avatar.png",
+            "lib/BatterUp.lua",
+            "lib/confetti.lua",
+            "lib/GSAnimBlend.lua",
+            "lib/JimmyAnims.lua",
+            "lib/SquAPI.lua",
+            "lib/SquAssets.lua",
+            "lib/swinging_physics.lua",
+            "model.bbmodel",
+            "scripts/action_wheel.lua",
+            "scripts/code_assets.lua",
+            "scripts/script.lua",
+            "sword.bbmodel",
+            "textures/eyes.png",
+            "textures/eyes_e.png",
+            "textures/goblet.png",
+            "textures/sword.png",
+            "textures/texture.png",
+            "textures/texture2.png",
+            "textures/x32.png"
+        ]
+    },
+    {
+        "name": "Model Test",
+        "path": "cosmetics/figura/model_test/model.bbmodel",
+        "preview": "cosmetics/figura/model_test/avatar.png",
+        "type": "head",
+        "root": "cosmetics/figura/model_test",
+        "files": [
+            "avatar.json",
+            "avatar.png",
+            "EZAnims.lua",
+            "GSAnimBlend.lua",
+            "model.bbmodel",
+            "script.lua"
+        ]
+    },
+    {
+        "name": "Miku16th_release_version",
+        "path": "cosmetics/figura/miku16th_release_version/miku16th_v3.bbmodel",
+        "preview": "cosmetics/figura/miku16th_release_version/avatar.png",
+        "type": "models",
+        "root": "cosmetics/figura/miku16th_release_version",
+        "files": [
+            "avatar.json",
+            "avatar.png",
+            "Miku16th_v3.bbmodel",
+            "Readme.txt",
+            "script.lua",
+            "six_skirt.lua",
+            "SquAPI.lua",
+            "SquAssets.lua",
+            "swinging_physics.lua"
+        ]
+    },
+    {
+        "name": "Repo",
+        "path": "cosmetics/figura/repo/model.bbmodel",
+        "preview": "cosmetics/figura/repo/avatar.png",
+        "type": "models",
+        "root": "cosmetics/figura/repo",
+        "files": [
+            "avatar.json",
+            "avatar.png",
+            "EZAnims.lua",
+            "GSAnimBlend.lua",
+            "model.bbmodel",
+            "script.lua",
+            "SquAPI.lua",
+            "SquAssets.lua"
+        ]
+    },
+    {
+        "name": "Mothli",
+        "path": "cosmetics/figura/mothli/mothli.bbmodel",
+        "preview": "cosmetics/figura/mothli/avatar.png",
+        "type": "models",
+        "root": "cosmetics/figura/mothli",
+        "files": [
+            "avatar.json",
+            "avatar.png",
+            "dronezAPI.lua",
+            "example.lua",
+            "eyes_e.png",
+            "mothli.bbmodel",
+            "texture.png"
+        ]
+    },
+    {
+        "name": "Dreamy Fox Companion",
+        "path": "cosmetics/figura/dreamy_fox_companion/model.bbmodel",
+        "preview": "cosmetics/figura/dreamy_fox_companion/avatar.png",
+        "type": "head",
+        "root": "cosmetics/figura/dreamy_fox_companion",
+        "files": [
+            "avatar.json",
+            "avatar.png",
+            "fox.png",
+            "model.bbmodel",
+            "script.lua",
+            "snow_fox.png"
+        ]
+    },
+    {
+        "name": "Cotton",
+        "path": "cosmetics/figura/cotton/model.bbmodel",
+        "preview": "cosmetics/figura/cotton/avatar.png",
+        "type": "models",
+        "root": "cosmetics/figura/cotton",
+        "files": [
+            "avatar.json",
+            "avatar.png",
+            "lib/EZAnims.lua",
+            "lib/EZAnims-DESKTOP-CABL0M3.lua",
+            "lib/GSAnimBlend.lua",
+            "lib/SquAPI.lua",
+            "lib/SquAssets.lua",
+            "lib/swinging_physics.lua",
+            "license.lua",
+            "maintexture.png",
+            "model.bbmodel",
+            "rabbit.png",
+            "script.lua",
+            "texture.png"
+        ]
+    },
+    {
+        "name": "Goldenglow",
+        "path": "cosmetics/figura/goldenglow/goldenglow.bbmodel",
+        "preview": "cosmetics/figura/goldenglow/avatar.png",
+        "type": "models",
+        "root": "cosmetics/figura/goldenglow",
+        "files": [
+            "avatar.json",
+            "avatar.png",
+            "Goldenglow.bbmodel",
+            "Goldenglow.png",
+            "GSAnimBlend.lua",
+            "JimmyAnims.lua",
+            "script.lua",
+            "SquAPI.lua",
+            "Static_e.png",
+            "StaticStaff_e.png"
+        ]
+    },
+    {
+        "name": "Frieren staff",
+        "path": "cosmetics/figura/frieren_staff/model.bbmodel",
+        "preview": "cosmetics/figura/frieren_staff/avatar.png",
+        "type": "head",
+        "root": "cosmetics/figura/frieren_staff",
+        "files": [
+            "avatar.json",
+            "avatar.png",
+            "model.bbmodel"
+        ]
+    },
+    {
+        "name": "Cool scythe",
+        "path": "cosmetics/figura/cool_scythe/model_1.bbmodel",
+        "preview": "cosmetics/figura/cool_scythe/avatar.png",
+        "type": "head",
+        "root": "cosmetics/figura/cool_scythe",
+        "files": [
+            "avatar.json",
+            "avatar.png",
+            "EZAnims.lua",
+            "EZItems.lua",
+            "Make scythe work.lua",
+            "model_1.bbmodel",
+            "Script.lua"
+        ]
+    },
+    {
+        "name": "Aria",
+        "path": "cosmetics/figura/aria/model.bbmodel",
+        "preview": "cosmetics/figura/aria/avatar.png",
+        "type": "models",
+        "root": "cosmetics/figura/aria",
+        "files": [
+            "avatar.json",
+            "avatar.png",
+            "eyes.png",
+            "lib/SquAPI.lua",
+            "lib/SquAssets.lua",
+            "lib/swinging_physics.lua",
+            "license.lua",
+            "model.bbmodel",
+            "script.lua",
+            "texture.png"
+        ]
+    },
+    {
+        "name": "Android",
+        "path": "cosmetics/figura/android/android.bbmodel",
+        "preview": "cosmetics/figura/android/avatar.png",
+        "type": "models",
+        "root": "cosmetics/figura/android",
+        "files": [
+            "android.bbmodel",
+            "android.png",
+            "avatar.json",
+            "avatar.png",
+            "scripts/script.lua",
+            "scripts/SquAPI.lua",
+            "scripts/SquAPI_modules/ear.lua",
+            "scripts/SquAPI_modules/SquAssets.lua",
+            "scripts/SquAPI_modules/tail.lua"
+        ]
+    },
+    {
+        "name": "Akita_Neru",
+        "path": "cosmetics/figura/akita_neru/model.bbmodel",
+        "preview": "cosmetics/figura/akita_neru/avatar.png",
+        "type": "models",
+        "root": "cosmetics/figura/akita_neru",
+        "files": [
+            "avatar.json",
+            "avatar.png",
+            "body.png",
+            "model.bbmodel",
+            "physBoneAPI.lua",
+            "script.lua",
+            "Skin.png",
+            "skirt_physics.lua",
+            "SquAPI_MODIFIED.lua",
+            "SquAssets_MODIFIED.lua",
+            "texture.png",
+            "texture_e.png"
+        ]
+    },
+    {
+        "name": "can+wheelchair",
+        "path": "cosmetics/figura/can_wheelchair/model.bbmodel",
+        "preview": "cosmetics/figura/can_wheelchair/avatar.png",
+        "type": "models",
+        "root": "cosmetics/figura/can_wheelchair",
+        "files": [
+            "avatar.json",
+            "avatar.png",
+            "cola.png",
+            "litenergy.png",
+            "model.bbmodel",
+            "mountaindew.png",
+            "openBanky.ogg",
+            "script.lua",
+            "SKIN.png",
+            "texture.png",
+            "texture_e.png"
+        ]
+    },
+    {
+        "name": "beardie",
+        "path": "cosmetics/figura/beardie/model.bbmodel",
+        "preview": "cosmetics/figura/beardie/avatar.png",
+        "type": "models",
+        "root": "cosmetics/figura/beardie",
+        "files": [
+            "avatar.json",
+            "avatar.png",
+            "EZAnims.lua",
+            "model.bbmodel",
+            "script.lua"
+        ]
+    },
+    {
+        "name": "baron11",
+        "path": "cosmetics/figura/baron11/model.bbmodel",
+        "preview": "cosmetics/figura/baron11/avatar.png",
+        "type": "models",
+        "root": "cosmetics/figura/baron11",
+        "files": [
+            "avatar.json",
+            "avatar.png",
+            "item.lua",
+            "JimmyAnims.lua",
+            "model.bbmodel",
+            "physBoneAPI.lua",
+            "script.lua"
+        ]
+    },
+    {
+        "name": "Flower Hat",
+        "path": "cosmetics/figura/head-flower_hat/flower_hat.bbmodel",
+        "preview": "cosmetics/figura/head-flower_hat/avatar.png",
+        "type": "head",
+        "root": "cosmetics/figura/head-flower_hat",
+        "files": [
+            "avatar.json",
+            "avatar.png",
+            "Flower Hat.bbmodel",
+            "script.lua"
+        ]
+    },
+    {
+        "name": "Crown (Cracked)",
+        "path": "cosmetics/figura/head-crown/crown_cracked/crackedcrown.bbmodel",
+        "preview": "cosmetics/figura/head-crown/crown_cracked/avatar.png",
+        "type": "head",
+        "root": "cosmetics/figura/head-crown/crown_cracked",
+        "files": [
+            "avatar.json",
+            "avatar.png",
+            "CrackedCrown.bbmodel",
+            "Idle.json",
+            "script.lua",
+            "soggyscript.lua"
+        ]
+    },
+    {
+        "name": "Crown",
+        "path": "cosmetics/figura/head-crown/crown/crown.bbmodel",
+        "preview": "cosmetics/figura/head-crown/crown/avatar.png",
+        "type": "head",
+        "root": "cosmetics/figura/head-crown/crown",
+        "files": [
+            "avatar.json",
+            "avatar.png",
+            "Crown.bbmodel",
+            "Idle.json",
+            "script.lua",
+            "soggyscript.lua"
+        ]
+    },
+    {
+        "name": "Newsboy Cap",
+        "path": "cosmetics/figura/head-newsboy_cap/newsboy_cap/newsboycap.bbmodel",
+        "preview": "cosmetics/figura/head-newsboy_cap/newsboy_cap/avatar.png",
+        "type": "head",
+        "root": "cosmetics/figura/head-newsboy_cap/newsboy_cap",
+        "files": [
+            "avatar.json",
+            "avatar.png",
+            "NewsboyCap.bbmodel",
+            "script.lua",
+            "soggyscript.lua"
+        ]
+    },
+    {
+        "name": "isha's hat",
+        "path": "cosmetics/figura/head-isha_s_hat/hat.bbmodel",
+        "preview": "cosmetics/figura/head-isha_s_hat/avatar.png",
+        "type": "head",
+        "root": "cosmetics/figura/head-isha_s_hat",
+        "files": [
+            "avatar.json",
+            "avatar.png",
+            "Hat.bbmodel",
+            "script.lua"
+        ]
+    },
+    {
+        "name": "halo",
+        "path": "cosmetics/figura/head-halo/model.bbmodel",
+        "preview": "cosmetics/figura/head-halo/avatar.png",
+        "type": "head",
+        "root": "cosmetics/figura/head-halo",
+        "files": [
+            "avatar.json",
+            "avatar.png",
+            "CHANGELOG.md",
+            "halo.png",
+            "halo_e.png",
+            "model.bbmodel",
+            "script.lua",
+            "Wings.png"
+        ]
+    },
+    {
+        "name": "Chef Hat",
+        "path": "cosmetics/figura/head-chef_hat/chef_hat/chefhat.bbmodel",
+        "preview": "cosmetics/figura/head-chef_hat/chef_hat/avatar.png",
+        "type": "head",
+        "root": "cosmetics/figura/head-chef_hat/chef_hat",
+        "files": [
+            "avatar.json",
+            "avatar.png",
+            "ChefHat.bbmodel",
+            "script.lua",
+            "soggyscript.lua"
+        ]
+    },
+    {
+        "name": "Astronaut Helmet",
+        "path": "cosmetics/figura/head-astronaut_helmet/astronaut_helmet/astronauthelmet.bbmodel",
+        "preview": "cosmetics/figura/head-astronaut_helmet/astronaut_helmet/avatar.png",
+        "type": "head",
+        "root": "cosmetics/figura/head-astronaut_helmet/astronaut_helmet",
+        "files": [
+            "AstronautHelmet.bbmodel",
+            "avatar.json",
+            "avatar.png",
+            "Idle.json",
+            "script.lua",
+            "soggyscript.lua"
+        ]
+    },
+    {
+        "name": "3D Glasses (Overhaul)",
+        "path": "cosmetics/figura/head-3d_glasses/3d_glasses_overhaul/3dglasses.bbmodel",
+        "preview": "cosmetics/figura/head-3d_glasses/3d_glasses_overhaul/avatar.png",
+        "type": "head",
+        "root": "cosmetics/figura/head-3d_glasses/3d_glasses_overhaul",
+        "files": [
+            "3DGlasses.bbmodel",
+            "avatar.json",
+            "avatar.png",
+            "script.lua",
+            "soggyscript.lua"
+        ]
+    },
+    {
+        "name": "3D Glasses (Original)",
+        "path": "cosmetics/figura/head-3d_glasses/3d_glasses_original/3dglasses.bbmodel",
+        "preview": "cosmetics/figura/head-3d_glasses/3d_glasses_original/avatar.png",
+        "type": "head",
+        "root": "cosmetics/figura/head-3d_glasses/3d_glasses_original",
+        "files": [
+            "3DGlasses.bbmodel",
+            "avatar.json",
+            "avatar.png",
+            "script.lua"
+        ]
+    },
+    {
+        "name": "catears",
+        "path": "cosmetics/figura/head-catears/cat_ears.bbmodel",
+        "preview": "cosmetics/figura/head-catears/avatar.png",
+        "type": "head",
+        "root": "cosmetics/figura/head-catears",
+        "files": [
+            "avatar.json",
+            "avatar.png",
+            "Cat Ears.bbmodel",
+            "Cat Ears.png"
+        ]
+    },
+    {
+        "name": "Cat Ears+Tail",
+        "path": "cosmetics/figura/head-cat_ears_tail/cat_ears_tail.bbmodel",
+        "preview": "cosmetics/figura/head-cat_ears_tail/avatar.png",
+        "type": "head",
+        "root": "cosmetics/figura/head-cat_ears_tail",
+        "files": [
+            "avatar.json",
+            "avatar.png",
+            "cat+ears+tail.bbmodel",
+            "feline_tail+ears_base.png",
+            "texture.png"
+        ]
+    },
+    {
+        "name": "Astronaut Helmet (Red)",
+        "path": "cosmetics/figura/head-astronaut_helmet/astronaut_helmet_red/astronauthelmet.bbmodel",
+        "preview": "cosmetics/figura/head-astronaut_helmet/astronaut_helmet_red/avatar.png",
+        "type": "head",
+        "root": "cosmetics/figura/head-astronaut_helmet/astronaut_helmet_red",
+        "files": [
+            "AstronautHelmet.bbmodel",
+            "avatar.json",
+            "avatar.png",
+            "Idle.json",
+            "script.lua",
+            "soggyscript.lua"
+        ]
+    },
+    {
+        "name": "Tung Sahur",
+        "path": "cosmetics/figura/pixelar_tung_sahur/model.bbmodel",
+        "preview": "cosmetics/figura/pixelar_tung_sahur/avatar.png",
+        "type": "models",
+        "root": "cosmetics/figura/pixelar_tung_sahur",
+        "files": [
+            "avatar.json",
+            "avatar.png",
+            "model.bbmodel",
+            "script.lua",
+            "Texture/Tung Tung Tung Sahur.png"
+        ]
+    }
+]
