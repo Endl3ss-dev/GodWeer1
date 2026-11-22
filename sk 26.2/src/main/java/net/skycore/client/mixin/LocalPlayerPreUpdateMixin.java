@@ -12,7 +12,6 @@ import net.skycore.client.event.PlayerTickStartEvent;
 import net.skycore.client.module.combat.AimbotModule;
 import net.skycore.client.module.combat.CriticalsModule;
 import net.skycore.client.module.movement.GuiMoveModule;
-import net.skycore.client.module.movement.ScaffoldModule;
 import net.skycore.client.util.BeforeMovementHelper;
 import net.skycore.client.util.ScheduleHelper;
 import net.skycore.client.util.SynchronizeHelper;
@@ -48,18 +47,6 @@ public abstract class LocalPlayerPreUpdateMixin {
    private void skycore$experienceBeforeMovement(CallbackInfo callbackInfo) {
       ScheduleHelper.beforeMovement();
       BeforeMovementHelper.beforeMovement((LocalPlayer)(Object)this);
-   }
-
-   @Inject(method = "sendPosition", at = @At("HEAD"))
-   private void skycore$scaffoldBeforeMovement(CallbackInfo callbackInfo) {
-      if ((Object)this == Minecraft.getInstance().player)
-         SkycoreClient.modules().get(ScaffoldModule.class).ifPresent(ScaffoldModule::beforeMovement);
-   }
-
-   @Inject(method = "sendPosition", at = @At("TAIL"))
-   private void skycore$scaffoldAfterMovement(CallbackInfo callbackInfo) {
-      if ((Object)this == Minecraft.getInstance().player)
-         SkycoreClient.modules().get(ScaffoldModule.class).ifPresent(ScaffoldModule::afterMovement);
    }
 
    @Inject(method = "closeContainer", at = @At("HEAD"), cancellable = true)

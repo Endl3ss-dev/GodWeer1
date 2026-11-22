@@ -1,161 +1,95 @@
-> Старые edge mode / Jump Assist удалены из Scaffold по запросу пользователя.
-> Сейчас Scaffold выполняет только Telly; актуальная инструкция и настройки:
-> [telly-scaffold.md](telly-scaffold.md). Ниже оставлено историческое описание,
-> его настройки больше не доступны.
+# Scaffold — порт MotherHack (NCP / NCPStrict / Eagle / CatLean)
 
-# Scaffold — edge mode, multipoint aim, manual jump assist
+> Заменяет прежний Telly-only Scaffold. Старый edge-mode, Telly-контроллер и
+> free-look камеры Scaffold удалены вместе с модулем. Актуальные файлы:
+> `ScaffoldModule.java` (порт), `ScaffoldGeometry.java` (геометрия для Coach),
+> `ScaffoldCoachModule.java` (отдельный тренажёр), `docs/scaffold-coach.md`.
+> Исторический Telly-документ: `docs/telly-scaffold.md`.
 
-Модуль Movement. Работает через vanilla input/useItemOn, с видимым поворотом
-камеры. Не гарантирует незаметность, совместимость с античитом или защиту от падения.
+## Что перенесено
 
-Запись ручного строительства и подбор профиля с подтверждением: см.
-[scaffold-training.md](scaffold-training.md), локальная команда `.scafftrain`.
-Отдельный singleplayer-тренажёр плоского Telly с замедлением и доводкой:
-[scaffold-coach.md](scaffold-coach.md).
+Порт сделан с усовершенствованной итерации MotherHack Scaffold
+(`Новый текстовый документ (8).txt`, 1345 строк), а не с более старого
+`MotherHack/src/main/java/fun/motherhack/modules/impl/movement/Scaffold.java`.
 
-## Обычный мост
+Сохранены:
 
-Цикл: обнаружение края → sneak → видимая грань → остановка движения → наведение →
-установка → наблюдение блока → возврат взгляда → продолжение движения.
+- режимы `NCP`, `NCPStrict` (по умолчанию), `Eagle`, `CatLean`;
+- имена, порядок и значения по умолчанию всех настроек источника
+  (`Mode`, `Switch`, `Rotate`, `LockY`, `AutoJump`, `WorkWhileSneaking`, `Tower`,
+  `SafeWalk`, `OnlyNotHoldingSpace`, `NCPRotate`, `SmoothSpeed`, `PlaceDelay`,
+  `MinDelay`, `MaxDelay`, `LockYDelay`, `StaticPitch`, `FixedPitch`, `GrimPitchLimit`,
+  `RandomizeDelay`, `MinPlaceDelay`, `MaxPlaceDelay`, `BuildTrust`, `TrustBlocks`,
+  `LastMomentPlace`, `NoServerRotate`, `KeepHeight`, `Delay`, `Switch`/`Tower`/`SafeWalk`
+  для CatLean, `AllowShift`, `Legit`, `SaveAngles`, `Telly`, `AirPlace`);
+- `BLACKLIST` из 18 блоков;
+- SafeWalk NCP с шагом 0.05, tower-импульс `0.42`/`-0.28` через таймер 1500 мс,
+  рандомизированные задержки `MinDelay..MaxDelay` и `+20 мс` до 40 «trust»-блоков,
+  `LastMomentPlace` с симуляцией гравитации (`vy -= 0.08; vy *= 0.98`, до 10 тиков,
+  порог `ticks <= 3`), `shouldPlaceLastMoment` по смещению от центра блока;
+- ротации `Normal`, `Smooth`, `Packet`, `Linear`, `Snap`, `Grim+Matrix`, `None`,
+  `getRotationsWithGrimMatrix` с `StaticPitch`/`GrimPitchLimit`;
+- `checkNearBlocks`/`checkNearBlocksExtended` (13 оффсетов), дистанция 4.2,
+  бонус `-0.5` за `Direction.UP`, случайная точка `0.05..0.95` на грани;
+- CatLean: перебор куба по reach, выбор грани с минимальной разницей yaw,
+  `ClickSlot`-свап для Inventory, packet-ротация для Silent, `Legit`/`SaveAngles`.
 
-- Collision probe смотрит под проекцию центра игрока с учётом скорости. Пока
-  боковая грань не видна, игрок подкрадывается с обычным vanilla sneak.
-- Для каждой доступной грани проверяется сетка 3×3–7×7 точек с отступом 0.08 от
-  краёв. Среди видимых точек в reach выбирается минимальный угловой путь от
-  текущего прицела (учитывается wrap yaw через ±180°).
-- Если прицел уже попадает в подходящую опору и грань, используется текущий hit:
-  лишнего доворота к центру или узлу сетки нет. Во время AIM достаточно попадания
-  в ту же грань, точного совпадения углов с выбранной точкой не требуется.
-- Поворот ограничен скоростью за tick и замедляется около цели (Turn Smoothing).
-  Новая точка пересчитывается только когда фактический прицел ещё не попадает в
-  нужную грань. Валидация видимости/дальности выполняется через world raycast.
-- Клик не выполняется в тот tick, в котором модуль только повернул камеру:
-  следующий vanilla movement tick должен успеть передать видимый взгляд.
-- Исходный слот восстанавливается в finally через InventoryHelper, включая сервер.
-- Ожидание блока учитывает клиентский prediction; это НЕ server acknowledgement.
+## Отличия платформы (26.2 / SkyCore)
 
-## Jump Assist (по умолчанию выключен)
+| MotherHack 1.21.4 | SkyCore 26.2 |
+|---|---|
+| `PlayerMoveC2SPacket.*` | `ServerboundMovePlayerPacket.Rot` / `.Full` |
+| `ClientCommandC2SPacket.Mode.PRESS/RELEASE_SHIFT_KEY` | `options.keyShift.setDown(true/false)` — в 26.2 у player-command пакета больше нет shift-действий |
+| `mc.interactionManager.interactBlock` | `mc.gameMode.useItemOn` |
+| `mc.player.setVelocity` | `mc.player.setDeltaMovement` |
+| `mc.itemUseCooldown` | `MinecraftGetRightClickDelayAccessor.skycore$getRightClickDelay()` |
+| `mc.world.getBlockCollisions(...).hasNext()` | `mc.level.noCollision(...)` (инвертировано) |
+| `isReplaceable()` | `canBeReplaced()` |
+| `mc.player.age` | `mc.player.tickCount` |
+| `EnumSetting<Mode>` + `setVisible` | `ModeSetting` (строки) + `visibleWhen` |
+| Orbit `@EventHandler(EventPlayerTick)` | `PlayerTickEndEvent` через `EventBus` |
+| `RotationChanger` + `addRotation` | `RotationManager.updateExact(Rotation, 5000, 2)` |
+| `addPacketRotation` | прямой `ServerboundMovePlayerPacket.Full` с текущими координатами |
+| `e.setPacket(...)` для Snap | прямой `Full`-пакет в момент установки (`PacketSendEvent` в SkyCore не умеет заменять пакет) |
+| `setBodyYaw`/`setHeadYaw` | поля `yBodyRot`/`yHeadRot` |
 
-Включить для ручного прыжка с платформы. Модуль не нажимает jump сам и не строит tower.
+`NCPRotate` и CatLean `Switch` названы `NCPRotate` и `CatLean Switch`, потому что
+исходные `Rotate` и `Switch` уже заняты в плоском списке настроек SkyCore
+(движок настроек адресует их по имени).
 
-1. Режим вооружается только при jump-input, замеченном на земле. Запоминаются
-   высота моста и исходное направление. Падение без такого ввода не активирует режим.
-2. После отрыва ищется заменяемая цель под текущей горизонтальной позицией либо
-   с небольшим упреждением по скорости. Y цели остаётся на уровне исходного моста,
-   а не поднимается каждый tick вместе с игроком.
-3. При наличии видимой соседней опоры камера наводится с отдельной Jump Turn Speed.
-   Взгляд вниз требует меньшего поворота; при взгляде вперёд камера разворачивается
-   к мосту по кратчайшему yaw-пути.
-4. В воздухе модуль не включает sneak и не замораживает WASD. Вектор ввода
-   пересчитывается относительно текущей камеры, сохраняя исходное мировое направление
-   движения. Jump и физический Shift сохраняются; sprint выключается на этапе наведения.
-   Позиция и velocity напрямую не меняются.
-5. Используются те же raycast/reach/материалы/коллизии. Наземные Sneak Delay,
-   Place Delay и Release Delay не добавляются к короткому окну прыжка; один обычный
-   movement tick между поворотом и кликом сохраняется.
-6. После наблюдения блока камера остаётся на мосте до приземления: можно искать
-   следующую доступную цель без полного разворота вперёд-назад после каждого блока.
-   После приземления взгляд возвращается, если включён Return View. При удержании
-   jump следующий отрыв временно задерживается до завершения наземного RETURN,
-   чтобы W не направил новый прыжок назад относительно моста.
-7. Режим прекращается через 30 input ticks, при смещении более 4 блоков от отрыва,
-   падении ниже высоты старта более чем на 0.15 или общей отмене (GUI, еда и т.п.).
+## Унаследованное поведение источника (не исправлено — требование «точь-в-точь»)
 
-Это не режим полёта и не гарантированная постройка всего sprint-jump пролёта:
-при медленном наведении, высокой скорости, отсутствии опоры или серверном откате
-можно не успеть поставить блок. Сначала проверять над безопасной площадкой.
+- `needSneak(Block)` всегда возвращает `false`, ветка PRESS/RELEASE shift мёртвая;
+- `placeBlock(int)` нигде не вызывается (все пути идут через `placeBlockNCP` /
+  `placeBlockWithOrder`);
+- `prePlace` всегда вызывается с `false`, поэтому ветки `Switch.Inventory/Normal`
+  недостижимы, а `Switch` фактически не переключает слот;
+- `NoServerRotate` объявлен, но в логике не читается;
+- `lastMomentPlaced`/`lastMomentTick` только записываются;
+- `shouldPlaceLastMoment` использует обычный `canBeReplaced()` вместо проверки коллизий;
+- `Snap` в SkyCore не может подменить уже сформированный пакет плоскости — вместо этого
+  отправляется отдельный movement-пакет перед установкой;
+- CatLean `Inventory`-свап всегда считает `blockSlot + 36`, так как слот ищется только в
+  hotbar.
 
-## Настройки (новые значения по умолчанию)
+## Сосуществование
 
-Существующий ConfigManager сохраняет настройки. Старые профили сохранят прежние
-значения скоростей и задержек: обновление исходников их не перезаписывает.
+- `Scaffold Coach` остался отдельным singleplayer-тренажёром; общие raycast-хелперы
+  вынесены в `ScaffoldGeometry` и используются только Coach'ем.
+- `.scafftrain` запись/отчёт сохранены; `apply/undo` для нового Scaffold недоступны,
+  так как в порте нет Telly `Turn/Return Speed`. Команда сообщает об этом.
+- Free-look камеры Scaffold удалён: хуки `CameraSyncCameraRotationMixin`,
+  `MouseHandlerHandleSilentTurnMixin` и `LocalPlayerPreUpdateMixin` больше не обращаются
+  к Scaffold.
 
-| Настройка | Default | Назначение |
-| --- | --- | --- |
-| Auto Switch | true | Временный выбор блоков в hotbar |
-| Swing | true | Взмах при принятом взаимодействии |
-| Return View | true | Возвращать исходный взгляд |
-| Require Movement | true | Наземный цикл только при WASD |
-| Edge Distance | 0.22 | 0.05–0.4 блока + учёт скорости |
-| Turn Speed | 30 | Наземный yaw, 2–60 deg/tick |
-| Pitch Speed | 24 | Наземный pitch, 2–45 deg/tick |
-| Return Speed | 40 | Возврат на земле, 2–60 deg/tick |
-| Sneak Delay | 1 | 1–10 ticks до наземной установки |
-| Place Delay | 0 | 0–10 дополнительных aligned ticks на земле |
-| Release Delay | 0 | 0–10 дополнительных ticks после наблюдения блока |
-| Retry Delay | 5 | 1–20 ticks после сбоя, отсчитывается и при возврате |
-| Cycle Timeout | 60 | 20–120 ticks на AIM / WAIT |
-| Place Reach | 4.0 | 2–4.5 блока, не выше blockInteractionRange |
-| Aim Samples | 5 | 3–7 точек на ось: 9–49 точек на видимую грань |
-| Turn Smoothing | 0.5 | 0.15–1; меньше — мягче, 1 — постоянный лимит скорости |
-| Jump Assist | false | Помощь только при ручном прыжке |
-| Jump Turn Speed | 60 | 10–120 deg/tick в воздухе |
-| Jump Look Ahead | 1 | 0–2 ticks горизонтального упреждения |
+## Ограничения и проверка
 
-Более быстрый наземный профиль: Turn Speed 40, Pitch Speed 30, Return Speed 50,
-Sneak Delay 1, Place Delay 0, Release Delay 0, Turn Smoothing 0.7.
-Увеличение скорости уменьшает длительность поворота, но не делает движение
-автоматически естественнее или незаметнее. Aim Samples 7 увеличивает цену raycast.
-Для режима «удерживаю W» рекомендуется Return View true.
+Компиляция и игровой прогон в среде агента не выполнялись (нет JDK/Gradle/игры).
+Проверено статически: имена пакетов 26.2 сверены по игровому jar
+(`ServerboundMovePlayerPacket.Rot`/`.Full`, отсутствие `PRESS_SHIFT_KEY` в
+`ServerboundPlayerCommandPacket.Action`), API настроек/событий/ротаций — по исходникам
+SkyCore.
 
-## Проверки и отмена
-
-- Нет установки без player/level/gameMode, в GUI, spectator, после смерти, в
-  транспорте, воде/лаве, при creative flight, элитрах, еде, ручной атаке/RMB.
-- Конфликты RotationManager / ServerRotationManager / RotationController и чужая
-  camera entity приводят к отмене без перехвата чужого вращения.
-- Замена player/world сбрасывает состояние. В обычном цикле смещение более 0.75
-  блока отменяет цель; для прыжка действует отдельное ограниченное окно.
-- Цель заменяема, не ниже minY, в world border и вне bounding box игрока.
-- Опора — полный блок без жидкости; EntityBlock, crafting table, respawn anchor,
-  note block исключены. Материалы: полные BlockItem без FallingBlock/EntityBlock.
-- Перед кликом заново проверяются цель, опора, текущий raycast, reach и hotbar.
-  Окончательная допустимость размещения и коллизии с entities — у vanilla useItemOn.
-- Есть таймауты AIM/WAIT, Retry Delay, ограничение RETURN 200 ticks. Один клик
-  за этап AIM; без rotation/position packet-spam и обхода препятствий.
-- Физические клавиши KeyMapping не меняются. Отписка при выключении. При отмене
-  камера не возвращается резко, а принудительное управление прекращается.
-
-В наземном режиме jump отменяет цикл, если Jump Assist выключен. GUI, еда и
-другие условия отмены прекращают также защитный sneak: управление остаётся игроку.
-На диагональном разрыве без видимой опоры мост может остановиться в sneak.
-Частичные поверхности, speed-модули и серверные откаты требуют отдельной проверки.
-
-## Проверки разработки
-
-`testScaffold` в существующем sourceSet auraTest подключён к check. Тесты покрывают
-WASD/world direction, обратное преобразование ввода при развороте в прыжке, грани
-и границы multipoint-сетки, angular cost около ±180°, bounded easing и настройки.
-Они не эмулируют физику прыжка, vanilla edge clamp или сеть.
-
-В среде агента нет java/javac: сборка и Java-тест не запускались. Java-синтаксис
-проверяется tree-sitter в игнорируемом .gradle-user/scaffold-check (не type-check).
-
-Ручной план (новые изменения ещё не проверены в игре):
-
-1. Обычный мост W/S/A/D/диагонали, исходный взгляд в край грани и уже допустимый hit.
-2. Aim Samples 3/5/7, smoothing 0.15/0.5/1; нет доворота после попадания в нужную грань.
-3. Прыжок с Jump Assist off/on: взгляд вниз, вперёд, назад, переход yaw через ±180°.
-4. В прыжке удерживать W и менять A/D: проверить направление при развороте камеры;
-   после приземления — возврат взгляда и обычный edge-mode.
-5. Прыжок на месте, под низким потолком, отпускание jump, удержание jump,
-   падение без прыжка: нет tower/самостоятельного старта airborne-режима.
-6. Пустой hotbar, последний блок, препятствие, удаление опоры, занятая цель,
-   недостаточный reach, серверный отказ/откат: нет неконтролируемых кликов.
-7. GUI/еда/атака, конфликт поворотов, смена мира/respawn, teleport, выключение
-   на каждом этапе: нет stale target, залипших клавиш или выбранного слота.
-8. Старый сохранённый профиль: задержки не сброшены; новые настройки появились.
-
-## Источники
-
-Самостоятельная реализация под текущий SkyCore: PlayerInputEvent, Input,
-Subscription, Rotation.lookingAt, InventoryHelper и collision/raycast API.
-Другие клиенты не копировались, новых зависимостей мода нет.
-
-- Поиск YouGame по Scaffold/multipoint/jump/raytrace: подходящего актуального
-  примера для 26.2 не найдено. Выдача содержала, например,
-  https://yougame.biz/threads/334267/ — код оттуда не использован.
-- Попытка чтения https://docs.fabricmc.net/develop/entities/entity-attributes
-  завершилась ошибкой fetch; эта страница не использовалась для подтверждения API.
-- Сигнатуры сверялись с текущими исходниками проекта; сборка остаётся необходимой
-  проверкой совместимости с фактическими Minecraft 26.2 / Java 25 зависимостями.
+Проверять на своём сервере или там, где автоматизация разрешена, начиная над площадкой:
+Eagle → NCP → NCPStrict с `BuildTrust`/`LastMomentPlace` → CatLean по каждому типу
+переключения слота. `NCPStrict` по умолчанию использует `Grim+Matrix` со `StaticPitch 80`.

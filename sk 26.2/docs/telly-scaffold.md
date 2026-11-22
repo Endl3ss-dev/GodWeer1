@@ -1,3 +1,7 @@
+> **Устарело.** Scaffold заменён портом MotherHack (`NCP`/`NCPStrict`/`Eagle`/`CatLean`),
+> Telly-контроллер удалён. Актуальное описание: `docs/scaffold.md`. Ниже — исторический
+> документ, сохранённый для справки о прежнем flat Telly.
+
 # Scaffold — только Telly
 
 В Scaffold удалены старый edge-mode, Jump Assist и переключатель Telly Mode.
