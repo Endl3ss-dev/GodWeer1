@@ -1,3 +1,6 @@
+> **Актуально для порта MotherHack:** `apply/undo` недоступны, потому что в порте нет
+> Telly Turn/Return Speed; запись и report сохранены. Дальше — исторический текст.
+
 > Обновление Telly-only: запись/stop/report/apply/undo сохранены. Apply теперь
 > переносит только совместимые скорости: Jump Turn Speed (или минимум ground
 > yaw/pitch) → Telly Turn Speed, Return Speed → Telly Return Speed. Значения

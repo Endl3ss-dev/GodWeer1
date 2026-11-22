@@ -6,7 +6,6 @@ import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Entity;
 import net.skycore.client.SkycoreClient;
 import net.skycore.client.combat.RotationController;
-import net.skycore.client.module.movement.ScaffoldModule;
 import net.skycore.client.module.combat.AttackAuraModule;
 import net.skycore.client.module.combat.AuraCameraJitter;
 import org.spongepowered.asm.mixin.Mixin;
@@ -43,14 +42,6 @@ public abstract class CameraSyncCameraRotationMixin {
    @Redirect(method = "alignWithEntity", at = @At(value = "INVOKE", target = "Lnet/minecraft/client/Camera;setRotation(FF)V"))
    private void skycore$applyVisualFreeLook(Camera camera, float angle, float angle2) {
       Minecraft instance = Minecraft.getInstance();
-      ScaffoldModule scaffold = SkycoreClient.modules().get(ScaffoldModule.class).orElse(null);
-      if (scaffold != null && scaffold.freeCameraActive() && camera.entity() == instance.player) {
-         float yaw = scaffold.freeCameraYaw();
-         float pitch = scaffold.freeCameraPitch();
-         if (instance.options.getCameraType().isMirrored()) { yaw += 180; pitch = -pitch; }
-         ((CameraInvokeSetRotationAccessor)camera).skycore$invokeSetRotation(yaw, pitch);
-         return;
-      }
       if (RotationController.isActive() && !RotationController.isClientLook() && camera.entity() != null && camera.entity() == instance.player) {
          float freeYaw = RotationController.getFreeYaw();
          float freePitch = RotationController.getFreePitch();

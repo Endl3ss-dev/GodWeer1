@@ -265,8 +265,8 @@ public final class ScaffoldTrainingRecorder {
       report.proposedSettings().forEach((key, value) -> info(key + " -> " + value));
       report.warnings().forEach(ScaffoldTrainingRecorder::info);
       this.reviewed = true;
-      this.tellyProposals(this.settings()).forEach((key, value) -> info("Telly proposal: " + key + " -> " + value));
-      info("Only compatible turn/return speeds can be confirmed with apply; sneak/release delays are ignored. Assisted recordings remain non-applicable.");
+      this.tellyProposals(this.settings()).forEach((key, value) -> info("Scaffold proposal: " + key + " -> " + value));
+      info("Scaffold apply is unavailable for the ported module (no Telly turn/return settings); the report stays read-only. Assisted recordings remain non-applicable.");
    }
 
    public void apply() {
@@ -276,7 +276,7 @@ public final class ScaffoldTrainingRecorder {
       }
       Map<String, NumberSetting> settings = this.settings();
       Map<String, Double> proposals = this.tellyProposals(settings);
-      if (proposals.isEmpty()) throw new IllegalStateException("No compatible Telly rotation proposals; record ground/air rotations first");
+      if (proposals.isEmpty()) throw new IllegalStateException("Scaffold apply is unavailable: the ported Scaffold has no Telly turn/return settings; the report is read-only");
       Map<String, Double> previous = new LinkedHashMap<>();
       // Validate the full proposal before mutating anything.
       proposals.forEach((key, value) -> {
@@ -315,7 +315,9 @@ public final class ScaffoldTrainingRecorder {
    }
 
    private Map<String, NumberSetting> settings() {
-      List<String> allowed = List.of("Telly Turn Speed", "Telly Return Speed");
+      // The ported Scaffold has no Telly turn/return pair, so there is no compatible
+      // numeric target for a recorded profile. Apply/undo therefore stay unavailable.
+      List<String> allowed = List.of();
       Map<String, NumberSetting> result = new LinkedHashMap<>();
       for (var setting : SkycoreClient.modules().get(ScaffoldModule.class).orElseThrow().getSettings()) {
          if (setting instanceof NumberSetting number && allowed.contains(setting.getName())) result.put(setting.getName(), number);
@@ -324,22 +326,9 @@ public final class ScaffoldTrainingRecorder {
    }
 
    private Map<String, Double> tellyProposals(Map<String, NumberSetting> settings) {
-      Map<String, Double> result = new LinkedHashMap<>();
-      var source = this.pending.proposedSettings();
-      Double turn = source.get("Jump Turn Speed");
-      if (turn == null && source.containsKey("Turn Speed") && source.containsKey("Pitch Speed")) {
-         turn = Math.min(source.get("Turn Speed"), source.get("Pitch Speed"));
-      }
-      if (turn != null) result.put("Telly Turn Speed", turn);
-      if (source.containsKey("Return Speed")) result.put("Telly Return Speed", source.get("Return Speed"));
-      result.replaceAll((key, value) -> {
-         NumberSetting setting = settings.get(key);
-         double clamped = Math.max(setting.getMin(), Math.min(setting.getMax(), value));
-         if (setting.getStep() > 0) clamped = setting.getMin()
-            + Math.round((clamped - setting.getMin()) / setting.getStep()) * setting.getStep();
-         return Math.max(setting.getMin(), Math.min(setting.getMax(), clamped));
-      });
-      return result;
+      // The ported Scaffold exposes mode/delay/rotation settings only; a recorded Telly
+      // profile has no compatible numeric target, so nothing is auto-applied.
+      return new LinkedHashMap<>();
    }
 
    private static void info(String message) {

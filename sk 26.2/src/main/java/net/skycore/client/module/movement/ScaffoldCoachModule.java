@@ -61,7 +61,7 @@ public final class ScaffoldCoachModule extends ClientModule {
    private boolean flightPaused;
 
    private ScaffoldCoachModule() {
-      super("Scaffold Coach", "Singleplayer flat Telly rehearsal: client slow motion, held-key aim and real-time manual clicks", ModuleCategory.MOVEMENT);
+      super("Scaffold Coach", "Singleplayer bridge rehearsal: client slow motion, held-key aim and real-time manual clicks", ModuleCategory.MOVEMENT);
       this.add(new ActionSetting("Reset Bridge Origin", "Capture the full block below your feet and forward direction as the new bridge row").action(this::resetHeight));
    }
 
@@ -113,7 +113,7 @@ public final class ScaffoldCoachModule extends ClientModule {
       }
       if (mc.player.getAbilities().flying) return "Сейчас включён creative flight. Выключи его двойным Space и встань на платформу только для включения Coach. Дальше обычные прыжки разрешены.";
       if (!mc.player.onGround()) return "Для включения Coach встань на платформу: нужно запомнить её Y. После включения можно прыгать и строиться в воздухе.";
-      if (!ScaffoldModule.validSupport(mc, mc.player.blockPosition().below())) return "Под ногами нет подходящего полного блока. Для старта встань, например, на камень.";
+      if (!ScaffoldGeometry.validSupport(mc, mc.player.blockPosition().below())) return "Под ногами нет подходящего полного блока. Для старта встань, например, на камень.";
       String other = this.conflict();
       if (other != null) return "Мешает модуль или автоповорот: " + other + ". Отключи его перед Coach.";
       if (clockConflict(false, ResetSpeedHelper.getSpeed(), 1)) return "Клиентский timer не 1x. Сначала отключи другой таймер.";
@@ -158,7 +158,7 @@ public final class ScaffoldCoachModule extends ClientModule {
    public void resetHeight() {
       Minecraft mc = Minecraft.getInstance();
       if (!this.isEnabled() || !this.localWorld(mc) || !mc.player.onGround()
-         || !ScaffoldModule.validSupport(mc, mc.player.blockPosition().below())) {
+         || !ScaffoldGeometry.validSupport(mc, mc.player.blockPosition().below())) {
          info("Stand on a full block in your singleplayer world, with Coach enabled.");
          return;
       }
@@ -182,7 +182,7 @@ public final class ScaffoldCoachModule extends ClientModule {
          return;
       }
       boolean flying = mc.player.getAbilities().flying;
-      if (flying && !this.flightPaused) info("Creative flight: доводка и замедление на паузе; RMB работает через обычный Minecraft. Для Telly используй обычный прыжок.");
+      if (flying && !this.flightPaused) info("Creative flight: доводка и замедление на паузе; RMB работает через обычный Minecraft. Для прохождения ряда используй обычный прыжок.");
       this.flightPaused = flying;
       if (!Float.isFinite(mc.player.getYRot()) || !Float.isFinite(mc.player.getXRot())) {
          this.setEnabled(false);
@@ -227,14 +227,14 @@ public final class ScaffoldCoachModule extends ClientModule {
          }
          if (this.target != null) {
             BlockPos destination = this.target.getBlockPos().relative(this.target.getDirection());
-            if (ScaffoldModule.validTarget(mc, destination) && ScaffoldModule.validSupport(mc, this.target.getBlockPos())) {
+            if (ScaffoldGeometry.validTarget(mc, destination) && ScaffoldGeometry.validSupport(mc, this.target.getBlockPos())) {
                Rotation rotation = Rotation.lookingAt(this.target.getLocation(), mc.player.getEyePosition());
-               double cost = ScaffoldModule.angularCost(mc.player.getYRot(), mc.player.getXRot(), rotation);
+               double cost = ScaffoldGeometry.angularCost(mc.player.getYRot(), mc.player.getXRot(), rotation);
                if (cost <= this.aimCone.get()) {
                   float limit = (float)(this.aimSpeed.get() * dt);
                   float yaw = mc.player.getYRot(), pitch = mc.player.getXRot();
-                  mc.player.setYRot(ScaffoldModule.stepAngle(yaw, rotation.getYaw(), limit, 0.5F));
-                  mc.player.setXRot(Mth.clamp(pitch + ScaffoldModule.smoothStep(rotation.getPitch() - pitch, limit, 0.5F), -90, 90));
+                  mc.player.setYRot(ScaffoldGeometry.stepAngle(yaw, rotation.getYaw(), limit, 0.5F));
+                  mc.player.setXRot(Mth.clamp(pitch + ScaffoldGeometry.smoothStep(rotation.getPitch() - pitch, limit, 0.5F), -90, 90));
                   this.aimApplied = Math.abs(mc.player.getYRot() - yaw) + Math.abs(mc.player.getXRot() - pitch) > 0.0001F;
                }
             }
@@ -258,10 +258,10 @@ public final class ScaffoldCoachModule extends ClientModule {
          for (int z = -3; z <= 3; z++) {
             BlockPos destination = new BlockPos(centre.getX() + x, this.bridgeY, centre.getZ() + z);
             if (this.lockLine.get() && !lineTarget(destination, this.originX, this.originZ, this.heading)) continue;
-            BlockHitResult hit = ScaffoldModule.findHit(mc, destination, 4.5, 3);
+            BlockHitResult hit = ScaffoldGeometry.findHit(mc, destination, 4.5, 3);
             if (hit == null) continue;
             Rotation rotation = Rotation.lookingAt(hit.getLocation(), mc.player.getEyePosition());
-            double cost = ScaffoldModule.angularCost(mc.player.getYRot(), mc.player.getXRot(), rotation);
+            double cost = ScaffoldGeometry.angularCost(mc.player.getYRot(), mc.player.getXRot(), rotation);
             if (cost < bestCost) {
                best = hit;
                bestCost = cost;
@@ -295,7 +295,7 @@ public final class ScaffoldCoachModule extends ClientModule {
    }
 
    private void manualUse(Minecraft mc, long now) {
-      BlockHitResult hit = ScaffoldModule.viewHit(mc, 4.5);
+      BlockHitResult hit = ScaffoldGeometry.viewHit(mc, 4.5);
       if (!manualHitAllowed(hit)) {
          this.lastUseStatus = "Прицел не попал в блок в пределах reach.";
          return;
