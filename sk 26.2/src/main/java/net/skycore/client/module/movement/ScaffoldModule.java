@@ -546,12 +546,23 @@ public final class ScaffoldModule extends ClientModule {
    }
 
    private boolean applyRotation(LocalPlayer player, Rotation desired) {
-      // Add#2: ClientLock on = rotation is shown on the player's screen,
-      // off = silent rotation with a free camera (FreeLookController).
+      // ClientLock on = rotation is shown on the player's screen (like
+      // AttackAura's HolyWorld visible path, updateExact with visible=true).
+      // ClientLock off = exactly how AttackAura submits its silent rotations:
+      // RotationManager.update with visible=false. The manager then turns only
+      // the server rotation (GCD-quantized) while the camera stays on the free
+      // look — free from first and third person — and the render layer shows
+      // the character's head aiming at the bridge, like Aura aims at a target.
       boolean visible = this.clientLock.get();
       if (this.rotate.is("Normal")) {
          this.smoother.reset();
-         return RotationManager.updateExact(desired, ROTATION_PRIORITY, ROTATION_TIMEOUT_TICKS, visible);
+         if (!visible) {
+            RotationManager.update(desired, 360.0F, 360.0F, 360.0F, 360.0F,
+               ROTATION_TIMEOUT_TICKS, ROTATION_PRIORITY, false);
+            return RotationManager.INSTANCE.isAimingAtPriority(ROTATION_PRIORITY)
+               && this.isCloseToRotation(player, desired, 2.5F);
+         }
+         return RotationManager.updateExact(desired, ROTATION_PRIORITY, ROTATION_TIMEOUT_TICKS, true);
       }
 
       if (this.rotate.is("Smooth")) {
@@ -565,7 +576,7 @@ public final class ScaffoldModule extends ClientModule {
             desired.getYaw(), desired.getPitch(),
             this.smoothSpeed.get(), this.smoothAccel.get(), this.smoothBrake.get());
          Rotation stepped = new Rotation(next[0], Mth.clamp(next[1], -90.0F, 90.0F));
-         if (!RotationManager.updateExact(stepped, ROTATION_PRIORITY, ROTATION_TIMEOUT_TICKS, visible)) {
+         if (!this.submitRotation(stepped, visible)) {
             this.smoother.reset();
             return false;
          }
@@ -578,10 +589,20 @@ public final class ScaffoldModule extends ClientModule {
       float yaw = this.stepAngle(player.getYRot(), desired.getYaw(), 35.0F);
       float pitch = this.stepAngle(player.getXRot(), desired.getPitch(), 35.0F);
       Rotation next = new Rotation(yaw, Mth.clamp(pitch, -90.0F, 90.0F));
-      if (!RotationManager.updateExact(next, ROTATION_PRIORITY, ROTATION_TIMEOUT_TICKS, visible)) {
+      if (!this.submitRotation(next, visible)) {
          return false;
       }
       return this.isCloseToRotation(player, desired, 2.0F);
+   }
+
+   /** Submits a caller-stepped rotation the AttackAura way (see applyRotation). */
+   private boolean submitRotation(Rotation rotation, boolean visible) {
+      if (!visible) {
+         RotationManager.update(rotation, 360.0F, 360.0F, 360.0F, 360.0F,
+            ROTATION_TIMEOUT_TICKS, ROTATION_PRIORITY, false);
+         return RotationManager.INSTANCE.isAimingAtPriority(ROTATION_PRIORITY);
+      }
+      return RotationManager.updateExact(rotation, ROTATION_PRIORITY, ROTATION_TIMEOUT_TICKS, true);
    }
 
    private boolean isCloseToRotation(LocalPlayer player, Rotation target, float tolerance) {
