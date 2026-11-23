@@ -41,6 +41,7 @@ import net.skycore.client.module.misc.IRCModule;
 import net.skycore.client.module.misc.ReallyWorldHelperModule;
 import net.skycore.client.module.misc.ScoreboardHPModule;
 import net.skycore.client.module.misc.ServerRPSpoofModule;
+import net.skycore.client.module.misc.TestBridgeModule;
 import net.skycore.client.module.misc.StreamerModeModule;
 import net.skycore.client.module.misc.Top4ikModule;
 import net.skycore.client.module.movement.AirStuckModule;
@@ -262,6 +263,7 @@ public final class ModuleManager {
       this.trialRegister(Top4ikModule.INSTANCE);
       this.trialRegister(new ScoreboardHPModule());
       this.trialRegister(ServerRPSpoofModule.INSTANCE);
+      this.trialRegister(TestBridgeModule.INSTANCE);
       this.trialRegister(AimingItemsModule.INSTANCE);
       this.trialRegister(AntiAFKModule.INSTANCE);
       this.trialRegister(TimerModule.INSTANCE);

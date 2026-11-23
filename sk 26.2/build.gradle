@@ -60,7 +60,12 @@ tasks.register('testFreezeClip', JavaExec) {
     classpath = sourceSets.auraTest.runtimeClasspath
     mainClass = 'net.skycore.client.module.movement.FreezeClipModuleTest'
 }
-tasks.named('check') { dependsOn 'testAuraClicks', 'testRockstarAura', 'testScaffold', 'testSlabPass', 'testFreezeClip' }
+tasks.register('testTestBridge', JavaExec) {
+    dependsOn 'auraTestClasses'
+    classpath = sourceSets.auraTest.runtimeClasspath
+    mainClass = 'net.skycore.client.module.misc.TestBridgeModuleTest'
+}
+tasks.named('check') { dependsOn 'testAuraClicks', 'testRockstarAura', 'testScaffold', 'testSlabPass', 'testFreezeClip', 'testTestBridge' }
 
 loom {
     runs {
