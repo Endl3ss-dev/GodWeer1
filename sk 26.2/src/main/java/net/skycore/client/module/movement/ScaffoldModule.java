@@ -70,6 +70,8 @@ public final class ScaffoldModule extends ClientModule {
    private final ModeSetting rotate = this.add(new ModeSetting(
       "Rotate", "Normal", "Normal", "Smooth", "Linear", "None"));
    private final BooleanSetting clientLock = this.add(new BooleanSetting("ClientLock", true));
+   private final BooleanSetting lockY = this.add(new BooleanSetting("LockY", false));
+   private final BooleanSetting lastMomentPlace = this.add(new BooleanSetting("LastMomentPlace", false));
 
    private boolean wasSneaking;
    private long nextPlaceNanos;
@@ -78,6 +80,8 @@ public final class ScaffoldModule extends ClientModule {
    /** Locked bridge axis: {@code Boolean.TRUE} = X, {@code Boolean.FALSE} = Z, null = free. */
    private Boolean bridgeXAxis;
    private int bridgeMoveSign = 1;
+   private int bridgeIdleTicks;
+   private Integer lockedY;
    private boolean moveFixActive;
    private float moveFixViewYaw;
 
@@ -87,6 +91,8 @@ public final class ScaffoldModule extends ClientModule {
       this.autoSwitch.visibleWhen(() -> this.autoPlace.get());
       this.rotate.visibleWhen(() -> this.autoPlace.get());
       this.clientLock.visibleWhen(() -> this.autoPlace.get() && !this.rotate.is("None"));
+      this.lockY.visibleWhen(() -> this.autoPlace.get());
+      this.lastMomentPlace.visibleWhen(() -> this.autoPlace.get());
    }
 
    @Override
@@ -94,6 +100,8 @@ public final class ScaffoldModule extends ClientModule {
       this.wasSneaking = false;
       this.nextPlaceNanos = 0L;
       this.bridgeXAxis = null;
+      this.bridgeIdleTicks = 0;
+      this.lockedY = null;
       this.moveFixActive = false;
       if (this.tickSubscription != null) {
          this.tickSubscription.close();
@@ -115,6 +123,8 @@ public final class ScaffoldModule extends ClientModule {
       this.stopManagedRotation();
       this.moveFixActive = false;
       this.bridgeXAxis = null;
+      this.bridgeIdleTicks = 0;
+      this.lockedY = null;
       if (this.tickSubscription != null) {
          this.tickSubscription.close();
          this.tickSubscription = null;
@@ -130,6 +140,8 @@ public final class ScaffoldModule extends ClientModule {
       if (minecraft.player == null || minecraft.level == null || minecraft.gameMode == null) {
          this.releaseManagedRotation();
          this.bridgeXAxis = null;
+         this.bridgeIdleTicks = 0;
+         this.lockedY = null;
          return;
       }
 
@@ -168,6 +180,10 @@ public final class ScaffoldModule extends ClientModule {
          }
       }
 
+      if (!this.lastMomentReady(minecraft.player, target)) {
+         return;
+      }
+
       long now = System.nanoTime();
       if (now < this.nextPlaceNanos) {
          return;
@@ -176,6 +192,26 @@ public final class ScaffoldModule extends ClientModule {
       if (this.placeBlock(minecraft, target)) {
          this.nextPlaceNanos = now + this.placeIntervalNanos();
       }
+   }
+
+   /**
+    * LastMomentPlace: while airborne, hold the placement until the player is
+    * actually falling and the feet are about to reach the top of the target
+    * block. The rotation is already aimed by then, so the block snaps in at
+    * the last moment and the player lands on it instead of falling past.
+    * On the ground the placement is never delayed.
+    */
+   private boolean lastMomentReady(LocalPlayer player, PlacementTarget target) {
+      if (!this.lastMomentPlace.get() || player.onGround()) {
+         return true;
+      }
+      double velocityY = player.getDeltaMovement().y;
+      if (velocityY > 0.0) {
+         return false;
+      }
+      double targetTop = target.target().getY() + 1.0;
+      double distance = player.getY() - targetTop;
+      return distance <= 0.75 && distance + velocityY <= 0.9;
    }
 
    private void onPlayerInput(PlayerInputEvent event) {
@@ -245,17 +281,23 @@ public final class ScaffoldModule extends ClientModule {
    }
 
    /**
-    * Tracks the dominant movement axis. The intent is read from the movement
-    * keys relative to the steering yaw (not from the managed head rotation),
-    * so walking straight forward also builds. Hysteresis keeps the axis from
-    * flapping while the player moves diagonally.
+    * Tracks the dominant movement axis. The direction is read from the actual
+    * horizontal velocity — the trajectory of the body — and never from the
+    * camera: with {@code ClientLock} off the player may look and turn anywhere
+    * (Fix#1), the module keeps its own locked bridge direction and rotation.
+    * The lock survives short stops and only expires after a second without
+    * any movement intent. Hysteresis keeps the axis from flapping while the
+    * player moves diagonally.
     */
    private void updateBridgeAxis(LocalPlayer player) {
       double[] intent = this.movementIntent(player);
       if (intent == null) {
-         this.bridgeXAxis = null;
+         if (++this.bridgeIdleTicks > 20) {
+            this.bridgeXAxis = null;
+         }
          return;
       }
+      this.bridgeIdleTicks = 0;
 
       double dx = intent[0];
       double dz = intent[1];
@@ -275,8 +317,17 @@ public final class ScaffoldModule extends ClientModule {
       }
    }
 
-   /** World-space horizontal direction the player wants to move in, or null. */
+   /** World-space horizontal movement direction, or null when standing still. */
    private double[] movementIntent(LocalPlayer player) {
+      // Primary source: real velocity. It already reflects where the body is
+      // going, independent of where the (free) camera currently looks.
+      Vec3 motion = player.getDeltaMovement();
+      if (motion.x * motion.x + motion.z * motion.z > 0.0009) {
+         return new double[]{motion.x, motion.z};
+      }
+
+      // Fallback for taking the first step from a standstill: movement keys
+      // relative to the steering yaw (free-look when silent, view otherwise).
       Input input = player.input != null ? player.input.keyPresses : null;
       if (input != null && (input.forward() || input.backward() || input.left() || input.right())) {
          double forward = (input.forward() ? 1.0 : 0.0) - (input.backward() ? 1.0 : 0.0);
@@ -288,11 +339,6 @@ public final class ScaffoldModule extends ClientModule {
          double leftX = facingZ;
          double leftZ = -facingX;
          return new double[]{forward * facingX + strafe * leftX, forward * facingZ + strafe * leftZ};
-      }
-
-      Vec3 motion = player.getDeltaMovement();
-      if (motion.x * motion.x + motion.z * motion.z > 0.0025) {
-         return new double[]{motion.x, motion.z};
       }
       return null;
    }
@@ -308,8 +354,28 @@ public final class ScaffoldModule extends ClientModule {
    private PlacementTarget findPlacementTarget(Minecraft minecraft) {
       LocalPlayer player = minecraft.player;
       this.updateBridgeAxis(player);
-      BlockPos targetPos = BlockPos.containing(player.getX(), player.getY() - 1.0, player.getZ());
-      if (!minecraft.level.getBlockState(targetPos).canBeReplaced()) {
+      BlockPos belowPos = BlockPos.containing(player.getX(), player.getY() - 1.0, player.getZ());
+
+      // LockY: pin the bridge level to the Y where building started, so jumps
+      // extend the bridge only along X/Z instead of staircasing upwards. The
+      // level is re-captured whenever the player stands on solid ground at a
+      // different height (walking down a slope, starting a new bridge).
+      int targetY = belowPos.getY();
+      if (this.lockY.get()) {
+         if (this.lockedY == null
+            || player.onGround() && targetY != this.lockedY
+               && !minecraft.level.getBlockState(belowPos).canBeReplaced()) {
+            this.lockedY = targetY;
+         }
+         targetY = this.lockedY;
+      } else {
+         this.lockedY = null;
+      }
+
+      BlockPos targetPos = new BlockPos(belowPos.getX(), targetY, belowPos.getZ());
+      if (!minecraft.level.getBlockState(targetPos).canBeReplaced()
+         || this.lockY.get() && targetY > belowPos.getY()
+            && new AABB(targetPos).intersects(player.getBoundingBox())) {
          return null;
       }
 

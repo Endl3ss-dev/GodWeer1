@@ -17,7 +17,7 @@ public final class ScaffoldModuleTest {
       check(module.getCategory() == ModuleCategory.MOVEMENT, "movement category");
       check(!module.isEnabled(), "disabled by default");
       check(module.suffix().equals("Eagle"), "Eagle is the only mode");
-      check(module.getSettings().size() == 6, "Eagle plus five AutoPlace settings");
+      check(module.getSettings().size() == 8, "Eagle plus seven AutoPlace settings");
 
       ModeSetting mode = (ModeSetting) module.getSettings().get(0);
       check(mode.getName().equals("Mode"), "Mode setting name");
@@ -34,6 +34,10 @@ public final class ScaffoldModuleTest {
          .filter(setting -> setting.getName().equals("Rotate")).findFirst().orElseThrow();
       BooleanSetting clientLock = (BooleanSetting) module.getSettings().stream()
          .filter(setting -> setting.getName().equals("ClientLock")).findFirst().orElseThrow();
+      BooleanSetting lockY = (BooleanSetting) module.getSettings().stream()
+         .filter(setting -> setting.getName().equals("LockY")).findFirst().orElseThrow();
+      BooleanSetting lastMomentPlace = (BooleanSetting) module.getSettings().stream()
+         .filter(setting -> setting.getName().equals("LastMomentPlace")).findFirst().orElseThrow();
 
       check(!autoPlace.get(), "AutoPlace is opt-in");
       check(cps.get() == 10.0 && cps.getMin() == 1.0 && cps.getMax() == 20.0 && cps.getStep() == 1.0,
@@ -42,14 +46,17 @@ public final class ScaffoldModuleTest {
       check(autoSwitch.getModes().equals(List.of("Normal", "Silent", "Inventory", "None")),
          "AutoSwitch modes");
       check(autoSwitch.isVisible() == false && cps.isVisible() == false && rotate.isVisible() == false
-         && clientLock.isVisible() == false,
+         && clientLock.isVisible() == false && lockY.isVisible() == false && lastMomentPlace.isVisible() == false,
          "AutoPlace settings are hidden while AutoPlace is disabled");
       check(rotate.get().equals("Normal"), "Normal is the default Rotate mode");
       check(rotate.getModes().equals(List.of("Normal", "Smooth", "Linear", "None")), "Rotate modes");
       check(clientLock.get(), "ClientLock is enabled by default");
+      check(!lockY.get(), "LockY is opt-in");
+      check(!lastMomentPlace.get(), "LastMomentPlace is opt-in");
 
       autoPlace.set(true);
-      check(cps.isVisible() && autoSwitch.isVisible() && rotate.isVisible() && clientLock.isVisible(),
+      check(cps.isVisible() && autoSwitch.isVisible() && rotate.isVisible() && clientLock.isVisible()
+         && lockY.isVisible() && lastMomentPlace.isVisible(),
          "AutoPlace settings become visible when enabled");
 
       rotate.set("None");
