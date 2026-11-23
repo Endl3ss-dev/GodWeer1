@@ -7,6 +7,7 @@ import net.minecraft.core.Direction;
 import net.minecraft.network.protocol.game.ServerboundSetCarriedItemPacket;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
+import net.minecraft.world.entity.player.Input;
 import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
@@ -17,8 +18,11 @@ import net.minecraft.world.phys.BlockHitResult;
 import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.skycore.client.SkycoreClient;
+import net.skycore.client.combat.FreeLookController;
 import net.skycore.client.combat.Rotation;
+import net.skycore.client.combat.RotationController;
 import net.skycore.client.combat.RotationManager;
+import net.skycore.client.event.PlayerInputEvent;
 import net.skycore.client.event.PlayerTickEndEvent;
 import net.skycore.client.event.Subscription;
 import net.skycore.client.module.ClientModule;
@@ -26,6 +30,7 @@ import net.skycore.client.module.ModuleCategory;
 import net.skycore.client.setting.BooleanSetting;
 import net.skycore.client.setting.ModeSetting;
 import net.skycore.client.setting.NumberSetting;
+import net.skycore.client.util.MovementHelper;
 import net.skycore.client.util.UseItemHelper;
 
 /**
@@ -34,6 +39,19 @@ import net.skycore.client.util.UseItemHelper;
  * <p>The only module mode is still {@code Eagle}. AutoPlace is an independent opt-in
  * feature: it fills the replaceable block below the player, using an adjacent solid
  * support block and the selected building block from the configured switch mode.
+ *
+ * <p>While the player moves, placement is locked to the dominant movement axis
+ * (X or Z): the support is only searched behind the player along that axis and the
+ * rotation yaw is snapped to the cardinal direction opposite to the movement, so
+ * the view never swings towards a side face and the bridge stays on one row.
+ * Movement input is remapped around the managed rotation, therefore the walking
+ * trajectory does not bend when the (server) head turns around to place a block.
+ * Sprint input is ignored while AutoPlace rotates: the server rotation faces
+ * backwards, and sprinting against it would only produce invalid sprint packets.
+ *
+ * <p>{@code ClientLock} chooses whether the managed rotation is drawn on the
+ * player's own screen. With it off, the rotation stays silent (free-look) and
+ * the camera can be moved freely while the module builds behind the player.
  */
 public final class ScaffoldModule extends ClientModule {
    private enum Mode {
@@ -51,26 +69,40 @@ public final class ScaffoldModule extends ClientModule {
       "AutoSwitch", "Silent", "Normal", "Silent", "Inventory", "None"));
    private final ModeSetting rotate = this.add(new ModeSetting(
       "Rotate", "Normal", "Normal", "Smooth", "Linear", "None"));
+   private final BooleanSetting clientLock = this.add(new BooleanSetting("ClientLock", true));
 
    private boolean wasSneaking;
    private long nextPlaceNanos;
    private Subscription tickSubscription;
+   private Subscription inputSubscription;
+   /** Locked bridge axis: {@code Boolean.TRUE} = X, {@code Boolean.FALSE} = Z, null = free. */
+   private Boolean bridgeXAxis;
+   private int bridgeMoveSign = 1;
+   private boolean moveFixActive;
+   private float moveFixViewYaw;
 
    public ScaffoldModule() {
       super("Scaffold", "Eagle edge protection with optional automatic placement", ModuleCategory.MOVEMENT);
       this.cps.visibleWhen(() -> this.autoPlace.get());
       this.autoSwitch.visibleWhen(() -> this.autoPlace.get());
       this.rotate.visibleWhen(() -> this.autoPlace.get());
+      this.clientLock.visibleWhen(() -> this.autoPlace.get() && !this.rotate.is("None"));
    }
 
    @Override
    protected void onEnable() {
       this.wasSneaking = false;
       this.nextPlaceNanos = 0L;
+      this.bridgeXAxis = null;
+      this.moveFixActive = false;
       if (this.tickSubscription != null) {
          this.tickSubscription.close();
       }
       this.tickSubscription = SkycoreClient.events().subscribe(PlayerTickEndEvent.class, event -> this.onPlayerTick());
+      if (this.inputSubscription != null) {
+         this.inputSubscription.close();
+      }
+      this.inputSubscription = SkycoreClient.events().subscribe(PlayerInputEvent.class, this::onPlayerInput);
    }
 
    @Override
@@ -81,40 +113,59 @@ public final class ScaffoldModule extends ClientModule {
          this.wasSneaking = false;
       }
       this.stopManagedRotation();
+      this.moveFixActive = false;
+      this.bridgeXAxis = null;
       if (this.tickSubscription != null) {
          this.tickSubscription.close();
          this.tickSubscription = null;
+      }
+      if (this.inputSubscription != null) {
+         this.inputSubscription.close();
+         this.inputSubscription = null;
       }
    }
 
    private void onPlayerTick() {
       Minecraft minecraft = Minecraft.getInstance();
       if (minecraft.player == null || minecraft.level == null || minecraft.gameMode == null) {
-         this.stopManagedRotation();
+         this.releaseManagedRotation();
+         this.bridgeXAxis = null;
          return;
       }
 
       this.handleEagleMode(minecraft);
       if (!this.autoPlace.get()) {
-         this.stopManagedRotation();
+         this.releaseManagedRotation();
          return;
       }
 
       if (!this.canAutoPlace(minecraft)) {
-         this.stopManagedRotation();
+         this.releaseManagedRotation();
          return;
+      }
+
+      // Add#1: building happens against the server rotation, so an active sprint
+      // is dropped here as well as in the input event; it must not send packets.
+      if (!this.rotate.is("None") && minecraft.player.isSprinting()) {
+         minecraft.player.setSprinting(false);
       }
 
       PlacementTarget target = this.findPlacementTarget(minecraft);
       if (target == null) {
-         this.stopManagedRotation();
+         this.releaseManagedRotation();
          return;
       }
 
       if (this.rotate.is("None")) {
-         this.stopManagedRotation();
-      } else if (!this.applyRotation(minecraft.player, target.rotation())) {
-         return;
+         this.releaseManagedRotation();
+      } else {
+         if (!this.moveFixActive) {
+            this.moveFixViewYaw = this.referenceYaw(minecraft.player);
+         }
+         this.moveFixActive = true;
+         if (!this.applyRotation(minecraft.player, target.rotation())) {
+            return;
+         }
       }
 
       long now = System.nanoTime();
@@ -125,6 +176,51 @@ public final class ScaffoldModule extends ClientModule {
       if (this.placeBlock(minecraft, target)) {
          this.nextPlaceNanos = now + this.placeIntervalNanos();
       }
+   }
+
+   private void onPlayerInput(PlayerInputEvent event) {
+      if (!this.isEnabled() || !this.autoPlace.get()) {
+         return;
+      }
+      Minecraft minecraft = Minecraft.getInstance();
+      if (minecraft.player == null || minecraft.level == null) {
+         return;
+      }
+      if (this.rotate.is("None")) {
+         return;
+      }
+
+      // Keep the world-space walking direction the player asked for, even though
+      // the managed rotation turned the head (visible or silent) away from it.
+      if (this.moveFixActive && RotationManager.INSTANCE.isAimingAtPriority(ROTATION_PRIORITY)) {
+         float viewYaw = !this.clientLock.get()
+            && RotationController.isActive() && !RotationController.isClientLook()
+               ? FreeLookController.getFreeYaw()
+               : this.moveFixViewYaw;
+         MovementHelper.fixMovement(event, viewYaw);
+      }
+
+      // Sprint is ignored while AutoPlace manages a rotation (see class javadoc).
+      event.setSprint(false);
+   }
+
+   /** Stops the managed rotation and the movement correction tied to it. */
+   private void releaseManagedRotation() {
+      this.stopManagedRotation();
+      this.moveFixActive = false;
+   }
+
+   /**
+    * Yaw the player actually steers with: the free-look yaw while a silent
+    * rotation is active, the yaw captured when the rotation engaged while it is
+    * visible, and the plain player yaw otherwise.
+    */
+   private float referenceYaw(LocalPlayer player) {
+      if (!this.clientLock.get()
+         && RotationController.isActive() && !RotationController.isClientLook()) {
+         return FreeLookController.getFreeYaw();
+      }
+      return this.moveFixActive ? this.moveFixViewYaw : player.getYRot();
    }
 
    private void handleEagleMode(Minecraft minecraft) {
@@ -148,8 +244,70 @@ public final class ScaffoldModule extends ClientModule {
       return 1_000_000_000L / blocksPerSecond;
    }
 
+   /**
+    * Tracks the dominant movement axis. The intent is read from the movement
+    * keys relative to the steering yaw (not from the managed head rotation),
+    * so walking straight forward also builds. Hysteresis keeps the axis from
+    * flapping while the player moves diagonally.
+    */
+   private void updateBridgeAxis(LocalPlayer player) {
+      double[] intent = this.movementIntent(player);
+      if (intent == null) {
+         this.bridgeXAxis = null;
+         return;
+      }
+
+      double dx = intent[0];
+      double dz = intent[1];
+      boolean xDominant = Math.abs(dx) >= Math.abs(dz);
+      if (this.bridgeXAxis == null || xDominant == this.bridgeXAxis) {
+         this.bridgeXAxis = xDominant;
+      } else if (Math.max(Math.abs(dx), Math.abs(dz)) >= 1.5 * Math.min(Math.abs(dx), Math.abs(dz))) {
+         this.bridgeXAxis = xDominant;
+      }
+
+      if (this.bridgeXAxis) {
+         if (dx != 0.0) {
+            this.bridgeMoveSign = dx > 0.0 ? 1 : -1;
+         }
+      } else if (dz != 0.0) {
+         this.bridgeMoveSign = dz > 0.0 ? 1 : -1;
+      }
+   }
+
+   /** World-space horizontal direction the player wants to move in, or null. */
+   private double[] movementIntent(LocalPlayer player) {
+      Input input = player.input != null ? player.input.keyPresses : null;
+      if (input != null && (input.forward() || input.backward() || input.left() || input.right())) {
+         double forward = (input.forward() ? 1.0 : 0.0) - (input.backward() ? 1.0 : 0.0);
+         double strafe = (input.left() ? 1.0 : 0.0) - (input.right() ? 1.0 : 0.0);
+         double radians = Math.toRadians(this.referenceYaw(player));
+         double facingX = -Math.sin(radians);
+         double facingZ = Math.cos(radians);
+         // Left of the facing direction: facing south (+Z) the left hand is east (+X).
+         double leftX = facingZ;
+         double leftZ = -facingX;
+         return new double[]{forward * facingX + strafe * leftX, forward * facingZ + strafe * leftZ};
+      }
+
+      Vec3 motion = player.getDeltaMovement();
+      if (motion.x * motion.x + motion.z * motion.z > 0.0025) {
+         return new double[]{motion.x, motion.z};
+      }
+      return null;
+   }
+
+   /** Cardinal yaw looking back against the locked movement direction. */
+   private float bridgeYaw() {
+      if (this.bridgeXAxis) {
+         return this.bridgeMoveSign > 0 ? 90.0F : -90.0F;
+      }
+      return this.bridgeMoveSign > 0 ? 180.0F : 0.0F;
+   }
+
    private PlacementTarget findPlacementTarget(Minecraft minecraft) {
       LocalPlayer player = minecraft.player;
+      this.updateBridgeAxis(player);
       BlockPos targetPos = BlockPos.containing(player.getX(), player.getY() - 1.0, player.getZ());
       if (!minecraft.level.getBlockState(targetPos).canBeReplaced()) {
          return null;
@@ -159,12 +317,25 @@ public final class ScaffoldModule extends ClientModule {
          return this.findManualPlacementTarget(minecraft, targetPos);
       }
 
+      // Bug#1: while moving, only the support behind the player along the locked
+      // axis (then the support below) may be used, never a side face.
+      boolean axisLocked = this.bridgeXAxis != null;
+      Direction[] faces;
+      if (axisLocked) {
+         Direction behind = this.bridgeXAxis
+            ? (this.bridgeMoveSign > 0 ? Direction.EAST : Direction.WEST)
+            : (this.bridgeMoveSign > 0 ? Direction.SOUTH : Direction.NORTH);
+         faces = new Direction[]{behind, Direction.UP};
+      } else {
+         faces = Direction.values();
+      }
+
       Vec3 eye = player.getEyePosition();
       double reach = Math.min(MAX_REACH, player.blockInteractionRange());
       PlacementTarget best = null;
       double bestScore = Double.POSITIVE_INFINITY;
 
-      for (Direction face : Direction.values()) {
+      for (Direction face : faces) {
          BlockPos supportPos = targetPos.relative(face.getOpposite());
          if (!this.validSupport(minecraft, supportPos)
             || new AABB(supportPos).intersects(player.getBoundingBox())) {
@@ -189,16 +360,23 @@ public final class ScaffoldModule extends ClientModule {
             continue;
          }
 
-         Rotation rotation = Rotation.lookingAt(hitPoint, eye);
-         double angle = Math.abs(Mth.wrapDegrees(rotation.getYaw() - player.getYRot()))
-            + Math.abs(rotation.getPitch() - player.getXRot());
+         Rotation look = Rotation.lookingAt(hitPoint, eye);
+         // Snap the yaw to the bridge axis; only the pitch follows the hit point.
+         Rotation rotation = axisLocked ? new Rotation(this.bridgeYaw(), look.getPitch()) : look;
+         PlacementTarget candidate = new PlacementTarget(
+            targetPos,
+            new BlockHitResult(hitPoint, face, supportPos, false),
+            rotation);
+         if (axisLocked) {
+            return candidate;
+         }
+
+         double angle = Math.abs(Mth.wrapDegrees(look.getYaw() - player.getYRot()))
+            + Math.abs(look.getPitch() - player.getXRot());
          double score = eye.distanceToSqr(hitPoint) + angle * 0.01;
          if (score < bestScore) {
             bestScore = score;
-            best = new PlacementTarget(
-               targetPos,
-               new BlockHitResult(hitPoint, face, supportPos, false),
-               rotation);
+            best = candidate;
          }
       }
 
@@ -248,13 +426,16 @@ public final class ScaffoldModule extends ClientModule {
    }
 
    private boolean applyRotation(LocalPlayer player, Rotation desired) {
+      // Add#2: ClientLock on = rotation is shown on the player's screen,
+      // off = silent rotation with a free camera (FreeLookController).
+      boolean visible = this.clientLock.get();
       if (this.rotate.is("Normal")) {
-         return RotationManager.updateExact(desired, ROTATION_PRIORITY, ROTATION_TIMEOUT_TICKS, true);
+         return RotationManager.updateExact(desired, ROTATION_PRIORITY, ROTATION_TIMEOUT_TICKS, visible);
       }
 
       if (this.rotate.is("Smooth")) {
          RotationManager.update(desired, 75.0F, 75.0F, 180.0F, 180.0F,
-            ROTATION_TIMEOUT_TICKS, ROTATION_PRIORITY, true);
+            ROTATION_TIMEOUT_TICKS, ROTATION_PRIORITY, visible);
          return RotationManager.INSTANCE.isAimingAtPriority(ROTATION_PRIORITY)
             && this.isCloseToRotation(player, desired, 2.0F);
       }
@@ -264,7 +445,7 @@ public final class ScaffoldModule extends ClientModule {
       float yaw = this.stepAngle(player.getYRot(), desired.getYaw(), 35.0F);
       float pitch = this.stepAngle(player.getXRot(), desired.getPitch(), 35.0F);
       Rotation next = new Rotation(yaw, Mth.clamp(pitch, -90.0F, 90.0F));
-      if (!RotationManager.updateExact(next, ROTATION_PRIORITY, ROTATION_TIMEOUT_TICKS, true)) {
+      if (!RotationManager.updateExact(next, ROTATION_PRIORITY, ROTATION_TIMEOUT_TICKS, visible)) {
          return false;
       }
       return this.isCloseToRotation(player, desired, 2.0F);
