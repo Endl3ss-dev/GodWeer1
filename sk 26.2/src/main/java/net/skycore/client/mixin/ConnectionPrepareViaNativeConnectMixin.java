@@ -36,6 +36,11 @@ public abstract class ConnectionPrepareViaNativeConnectMixin {
 
    @Inject(method = "channelRead0(Lio/netty/channel/ChannelHandlerContext;Lnet/minecraft/network/protocol/Packet;)V", at = @At("HEAD"), cancellable = true)
    private void skycore$onContainerClose(ChannelHandlerContext channelHandlerContext, Packet<?> packet, CallbackInfo callbackInfo) {
+      if (net.skycore.client.module.movement.ScaffoldModule.handlePacketDelay(packet)) {
+         callbackInfo.cancel();
+         return;
+      }
+
       if (packet instanceof ClientboundContainerClosePacket) {
          PacketReceiveEvent packetReceiveEvent = new PacketReceiveEvent(packet);
          SkycoreClient.events().post(packetReceiveEvent);

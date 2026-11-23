@@ -1,7 +1,7 @@
-# Scaffold — Eagle и AutoPlace
+# Scaffold — Eagle, AutoPlace и CatLean
 
-`ScaffoldModule` в SkyCore работает только в режиме `Eagle`. Режимы `NCP`,
-`NCPStrict` и `CatLean` не возвращались.
+`ScaffoldModule` в SkyCore работает в режимах `Eagle` (по умолчанию) и
+`CatLean`, портированном из одноимённого модуля CatLean.
 
 ## Настройки
 
@@ -74,3 +74,32 @@
 `Eagle` продолжает работать независимо от `AutoPlace`: если под игроком воздух,
 модуль удерживает `options.keyShift`, чтобы игрок не сошёл с края. При отключении
 `Scaffold` Shift отпускается, а активная ротация модуля прекращается.
+
+## CatLean mode
+
+`Mode` = **CatLean** is the CatLean beam scaffold ported from the CatLean
+client (`su.catlean.client.features.modules.rage.Scaffold`): the support is
+searched over the same 14 neighbour offsets, the hit point is clamped into
+the support block next to the player (`Clamp`), and the rotation looks at
+exactly that point before the block is placed. `AutoPlace`, `CPS`, `Rotate`
+and `ClientLock` do not apply to this mode; the block itself is picked by
+`AutoSwitch` (`Normal`/`Silent`/`Inventory`/`None`), which now stays visible.
+
+| Setting | Default | Description |
+|---|---|---|
+| `Timing` | `GRIM` | `SEQUENTIAL`: submit and place in the same tick. `VANILLA`: visible rotation, place once it has arrived. `GRIM`: silent rotation, place once it has arrived. |
+| `Tower` | `true` | Holding jump in air keeps the vertical velocity at `0.42` with the periodic slight dip CatLean applies. |
+| `SafeWalk`/`AllowShift` | `false` | Safewalk holds shift while the target cell is empty; `AllowShift` permits building while sneaking. |
+| `Legit` | `true` | Do not place while a shrunk collision box still touches the ground below. |
+| `SaveAngles` | `true` | Keep the last CatLean rotation while there is nothing to place. |
+| `Telly`/`KeepY` | `false` | Hold the fixed bridge height; Telly also waits while jump is held and the player is already falling. |
+| `Clamp` | `true` | Clamp the hit point into the support block; otherwise use the face centre. |
+| `AirPlace` | `false` | Place into the cell under the player even without a support face. |
+| `GrimDelay` | `false` | Buffer incoming packets for up to 500 ms (chat/time/sound/health/bossbar pass through, position/disconnect flush and pass). |
+| `CatLeanRotate` | `true` | Master switch for all CatLean rotations. |
+| `GrimSilent` | `false` | Wrap the placement in raw position-rotation packets and place immediately. |
+
+Where a CatLean helper service was not part of the provided source
+(`InteractionManager.computeBlockPosWithFacing`, `WorldUtil` flags, the
+separate `AirPlace` module), the closest SkyCore-native equivalent is used
+and marked in the code comments.

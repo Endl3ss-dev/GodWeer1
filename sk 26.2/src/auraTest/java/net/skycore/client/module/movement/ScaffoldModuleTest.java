@@ -6,7 +6,7 @@ import net.skycore.client.setting.BooleanSetting;
 import net.skycore.client.setting.ModeSetting;
 import net.skycore.client.setting.NumberSetting;
 
-/** Headless settings smoke test for Eagle and its optional AutoPlace controls. */
+/** Headless settings smoke test for Eagle, its AutoPlace controls and the CatLean mode. */
 public final class ScaffoldModuleTest {
    private static void check(boolean condition, String message) {
       if (!condition) throw new AssertionError(message);
@@ -16,13 +16,13 @@ public final class ScaffoldModuleTest {
       ScaffoldModule module = new ScaffoldModule();
       check(module.getCategory() == ModuleCategory.MOVEMENT, "movement category");
       check(!module.isEnabled(), "disabled by default");
-      check(module.suffix().equals("Eagle"), "Eagle is the only mode");
-      check(module.getSettings().size() == 6, "Eagle plus five AutoPlace settings");
+      check(module.suffix().equals("Eagle"), "Eagle is the default mode suffix");
+      check(module.getSettings().size() == 19, "Eagle plus five AutoPlace settings and thirteen CatLean settings");
 
       ModeSetting mode = (ModeSetting) module.getSettings().get(0);
       check(mode.getName().equals("Mode"), "Mode setting name");
       check(mode.get().equals("Eagle"), "Eagle is the default mode");
-      check(mode.getModes().equals(List.of("Eagle")), "Eagle is the only declared mode");
+      check(mode.getModes().equals(List.of("Eagle", "CatLean")), "declared modes");
 
       BooleanSetting autoPlace = (BooleanSetting) module.getSettings().stream()
          .filter(setting -> setting.getName().equals("AutoPlace")).findFirst().orElseThrow();
@@ -56,6 +56,26 @@ public final class ScaffoldModuleTest {
       check(clientLock.isVisible() == false, "ClientLock is hidden while Rotate is None");
       rotate.set("Normal");
       check(clientLock.isVisible(), "ClientLock returns with a rotating mode");
+
+      BooleanSetting tower = (BooleanSetting) module.getSettings().stream()
+         .filter(setting -> setting.getName().equals("Tower")).findFirst().orElseThrow();
+      ModeSetting timing = (ModeSetting) module.getSettings().stream()
+         .filter(setting -> setting.getName().equals("Timing")).findFirst().orElseThrow();
+      BooleanSetting grimSilent = (BooleanSetting) module.getSettings().stream()
+         .filter(setting -> setting.getName().equals("GrimSilent")).findFirst().orElseThrow();
+      check(timing.get().equals("GRIM"), "GRIM is the default CatLean timing");
+      check(timing.getModes().equals(List.of("SEQUENTIAL", "VANILLA", "GRIM")),
+         "CatLean timings");
+      check(!tower.isVisible(), "CatLean settings are hidden in Eagle mode");
+      autoPlace.set(false);
+      mode.set("CatLean");
+      check(module.suffix().equals("CatLean"), "suffix follows the mode");
+      check(tower.isVisible() && timing.isVisible() && autoSwitch.isVisible(),
+         "CatLean settings appear with the mode");
+      check(autoPlace.isVisible(), "AutoPlace toggle stays visible in CatLean mode");
+      check(!cps.isVisible() && !rotate.isVisible() && !clientLock.isVisible(),
+         "Eagle-only settings hide in CatLean mode");
+      check(!grimSilent.get(), "GrimSilent is off by default");
       System.out.println("ScaffoldModuleTest passed");
    }
 }
