@@ -236,18 +236,34 @@ public final class NoRenderModule extends ClientModule {
 
    public static boolean shouldRemoveParticle(ParticleOptions particleOptions) {
       NoRenderModule noRenderModule2 = enabled();
-      if (noRenderModule2 != null && particleOptions != null) {
-         if (noRenderModule2.world.isSelected("Totem Particles")) {
-            ParticleType type = particleOptions.getType();
-            if (type == ParticleTypes.TOTEM_OF_UNDYING) {
-               return true;
-            }
-         }
-
-         return noRenderModule2.world.isSelected("Effects");
-      } else {
+      if (noRenderModule2 == null || particleOptions == null) {
          return false;
       }
+
+      ParticleType<?> type = particleOptions.getType();
+      // Never suppress firework sparks through ParticleEngine.createParticle:
+      // vanilla FireworkParticles.Starter uses the returned particle without a
+      // null check (setTrail/setFlicker), so returning null there crashes the
+      // client with an NPE as soon as any firework explodes.
+      if (type == ParticleTypes.FIREWORK) {
+         return false;
+      }
+
+      if (noRenderModule2.world.isSelected("Totem Particles") && type == ParticleTypes.TOTEM_OF_UNDYING) {
+         return true;
+      }
+
+      // "Effects" means status/potion effect particles only. Suppressing every
+      // particle type here also killed firework sparks (see above) and other
+      // gameplay particles the option was never meant to hide.
+      return noRenderModule2.world.isSelected("Effects") && isEffectParticle(type);
+   }
+
+   private static boolean isEffectParticle(ParticleType<?> type) {
+      return type == ParticleTypes.ENTITY_EFFECT
+         || type == ParticleTypes.AMBIENT_ENTITY_EFFECT
+         || type == ParticleTypes.EFFECT
+         || type == ParticleTypes.INSTANT_EFFECT;
    }
 
    public static boolean shouldRemoveTotemOverlay() {
