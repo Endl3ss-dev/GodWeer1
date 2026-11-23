@@ -261,7 +261,6 @@ public final class NoRenderModule extends ClientModule {
 
    private static boolean isEffectParticle(ParticleType<?> type) {
       return type == ParticleTypes.ENTITY_EFFECT
-         || type == ParticleTypes.AMBIENT_ENTITY_EFFECT
          || type == ParticleTypes.EFFECT
          || type == ParticleTypes.INSTANT_EFFECT;
    }
