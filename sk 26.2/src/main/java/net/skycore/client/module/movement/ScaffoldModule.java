@@ -71,19 +71,25 @@ public final class ScaffoldModule extends ClientModule {
       "Rotate", "Normal", "Normal", "Smooth", "Linear", "None"));
    private final BooleanSetting clientLock = this.add(new BooleanSetting("ClientLock", true));
    private final BooleanSetting lockY = this.add(new BooleanSetting("LockY", false));
-   private final BooleanSetting lastMomentPlace = this.add(new BooleanSetting("LastMomentPlace", false));
+   private final BooleanSetting diagonal = this.add(new BooleanSetting("Diagonal", false));
+   private final NumberSetting smoothSpeed = this.add(new NumberSetting("SmoothSpeed", 420, 60, 1080, 15));
+   private final NumberSetting smoothAccel = this.add(new NumberSetting("SmoothAccel", 2600, 300, 9000, 100));
+   private final NumberSetting smoothBrake = this.add(new NumberSetting("SmoothBrake", 12, 2, 30, 0.5));
 
    private boolean wasSneaking;
    private long nextPlaceNanos;
    private Subscription tickSubscription;
    private Subscription inputSubscription;
-   /** Locked bridge axis: {@code Boolean.TRUE} = X, {@code Boolean.FALSE} = Z, null = free. */
-   private Boolean bridgeXAxis;
-   private int bridgeMoveSign = 1;
+   /** Locked bridge direction per axis (-1/0/+1); both non-zero means diagonal. */
+   private int bridgeDirX;
+   private int bridgeDirZ;
+   private boolean bridgeLocked;
    private int bridgeIdleTicks;
    private Integer lockedY;
    private boolean moveFixActive;
    private float moveFixViewYaw;
+   private Boolean appliedVisible;
+   private final ScaffoldSmoothRotation smoother = new ScaffoldSmoothRotation();
 
    public ScaffoldModule() {
       super("Scaffold", "Eagle edge protection with optional automatic placement", ModuleCategory.MOVEMENT);
@@ -92,17 +98,22 @@ public final class ScaffoldModule extends ClientModule {
       this.rotate.visibleWhen(() -> this.autoPlace.get());
       this.clientLock.visibleWhen(() -> this.autoPlace.get() && !this.rotate.is("None"));
       this.lockY.visibleWhen(() -> this.autoPlace.get());
-      this.lastMomentPlace.visibleWhen(() -> this.autoPlace.get());
+      this.diagonal.visibleWhen(() -> this.autoPlace.get());
+      this.smoothSpeed.visibleWhen(() -> this.autoPlace.get() && this.rotate.is("Smooth"));
+      this.smoothAccel.visibleWhen(() -> this.autoPlace.get() && this.rotate.is("Smooth"));
+      this.smoothBrake.visibleWhen(() -> this.autoPlace.get() && this.rotate.is("Smooth"));
    }
 
    @Override
    protected void onEnable() {
       this.wasSneaking = false;
       this.nextPlaceNanos = 0L;
-      this.bridgeXAxis = null;
+      this.bridgeLocked = false;
       this.bridgeIdleTicks = 0;
       this.lockedY = null;
       this.moveFixActive = false;
+      this.appliedVisible = null;
+      this.smoother.reset();
       if (this.tickSubscription != null) {
          this.tickSubscription.close();
       }
@@ -122,9 +133,11 @@ public final class ScaffoldModule extends ClientModule {
       }
       this.stopManagedRotation();
       this.moveFixActive = false;
-      this.bridgeXAxis = null;
+      this.bridgeLocked = false;
       this.bridgeIdleTicks = 0;
       this.lockedY = null;
+      this.appliedVisible = null;
+      this.smoother.reset();
       if (this.tickSubscription != null) {
          this.tickSubscription.close();
          this.tickSubscription = null;
@@ -139,7 +152,7 @@ public final class ScaffoldModule extends ClientModule {
       Minecraft minecraft = Minecraft.getInstance();
       if (minecraft.player == null || minecraft.level == null || minecraft.gameMode == null) {
          this.releaseManagedRotation();
-         this.bridgeXAxis = null;
+         this.bridgeLocked = false;
          this.bridgeIdleTicks = 0;
          this.lockedY = null;
          return;
@@ -171,6 +184,14 @@ public final class ScaffoldModule extends ClientModule {
       if (this.rotate.is("None")) {
          this.releaseManagedRotation();
       } else {
+         boolean visible = this.clientLock.get();
+         if (this.appliedVisible != null && this.appliedVisible != visible) {
+            // ClientLock toggled mid-rotation: release first, so the camera is
+            // restored through the free look and never snaps to the bridge yaw.
+            this.stopManagedRotation();
+            this.moveFixActive = false;
+         }
+         this.appliedVisible = visible;
          if (!this.moveFixActive) {
             this.moveFixViewYaw = this.referenceYaw(minecraft.player);
          }
@@ -178,10 +199,11 @@ public final class ScaffoldModule extends ClientModule {
          if (!this.applyRotation(minecraft.player, target.rotation())) {
             return;
          }
-      }
-
-      if (!this.lastMomentReady(minecraft.player, target)) {
-         return;
+         if (target.preAim()) {
+            // The head is already looking at the upcoming bridge block; the
+            // block itself is placed once the player steps over that cell.
+            return;
+         }
       }
 
       long now = System.nanoTime();
@@ -192,26 +214,6 @@ public final class ScaffoldModule extends ClientModule {
       if (this.placeBlock(minecraft, target)) {
          this.nextPlaceNanos = now + this.placeIntervalNanos();
       }
-   }
-
-   /**
-    * LastMomentPlace: while airborne, hold the placement until the player is
-    * actually falling and the feet are about to reach the top of the target
-    * block. The rotation is already aimed by then, so the block snaps in at
-    * the last moment and the player lands on it instead of falling past.
-    * On the ground the placement is never delayed.
-    */
-   private boolean lastMomentReady(LocalPlayer player, PlacementTarget target) {
-      if (!this.lastMomentPlace.get() || player.onGround()) {
-         return true;
-      }
-      double velocityY = player.getDeltaMovement().y;
-      if (velocityY > 0.0) {
-         return false;
-      }
-      double targetTop = target.target().getY() + 1.0;
-      double distance = player.getY() - targetTop;
-      return distance <= 0.75 && distance + velocityY <= 0.9;
    }
 
    private void onPlayerInput(PlayerInputEvent event) {
@@ -244,6 +246,7 @@ public final class ScaffoldModule extends ClientModule {
    private void releaseManagedRotation() {
       this.stopManagedRotation();
       this.moveFixActive = false;
+      this.smoother.reset();
    }
 
    /**
@@ -293,7 +296,7 @@ public final class ScaffoldModule extends ClientModule {
       double[] intent = this.movementIntent(player);
       if (intent == null) {
          if (++this.bridgeIdleTicks > 20) {
-            this.bridgeXAxis = null;
+            this.bridgeLocked = false;
          }
          return;
       }
@@ -301,20 +304,40 @@ public final class ScaffoldModule extends ClientModule {
 
       double dx = intent[0];
       double dz = intent[1];
-      boolean xDominant = Math.abs(dx) >= Math.abs(dz);
-      if (this.bridgeXAxis == null || xDominant == this.bridgeXAxis) {
-         this.bridgeXAxis = xDominant;
-      } else if (Math.max(Math.abs(dx), Math.abs(dz)) >= 1.5 * Math.min(Math.abs(dx), Math.abs(dz))) {
-         this.bridgeXAxis = xDominant;
+      double absX = Math.abs(dx);
+      double absZ = Math.abs(dz);
+      int signX = dx > 0.0 ? 1 : dx < 0.0 ? -1 : 0;
+      int signZ = dz > 0.0 ? 1 : dz < 0.0 ? -1 : 0;
+
+      // Diagonal bridging is opt-in: only when the movement really goes
+      // diagonally (both components at least ~45% of the dominant one).
+      if (this.diagonal.get() && Math.min(absX, absZ) >= 0.45 * Math.max(absX, absZ)) {
+         this.bridgeDirX = signX;
+         this.bridgeDirZ = signZ;
+         this.bridgeLocked = true;
+         return;
       }
 
-      if (this.bridgeXAxis) {
-         if (dx != 0.0) {
-            this.bridgeMoveSign = dx > 0.0 ? 1 : -1;
+      boolean xDominant = absX >= absZ;
+      if (this.bridgeLocked && this.bridgeDirX != 0 && this.bridgeDirZ != 0) {
+         // Leaving a diagonal: adopt the dominant axis right away.
+         this.bridgeDirX = xDominant ? signX : 0;
+         this.bridgeDirZ = xDominant ? 0 : signZ;
+      } else if (!this.bridgeLocked) {
+         this.bridgeDirX = xDominant ? signX : 0;
+         this.bridgeDirZ = xDominant ? 0 : signZ;
+      } else if (xDominant == (this.bridgeDirX != 0)) {
+         if (xDominant) {
+            this.bridgeDirX = signX;
+         } else {
+            this.bridgeDirZ = signZ;
          }
-      } else if (dz != 0.0) {
-         this.bridgeMoveSign = dz > 0.0 ? 1 : -1;
+      } else if (Math.max(absX, absZ) >= 1.5 * Math.min(absX, absZ)) {
+         // Axis switch only on a clear dominance change (hysteresis).
+         this.bridgeDirX = xDominant ? signX : 0;
+         this.bridgeDirZ = xDominant ? 0 : signZ;
       }
+      this.bridgeLocked = true;
    }
 
    /** World-space horizontal movement direction, or null when standing still. */
@@ -343,12 +366,11 @@ public final class ScaffoldModule extends ClientModule {
       return null;
    }
 
-   /** Cardinal yaw looking back against the locked movement direction. */
+   /** Yaw looking back against the locked bridge direction (8-way snapped). */
    private float bridgeYaw() {
-      if (this.bridgeXAxis) {
-         return this.bridgeMoveSign > 0 ? 90.0F : -90.0F;
-      }
-      return this.bridgeMoveSign > 0 ? 180.0F : 0.0F;
+      double lookX = -this.bridgeDirX;
+      double lookZ = -this.bridgeDirZ;
+      return (float) Mth.wrapDegrees(Math.toDegrees(Math.atan2(lookZ, lookX)) - 90.0);
    }
 
    private PlacementTarget findPlacementTarget(Minecraft minecraft) {
@@ -373,25 +395,55 @@ public final class ScaffoldModule extends ClientModule {
       }
 
       BlockPos targetPos = new BlockPos(belowPos.getX(), targetY, belowPos.getZ());
-      if (!minecraft.level.getBlockState(targetPos).canBeReplaced()
-         || this.lockY.get() && targetY > belowPos.getY()
-            && new AABB(targetPos).intersects(player.getBoundingBox())) {
-         return null;
-      }
+      boolean targetFree = minecraft.level.getBlockState(targetPos).canBeReplaced()
+         && !(this.lockY.get() && targetY > belowPos.getY()
+            && new AABB(targetPos).intersects(player.getBoundingBox()));
 
       if (this.rotate.is("None")) {
-         return this.findManualPlacementTarget(minecraft, targetPos);
+         return targetFree ? this.findManualPlacementTarget(minecraft, targetPos) : null;
       }
 
-      // Bug#1: while moving, only the support behind the player along the locked
-      // axis (then the support below) may be used, never a side face.
-      boolean axisLocked = this.bridgeXAxis != null;
+      if (targetFree) {
+         PlacementTarget current = this.findTargetAt(minecraft, targetPos, false);
+         if (current != null) {
+            return current;
+         }
+      }
+
+      // Pre-aim: while walking on the bridge towards the edge there is nothing
+      // to place yet, but the head (server rotation) already looks at the next
+      // bridge cell, so the block goes in the very tick the player steps over
+      // it. Especially with ClientLock off this is what the player sees in
+      // third person: the character looking at the nearest bridge block.
+      if (this.bridgeLocked) {
+         BlockPos aheadPos = targetPos.offset(this.bridgeDirX, 0, this.bridgeDirZ);
+         if (!aheadPos.equals(targetPos)
+            && minecraft.level.getBlockState(aheadPos).canBeReplaced()
+            && !new AABB(aheadPos).intersects(player.getBoundingBox())) {
+            return this.findTargetAt(minecraft, aheadPos, true);
+         }
+      }
+      return null;
+   }
+
+   private PlacementTarget findTargetAt(Minecraft minecraft, BlockPos targetPos, boolean preAim) {
+      LocalPlayer player = minecraft.player;
+
+      // Bug#1: while moving, only the support behind the player along the
+      // locked bridge direction (then the support below) may be used, never
+      // an unrelated side face. Diagonal locks try both step faces.
+      boolean locked = this.bridgeLocked;
       Direction[] faces;
-      if (axisLocked) {
-         Direction behind = this.bridgeXAxis
-            ? (this.bridgeMoveSign > 0 ? Direction.EAST : Direction.WEST)
-            : (this.bridgeMoveSign > 0 ? Direction.SOUTH : Direction.NORTH);
-         faces = new Direction[]{behind, Direction.UP};
+      if (locked) {
+         Direction faceX = this.bridgeDirX > 0 ? Direction.EAST : Direction.WEST;
+         Direction faceZ = this.bridgeDirZ > 0 ? Direction.SOUTH : Direction.NORTH;
+         if (this.bridgeDirX != 0 && this.bridgeDirZ != 0) {
+            faces = new Direction[]{faceX, faceZ, Direction.UP};
+         } else if (this.bridgeDirX != 0) {
+            faces = new Direction[]{faceX, Direction.UP};
+         } else {
+            faces = new Direction[]{faceZ, Direction.UP};
+         }
       } else {
          faces = Direction.values();
       }
@@ -427,13 +479,14 @@ public final class ScaffoldModule extends ClientModule {
          }
 
          Rotation look = Rotation.lookingAt(hitPoint, eye);
-         // Snap the yaw to the bridge axis; only the pitch follows the hit point.
-         Rotation rotation = axisLocked ? new Rotation(this.bridgeYaw(), look.getPitch()) : look;
+         // Snap the yaw to the bridge direction; only the pitch follows the hit point.
+         Rotation rotation = locked ? new Rotation(this.bridgeYaw(), look.getPitch()) : look;
          PlacementTarget candidate = new PlacementTarget(
             targetPos,
             new BlockHitResult(hitPoint, face, supportPos, false),
-            rotation);
-         if (axisLocked) {
+            rotation,
+            preAim);
+         if (locked) {
             return candidate;
          }
 
@@ -466,7 +519,8 @@ public final class ScaffoldModule extends ClientModule {
       return new PlacementTarget(
          targetPos,
          new BlockHitResult(hit.getLocation(), face, supportPos, false),
-         Rotation.lookingAt(hit.getLocation(), eye));
+         Rotation.lookingAt(hit.getLocation(), eye),
+         false);
    }
 
    private boolean validSupport(Minecraft minecraft, BlockPos supportPos) {
@@ -496,18 +550,31 @@ public final class ScaffoldModule extends ClientModule {
       // off = silent rotation with a free camera (FreeLookController).
       boolean visible = this.clientLock.get();
       if (this.rotate.is("Normal")) {
+         this.smoother.reset();
          return RotationManager.updateExact(desired, ROTATION_PRIORITY, ROTATION_TIMEOUT_TICKS, visible);
       }
 
       if (this.rotate.is("Smooth")) {
-         RotationManager.update(desired, 75.0F, 75.0F, 180.0F, 180.0F,
-            ROTATION_TIMEOUT_TICKS, ROTATION_PRIORITY, visible);
-         return RotationManager.INSTANCE.isAimingAtPriority(ROTATION_PRIORITY)
-            && this.isCloseToRotation(player, desired, 2.0F);
+         // Real time-based smoothing (ScaffoldSmoothRotation): trapezoidal
+         // velocity profile with acceleration, capped speed and proportional
+         // braking. Settings: SmoothSpeed / SmoothAccel / SmoothBrake.
+         if (!this.smoother.isInitialized()) {
+            this.smoother.seed(player.getYRot(), player.getXRot());
+         }
+         float[] next = this.smoother.update(
+            desired.getYaw(), desired.getPitch(),
+            this.smoothSpeed.get(), this.smoothAccel.get(), this.smoothBrake.get());
+         Rotation stepped = new Rotation(next[0], Mth.clamp(next[1], -90.0F, 90.0F));
+         if (!RotationManager.updateExact(stepped, ROTATION_PRIORITY, ROTATION_TIMEOUT_TICKS, visible)) {
+            this.smoother.reset();
+            return false;
+         }
+         return this.smoother.isSettled(desired.getYaw(), desired.getPitch(), 3.0F);
       }
 
       // Linear advances by a fixed angular amount per client tick instead of using
       // the distance-dependent easing used by RotationManager.update.
+      this.smoother.reset();
       float yaw = this.stepAngle(player.getYRot(), desired.getYaw(), 35.0F);
       float pitch = this.stepAngle(player.getXRot(), desired.getPitch(), 35.0F);
       Rotation next = new Rotation(yaw, Mth.clamp(pitch, -90.0F, 90.0F));
@@ -640,6 +707,6 @@ public final class ScaffoldModule extends ClientModule {
       return this.mode.get();
    }
 
-   private record PlacementTarget(BlockPos target, BlockHitResult hit, Rotation rotation) {
+   private record PlacementTarget(BlockPos target, BlockHitResult hit, Rotation rotation, boolean preAim) {
    }
 }
