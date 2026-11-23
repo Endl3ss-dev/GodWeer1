@@ -213,8 +213,9 @@ public final class ScaffoldModule extends ClientModule {
       // CatLean update4(): release a SafeWalk-held shift unless the player
       // physically holds left shift (GLFW 340), then flush delayed packets.
       if (this.tellyShiftFlag && minecraft != null
-         && !org.lwjgl.glfw.GLFW.glfwGetKey(
-            minecraft.getWindow().handle(), org.lwjgl.glfw.GLFW.GLFW_KEY_LEFT_SHIFT)) {
+         && org.lwjgl.glfw.GLFW.glfwGetKey(
+            minecraft.getWindow().handle(), org.lwjgl.glfw.GLFW.GLFW_KEY_LEFT_SHIFT)
+            == org.lwjgl.glfw.GLFW.GLFW_RELEASE) {
          minecraft.options.keyShift.setDown(false);
       }
       this.tellyShiftFlag = false;
