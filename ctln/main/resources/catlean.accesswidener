@@ -1,0 +1,21 @@
+classTweaker	v1	official
+
+accessible   class   net/minecraft/client/gui/GuiGraphicsExtractor$ScissorStack
+accessible   class   com/mojang/blaze3d/opengl/GlDevice
+accessible   class   com/mojang/blaze3d/opengl/GlCommandEncoder
+accessible   class   com/mojang/blaze3d/opengl/GlRenderPass
+accessible   class   net/minecraft/network/protocol/game/ServerboundAttackPacket
+accessible   field   net/minecraft/client/player/LocalPlayer wasSprinting Z
+accessible   field   net/minecraft/world/entity/projectile/FishingHook DATA_BITING Lnet/minecraft/network/syncher/EntityDataAccessor;
+accessible   field   net/minecraft/network/protocol/game/ServerboundMovePlayerPacket onGround Z
+accessible   field   net/minecraft/network/protocol/game/ServerboundMovePlayerPacket xRot F
+accessible   field   net/minecraft/network/protocol/game/ServerboundChatPacket message Ljava/lang/String;
+accessible   field   net/minecraft/network/protocol/game/ClientboundPlayerInfoRemovePacket profileIds Ljava/util/List;
+accessible   field   net/minecraft/client/MouseHandler accumulatedDY D
+accessible   field   net/minecraft/client/MouseHandler accumulatedDX D
+accessible   field   net/minecraft/network/protocol/game/ClientboundSystemChatPacket content Lnet/minecraft/network/chat/Component;
+accessible   field   net/minecraft/world/level/BaseSpawner spawnDelay I
+accessible   class   net/minecraft/client/gui/Hud$HeartType
+accessible   field   net/minecraft/network/protocol/game/ServerboundAttackPacket entityId I
+accessible   method  net/minecraft/client/multiplayer/ClientLevel getBlockStatePredictionHandler ()Lnet/minecraft/client/multiplayer/prediction/BlockStatePredictionHandler;
+accessible class net/minecraft/network/PacketProcessor$ListenerAndPacket

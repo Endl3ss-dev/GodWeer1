@@ -1,0 +1,13 @@
+// deobf by pusia
+package su.catlean.api.event.events.player;
+
+import org.jetbrains.annotations.NotNull;
+import su.catlean.api.event.Event;
+
+public final class TridentWeatherEvent extends Event {
+   @NotNull
+   public static final TridentWeatherEvent INSTANCE = new TridentWeatherEvent();
+
+   private TridentWeatherEvent() {
+   }
+}

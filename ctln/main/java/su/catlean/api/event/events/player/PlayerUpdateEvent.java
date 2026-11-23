@@ -1,0 +1,13 @@
+// deobf by pusia
+package su.catlean.api.event.events.player;
+
+import org.jetbrains.annotations.NotNull;
+import su.catlean.api.event.Event;
+
+public final class PlayerUpdateEvent extends Event {
+   @NotNull
+   public static final PlayerUpdateEvent INSTANCE = new PlayerUpdateEvent();
+
+   private PlayerUpdateEvent() {
+   }
+}

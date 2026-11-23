@@ -1,0 +1,22 @@
+// deobf by pusia
+package su.catlean.api.event.events.render;
+
+import org.jetbrains.annotations.NotNull;
+import su.catlean.api.event.Event;
+
+public final class CameraOffsetEvent extends Event {
+   @NotNull
+   public static final CameraOffsetEvent INSTANCE = new CameraOffsetEvent();
+   private static float offset;
+
+   private CameraOffsetEvent() {
+   }
+
+   public final float getOffset() {
+      return offset;
+   }
+
+   public final void setOffset(float amount) {
+      offset = amount;
+   }
+}
