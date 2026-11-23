@@ -84,7 +84,6 @@ public final class ScaffoldModule extends ClientModule {
    private int bridgeDirX;
    private int bridgeDirZ;
    private boolean bridgeLocked;
-   private int bridgeIdleTicks;
    private Integer lockedY;
    private boolean moveFixActive;
    private float moveFixViewYaw;
@@ -109,7 +108,6 @@ public final class ScaffoldModule extends ClientModule {
       this.wasSneaking = false;
       this.nextPlaceNanos = 0L;
       this.bridgeLocked = false;
-      this.bridgeIdleTicks = 0;
       this.lockedY = null;
       this.moveFixActive = false;
       this.appliedVisible = null;
@@ -134,7 +132,6 @@ public final class ScaffoldModule extends ClientModule {
       this.stopManagedRotation();
       this.moveFixActive = false;
       this.bridgeLocked = false;
-      this.bridgeIdleTicks = 0;
       this.lockedY = null;
       this.appliedVisible = null;
       this.smoother.reset();
@@ -153,8 +150,7 @@ public final class ScaffoldModule extends ClientModule {
       if (minecraft.player == null || minecraft.level == null || minecraft.gameMode == null) {
          this.releaseManagedRotation();
          this.bridgeLocked = false;
-         this.bridgeIdleTicks = 0;
-         this.lockedY = null;
+            this.lockedY = null;
          return;
       }
 
@@ -197,11 +193,6 @@ public final class ScaffoldModule extends ClientModule {
          }
          this.moveFixActive = true;
          if (!this.applyRotation(minecraft.player, target.rotation())) {
-            return;
-         }
-         if (target.preAim()) {
-            // The head is already looking at the upcoming bridge block; the
-            // block itself is placed once the player steps over that cell.
             return;
          }
       }
@@ -284,23 +275,17 @@ public final class ScaffoldModule extends ClientModule {
    }
 
    /**
-    * Tracks the dominant movement axis. The direction is read from the actual
-    * horizontal velocity — the trajectory of the body — and never from the
-    * camera: with {@code ClientLock} off the player may look and turn anywhere
-    * (Fix#1), the module keeps its own locked bridge direction and rotation.
-    * The lock survives short stops and only expires after a second without
-    * any movement intent. Hysteresis keeps the axis from flapping while the
-    * player moves diagonally.
+    * Tracks the dominant movement axis. The intent is read from the movement
+    * keys relative to the steering yaw (not from the managed head rotation),
+    * so walking straight forward also builds. Hysteresis keeps the axis from
+    * flapping while the player moves diagonally.
     */
    private void updateBridgeAxis(LocalPlayer player) {
       double[] intent = this.movementIntent(player);
       if (intent == null) {
-         if (++this.bridgeIdleTicks > 20) {
-            this.bridgeLocked = false;
-         }
+         this.bridgeLocked = false;
          return;
       }
-      this.bridgeIdleTicks = 0;
 
       double dx = intent[0];
       double dz = intent[1];
@@ -342,15 +327,10 @@ public final class ScaffoldModule extends ClientModule {
 
    /** World-space horizontal movement direction, or null when standing still. */
    private double[] movementIntent(LocalPlayer player) {
-      // Primary source: real velocity. It already reflects where the body is
-      // going, independent of where the (free) camera currently looks.
-      Vec3 motion = player.getDeltaMovement();
-      if (motion.x * motion.x + motion.z * motion.z > 0.0009) {
-         return new double[]{motion.x, motion.z};
-      }
-
-      // Fallback for taking the first step from a standstill: movement keys
-      // relative to the steering yaw (free-look when silent, view otherwise).
+      // Primary source, as in the well-working c04b8752: movement keys relative
+      // to the steering yaw (free-look when silent, captured view otherwise).
+      // Velocity is only a fallback: it also contains knockback and sneak
+      // slowdowns and made the bridge direction laggy in 671a4f8b.
       Input input = player.input != null ? player.input.keyPresses : null;
       if (input != null && (input.forward() || input.backward() || input.left() || input.right())) {
          double forward = (input.forward() ? 1.0 : 0.0) - (input.backward() ? 1.0 : 0.0);
@@ -362,6 +342,11 @@ public final class ScaffoldModule extends ClientModule {
          double leftX = facingZ;
          double leftZ = -facingX;
          return new double[]{forward * facingX + strafe * leftX, forward * facingZ + strafe * leftZ};
+      }
+
+      Vec3 motion = player.getDeltaMovement();
+      if (motion.x * motion.x + motion.z * motion.z > 0.0025) {
+         return new double[]{motion.x, motion.z};
       }
       return null;
    }
@@ -404,29 +389,12 @@ public final class ScaffoldModule extends ClientModule {
       }
 
       if (targetFree) {
-         PlacementTarget current = this.findTargetAt(minecraft, targetPos, false);
-         if (current != null) {
-            return current;
-         }
-      }
-
-      // Pre-aim: while walking on the bridge towards the edge there is nothing
-      // to place yet, but the head (server rotation) already looks at the next
-      // bridge cell, so the block goes in the very tick the player steps over
-      // it. Especially with ClientLock off this is what the player sees in
-      // third person: the character looking at the nearest bridge block.
-      if (this.bridgeLocked) {
-         BlockPos aheadPos = targetPos.offset(this.bridgeDirX, 0, this.bridgeDirZ);
-         if (!aheadPos.equals(targetPos)
-            && minecraft.level.getBlockState(aheadPos).canBeReplaced()
-            && !new AABB(aheadPos).intersects(player.getBoundingBox())) {
-            return this.findTargetAt(minecraft, aheadPos, true);
-         }
+         return this.findTargetAt(minecraft, targetPos);
       }
       return null;
    }
 
-   private PlacementTarget findTargetAt(Minecraft minecraft, BlockPos targetPos, boolean preAim) {
+   private PlacementTarget findTargetAt(Minecraft minecraft, BlockPos targetPos) {
       LocalPlayer player = minecraft.player;
 
       // Bug#1: while moving, only the support behind the player along the
@@ -484,8 +452,7 @@ public final class ScaffoldModule extends ClientModule {
          PlacementTarget candidate = new PlacementTarget(
             targetPos,
             new BlockHitResult(hitPoint, face, supportPos, false),
-            rotation,
-            preAim);
+            rotation);
          if (locked) {
             return candidate;
          }
@@ -519,8 +486,7 @@ public final class ScaffoldModule extends ClientModule {
       return new PlacementTarget(
          targetPos,
          new BlockHitResult(hit.getLocation(), face, supportPos, false),
-         Rotation.lookingAt(hit.getLocation(), eye),
-         false);
+         Rotation.lookingAt(hit.getLocation(), eye));
    }
 
    private boolean validSupport(Minecraft minecraft, BlockPos supportPos) {
@@ -546,23 +512,17 @@ public final class ScaffoldModule extends ClientModule {
    }
 
    private boolean applyRotation(LocalPlayer player, Rotation desired) {
-      // ClientLock on = rotation is shown on the player's screen (like
-      // AttackAura's HolyWorld visible path, updateExact with visible=true).
-      // ClientLock off = exactly how AttackAura submits its silent rotations:
-      // RotationManager.update with visible=false. The manager then turns only
-      // the server rotation (GCD-quantized) while the camera stays on the free
-      // look — free from first and third person — and the render layer shows
-      // the character's head aiming at the bridge, like Aura aims at a target.
+      // Add#2: ClientLock on = rotation is shown on the player's screen,
+      // off = silent rotation with a free camera (FreeLookController).
+      // Submitted with updateExact in both cases: the exact aim is what the
+      // server accepts for the placement, and this is the behaviour that
+      // bridged cleanly at high BPS (see commit c04b8752). The manager-based
+      // GCD-quantized submit used briefly by 79a3c591 could land degrees off
+      // the clicked face and got placements rolled back ("flagging").
       boolean visible = this.clientLock.get();
       if (this.rotate.is("Normal")) {
          this.smoother.reset();
-         if (!visible) {
-            RotationManager.update(desired, 360.0F, 360.0F, 360.0F, 360.0F,
-               ROTATION_TIMEOUT_TICKS, ROTATION_PRIORITY, false);
-            return RotationManager.INSTANCE.isAimingAtPriority(ROTATION_PRIORITY)
-               && this.isCloseToRotation(player, desired, 2.5F);
-         }
-         return RotationManager.updateExact(desired, ROTATION_PRIORITY, ROTATION_TIMEOUT_TICKS, true);
+         return RotationManager.updateExact(desired, ROTATION_PRIORITY, ROTATION_TIMEOUT_TICKS, visible);
       }
 
       if (this.rotate.is("Smooth")) {
@@ -576,7 +536,7 @@ public final class ScaffoldModule extends ClientModule {
             desired.getYaw(), desired.getPitch(),
             this.smoothSpeed.get(), this.smoothAccel.get(), this.smoothBrake.get());
          Rotation stepped = new Rotation(next[0], Mth.clamp(next[1], -90.0F, 90.0F));
-         if (!this.submitRotation(stepped, visible)) {
+         if (!RotationManager.updateExact(stepped, ROTATION_PRIORITY, ROTATION_TIMEOUT_TICKS, visible)) {
             this.smoother.reset();
             return false;
          }
@@ -589,20 +549,10 @@ public final class ScaffoldModule extends ClientModule {
       float yaw = this.stepAngle(player.getYRot(), desired.getYaw(), 35.0F);
       float pitch = this.stepAngle(player.getXRot(), desired.getPitch(), 35.0F);
       Rotation next = new Rotation(yaw, Mth.clamp(pitch, -90.0F, 90.0F));
-      if (!this.submitRotation(next, visible)) {
+      if (!RotationManager.updateExact(next, ROTATION_PRIORITY, ROTATION_TIMEOUT_TICKS, visible)) {
          return false;
       }
       return this.isCloseToRotation(player, desired, 2.0F);
-   }
-
-   /** Submits a caller-stepped rotation the AttackAura way (see applyRotation). */
-   private boolean submitRotation(Rotation rotation, boolean visible) {
-      if (!visible) {
-         RotationManager.update(rotation, 360.0F, 360.0F, 360.0F, 360.0F,
-            ROTATION_TIMEOUT_TICKS, ROTATION_PRIORITY, false);
-         return RotationManager.INSTANCE.isAimingAtPriority(ROTATION_PRIORITY);
-      }
-      return RotationManager.updateExact(rotation, ROTATION_PRIORITY, ROTATION_TIMEOUT_TICKS, true);
    }
 
    private boolean isCloseToRotation(LocalPlayer player, Rotation target, float tolerance) {
@@ -728,6 +678,6 @@ public final class ScaffoldModule extends ClientModule {
       return this.mode.get();
    }
 
-   private record PlacementTarget(BlockPos target, BlockHitResult hit, Rotation rotation, boolean preAim) {
+   private record PlacementTarget(BlockPos target, BlockHitResult hit, Rotation rotation) {
    }
 }
