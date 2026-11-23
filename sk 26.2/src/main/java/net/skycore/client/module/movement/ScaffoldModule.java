@@ -7,8 +7,8 @@ import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.PacketListener;
 import net.minecraft.network.protocol.Packet;
+import net.minecraft.network.protocol.common.ClientboundDisconnectPacket;
 import net.minecraft.network.protocol.game.ClientboundBossEventPacket;
-import net.minecraft.network.protocol.game.ClientboundDisconnectPacket;
 import net.minecraft.network.protocol.game.ClientboundPlayerPositionPacket;
 import net.minecraft.network.protocol.game.ClientboundSetActionBarTextPacket;
 import net.minecraft.network.protocol.game.ClientboundSetHealthPacket;
@@ -16,8 +16,14 @@ import net.minecraft.network.protocol.game.ClientboundSetTimePacket;
 import net.minecraft.network.protocol.game.ClientboundSoundPacket;
 import net.minecraft.network.protocol.game.ClientboundStopSoundPacket;
 import net.minecraft.network.protocol.game.ClientboundSystemChatPacket;
+import net.minecraft.network.protocol.game.ServerboundContainerClosePacket;
 import net.minecraft.network.protocol.game.ServerboundMovePlayerPacket;
+import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
+import net.minecraft.network.protocol.game.ServerboundPlayerInputPacket;
 import net.minecraft.network.protocol.game.ServerboundSetCarriedItemPacket;
+import net.minecraft.network.protocol.game.ServerboundSwingPacket;
+import net.minecraft.network.protocol.game.ServerboundUseItemOnPacket;
+import net.minecraft.network.protocol.game.ServerboundUseItemPacket;
 import net.minecraft.util.Mth;
 import net.minecraft.world.InteractionHand;
 import net.minecraft.world.entity.player.Input;
@@ -25,8 +31,14 @@ import net.minecraft.world.inventory.ContainerInput;
 import net.minecraft.world.item.BlockItem;
 import net.minecraft.world.item.ItemStack;
 import net.minecraft.world.level.ClipContext;
+import net.minecraft.world.level.block.BaseEntityBlock;
 import net.minecraft.world.level.block.Block;
+import net.minecraft.world.level.block.Blocks;
+import net.minecraft.world.level.block.ButtonBlock;
+import net.minecraft.world.level.block.DoorBlock;
 import net.minecraft.world.level.block.FallingBlock;
+import net.minecraft.world.level.block.LeverBlock;
+import net.minecraft.world.level.block.TrapDoorBlock;
 import net.minecraft.world.level.block.state.BlockState;
 import net.minecraft.world.phys.AABB;
 import net.minecraft.world.phys.BlockHitResult;
@@ -34,9 +46,11 @@ import net.minecraft.world.phys.HitResult;
 import net.minecraft.world.phys.Vec3;
 import net.skycore.client.SkycoreClient;
 import net.skycore.client.combat.FreeLookController;
+import net.skycore.client.combat.MouseSensitivity;
 import net.skycore.client.combat.Rotation;
 import net.skycore.client.combat.RotationController;
 import net.skycore.client.combat.RotationManager;
+import net.skycore.client.mixin.ClientLevelGetDestroyingBlocksAccessor;
 import net.skycore.client.event.PlayerInputEvent;
 import net.skycore.client.event.PlayerTickEndEvent;
 import net.skycore.client.event.Subscription;
@@ -51,7 +65,9 @@ import net.skycore.client.util.UseItemHelper;
 /**
  * Eagle Scaffold with optional automatic bridge placement for Minecraft 26.2 / SkyCore.
  *
- * <p>The only module mode is still {@code Eagle}. AutoPlace is an independent opt-in
+ * <p>Modes: {@code Eagle} (default) and {@code Telly} — a direct port of the
+ * CatLean Scaffold module ({@code su.catlean.client.features.modules.rage.Scaffold}),
+ * see the Telly section below. AutoPlace is an independent Eagle opt-in
  * feature: it fills the replaceable block below the player, using an adjacent solid
  * support block and the selected building block from the configured switch mode.
  *
@@ -77,7 +93,7 @@ public final class ScaffoldModule extends ClientModule {
    private static final int ROTATION_TIMEOUT_TICKS = 2;
    private static final double MAX_REACH = 4.5;
 
-   private final ModeSetting mode = this.add(new ModeSetting("Mode", "Eagle", "Eagle", "CatLean"));
+   private final ModeSetting mode = this.add(new ModeSetting("Mode", "Eagle", "Eagle", "Telly"));
    private final BooleanSetting autoPlace = this.add(new BooleanSetting("AutoPlace", false));
    private final NumberSetting cps = this.add(new NumberSetting("CPS", 10, 1, 20, 1));
    private final ModeSetting autoSwitch = this.add(new ModeSetting(
@@ -86,19 +102,23 @@ public final class ScaffoldModule extends ClientModule {
       "Rotate", "Normal", "Normal", "Smooth", "Linear", "None"));
    private final BooleanSetting clientLock = this.add(new BooleanSetting("ClientLock", true));
 
-   // CatLean mode settings (ported from the CatLean Scaffold module).
-   private final ModeSetting catLeanTiming = this.add(new ModeSetting("Timing", "GRIM", "SEQUENTIAL", "VANILLA", "GRIM"));
+   // Telly mode settings — names and defaults of the CatLean Scaffold settings
+   // (timing, tower, safe-walk, allow-shift, legit, save-angles, telly, clamp,
+   // air-place, grim-block-fly, keep-height, rotate, grim-silent). The block
+   // switch reuses the AutoSwitch setting above (CatLean's "switch" enum has
+   // the same Normal/Silent/Inventory/None values).
+   private final ModeSetting tellyTiming = this.add(new ModeSetting("Timing", "GRIM", "SEQUENTIAL", "VANILLA", "GRIM"));
    private final BooleanSetting tower = this.add(new BooleanSetting("Tower", true));
    private final BooleanSetting safeWalk = this.add(new BooleanSetting("SafeWalk", false));
    private final BooleanSetting allowShift = this.add(new BooleanSetting("AllowShift", false));
    private final BooleanSetting legit = this.add(new BooleanSetting("Legit", true));
    private final BooleanSetting saveAngles = this.add(new BooleanSetting("SaveAngles", true));
-   private final BooleanSetting telly = this.add(new BooleanSetting("Telly", false));
+   private final BooleanSetting tellySetting = this.add(new BooleanSetting("Telly", false));
    private final BooleanSetting clampSetting = this.add(new BooleanSetting("Clamp", true));
    private final BooleanSetting airPlace = this.add(new BooleanSetting("AirPlace", false));
-   private final BooleanSetting grimDelay = this.add(new BooleanSetting("GrimDelay", false));
-   private final BooleanSetting keepY = this.add(new BooleanSetting("KeepY", false));
-   private final BooleanSetting catLeanRotate = this.add(new BooleanSetting("CatLeanRotate", true));
+   private final BooleanSetting grimBlockFly = this.add(new BooleanSetting("GrimBlockFly", false));
+   private final BooleanSetting keepHeight = this.add(new BooleanSetting("KeepHeight", false));
+   private final BooleanSetting tellyRotate = this.add(new BooleanSetting("CatLeanRotate", true));
    private final BooleanSetting grimSilent = this.add(new BooleanSetting("GrimSilent", false));
 
    private boolean wasSneaking;
@@ -111,41 +131,52 @@ public final class ScaffoldModule extends ClientModule {
    private boolean moveFixActive;
    private float moveFixViewYaw;
 
-   private static final int CATLEAN_ROTATION_PRIORITY = 41;
-   private static final int CATLEAN_NO_KEEP_Y = -999;
-   private static final BlockPos[] CATLEAN_OFFSETS = {
+   private static final int TELLY_ROTATION_PRIORITY = 41;
+   private static final int TELLY_NO_VALUE = -999;
+   /** CatLean's static blockPoss table, same order. */
+   private static final BlockPos[] TELLY_OFFSETS = {
       new BlockPos(0, 0, 0), new BlockPos(-1, 0, 0), new BlockPos(1, 0, 0),
       new BlockPos(0, 0, 1), new BlockPos(0, 0, -1), new BlockPos(-2, 0, 0),
       new BlockPos(2, 0, 0), new BlockPos(0, 0, 2), new BlockPos(0, 0, -2),
       new BlockPos(0, -1, 0), new BlockPos(1, -1, 0), new BlockPos(-1, -1, 0),
       new BlockPos(0, -1, 1), new BlockPos(0, -1, -1)
    };
-   private int catLeanKeepYValue = CATLEAN_NO_KEEP_Y;
-   private Rotation catLeanSavedRotation;
-   private boolean catLeanShiftHeld;
-   private long lastTowerDipMillis;
+   /** CatLean's static "value": the fixed bridge Y, -999 while unset. */
+   private int tellyValue = TELLY_NO_VALUE;
+   /** CatLean's static "rotation": last computed bridge rotation. */
+   private Rotation tellyRotation;
+   /** CatLean's static "flag": SafeWalk currently holds shift for the player. */
+   private boolean tellyShiftFlag;
+   /** CatLean's WorldUtil.amount3: fall distance accumulated while airborne. */
+   private double tellyFallDistance;
+   /** CatLean StopWatch backing the tower dip (1500 ms). */
+   private long tellyTowerWatchMillis = System.currentTimeMillis();
+   /** Container slot swapped in by the last Inventory fetch, for the swap back. */
+   private int tellySwapSlot = -1;
+   /** Hit whose placement a GRIM (silent) action deferred to the next tick. */
+   private BlockHitResult tellyPendingHit;
    private final java.util.concurrent.ConcurrentLinkedQueue<DelayedPacket> delayedPackets =
       new java.util.concurrent.ConcurrentLinkedQueue<>();
 
    public ScaffoldModule() {
       super("Scaffold", "Eagle edge protection with optional automatic placement", ModuleCategory.MOVEMENT);
-      this.cps.visibleWhen(() -> this.autoPlace.get());
-      this.autoSwitch.visibleWhen(() -> this.autoPlace.get() || this.mode.is("CatLean"));
-      this.rotate.visibleWhen(() -> this.autoPlace.get());
-      this.clientLock.visibleWhen(() -> this.autoPlace.get() && !this.rotate.is("None"));
-      this.catLeanTiming.visibleWhen(() -> this.mode.is("CatLean"));
-      this.tower.visibleWhen(() -> this.mode.is("CatLean"));
-      this.safeWalk.visibleWhen(() -> this.mode.is("CatLean"));
-      this.allowShift.visibleWhen(() -> this.mode.is("CatLean") && !this.safeWalk.get());
-      this.legit.visibleWhen(() -> this.mode.is("CatLean"));
-      this.saveAngles.visibleWhen(() -> this.mode.is("CatLean"));
-      this.telly.visibleWhen(() -> this.mode.is("CatLean"));
-      this.clampSetting.visibleWhen(() -> this.mode.is("CatLean"));
-      this.airPlace.visibleWhen(() -> this.mode.is("CatLean"));
-      this.grimDelay.visibleWhen(() -> this.mode.is("CatLean"));
-      this.keepY.visibleWhen(() -> this.mode.is("CatLean"));
-      this.catLeanRotate.visibleWhen(() -> this.mode.is("CatLean"));
-      this.grimSilent.visibleWhen(() -> this.mode.is("CatLean"));
+      this.cps.visibleWhen(() -> this.autoPlace.get() && this.mode.is("Eagle"));
+      this.autoSwitch.visibleWhen(() -> this.autoPlace.get() || this.mode.is("Telly"));
+      this.rotate.visibleWhen(() -> this.autoPlace.get() && this.mode.is("Eagle"));
+      this.clientLock.visibleWhen(() -> this.autoPlace.get() && this.mode.is("Eagle") && !this.rotate.is("None"));
+      this.tellyTiming.visibleWhen(() -> this.mode.is("Telly"));
+      this.tower.visibleWhen(() -> this.mode.is("Telly"));
+      this.safeWalk.visibleWhen(() -> this.mode.is("Telly"));
+      this.allowShift.visibleWhen(() -> this.mode.is("Telly") && !this.safeWalk.get());
+      this.legit.visibleWhen(() -> this.mode.is("Telly"));
+      this.saveAngles.visibleWhen(() -> this.mode.is("Telly"));
+      this.tellySetting.visibleWhen(() -> this.mode.is("Telly"));
+      this.clampSetting.visibleWhen(() -> this.mode.is("Telly"));
+      this.airPlace.visibleWhen(() -> this.mode.is("Telly"));
+      this.grimBlockFly.visibleWhen(() -> this.mode.is("Telly"));
+      this.keepHeight.visibleWhen(() -> this.mode.is("Telly"));
+      this.tellyRotate.visibleWhen(() -> this.mode.is("Telly"));
+      this.grimSilent.visibleWhen(() -> this.mode.is("Telly"));
    }
 
    @Override
@@ -154,9 +185,10 @@ public final class ScaffoldModule extends ClientModule {
       this.nextPlaceNanos = 0L;
       this.bridgeXAxis = null;
       this.moveFixActive = false;
-      this.catLeanKeepYValue = CATLEAN_NO_KEEP_Y;
-      this.catLeanSavedRotation = null;
-      this.catLeanShiftHeld = false;
+      // CatLean update2(): only the fixed bridge Y resets on enable.
+      this.tellyValue = TELLY_NO_VALUE;
+      this.tellyPendingHit = null;
+      this.tellySwapSlot = -1;
       if (this.tickSubscription != null) {
          this.tickSubscription.close();
       }
@@ -175,15 +207,19 @@ public final class ScaffoldModule extends ClientModule {
          this.wasSneaking = false;
       }
       this.stopManagedRotation();
-      if (RotationManager.INSTANCE.isAimingAtPriority(CATLEAN_ROTATION_PRIORITY)) {
-         RotationManager.INSTANCE.stopRotationIfPriority(CATLEAN_ROTATION_PRIORITY);
+      if (RotationManager.INSTANCE.isAimingAtPriority(TELLY_ROTATION_PRIORITY)) {
+         RotationManager.INSTANCE.stopRotationIfPriority(TELLY_ROTATION_PRIORITY);
       }
-      this.flushDelayedPackets(true);
-      if (this.catLeanShiftHeld && minecraft != null) {
+      // CatLean update4(): release a SafeWalk-held shift unless the player
+      // physically holds left shift (GLFW 340), then flush delayed packets.
+      if (this.tellyShiftFlag && minecraft != null
+         && !org.lwjgl.glfw.GLFW.glfwGetKey(
+            minecraft.getWindow().handle(), org.lwjgl.glfw.GLFW.GLFW_KEY_LEFT_SHIFT)) {
          minecraft.options.keyShift.setDown(false);
-         this.catLeanShiftHeld = false;
       }
-      this.catLeanSavedRotation = null;
+      this.tellyShiftFlag = false;
+      this.tellyPendingHit = null;
+      this.flushDelayedPackets(true);
       this.moveFixActive = false;
       this.bridgeXAxis = null;
       if (this.tickSubscription != null) {
@@ -201,15 +237,17 @@ public final class ScaffoldModule extends ClientModule {
       if (minecraft.player == null || minecraft.level == null || minecraft.gameMode == null) {
          this.releaseManagedRotation();
          this.bridgeXAxis = null;
+         // CatLean drops its buffered packets while no world is loaded.
+         this.delayedPackets.clear();
          return;
       }
 
-      if (this.mode.is("CatLean")) {
+      if (this.mode.is("Telly")) {
          if (this.wasSneaking) {
             minecraft.options.keyShift.setDown(false);
             this.wasSneaking = false;
          }
-         this.onCatLeanTick(minecraft);
+         this.onTellyTick(minecraft);
          return;
       }
 
@@ -259,229 +297,363 @@ public final class ScaffoldModule extends ClientModule {
    }
 
    // ------------------------------------------------------------------
-   // CatLean mode. Ported from the CatLean Scaffold module (deobfuscated
-   // Kotlin): same settings, target search order, clamped hit point,
-   // tower/safe-walk/legit/keep-height behaviour and rotation timings,
-   // mapped onto SkyCore's RotationManager and switch machinery.
-   // Approximations where the CatLean services were not provided:
-   // InteractionManager.computeBlockPosWithFacing -> validSupport + eye
-   // raycast over the same neighbour offsets; WorldUtil.isFlag4 ->
-   // player.onGround(); WorldUtil.getAmount3 -> vertical velocity.
+   // Telly mode: a direct port of the CatLean Scaffold module
+   // (su.catlean.client.features.modules.rage.Scaffold in ctln/, deobf by
+   // pusia), transliterated method by method: applyGetY -> onTellyUpdate,
+   // applyGetBlockPos -> applyTellyBlockPos, fetchInventory,
+   // applyGetInventory, computeBlockPosWithFacing, checkGetItem and the
+   // grim-block-fly packet delay. Only the service boundaries differ:
+   //  - CatLean's RotationManager actions become SkyCore
+   //    RotationManager.updateExact submits. CatLean fires the placement
+   //    callback in PostSync (SEQUENTIAL), during the player update
+   //    (VANILLA/Look) or on the next player update (GRIM/Silent); the
+   //    first two therefore place right after the submit, GRIM defers
+   //    the hit to the next tick (tellyPendingHit). Rotations are GCD
+   //    quantized against the last server rotation, as in CatLean's
+   //    Rotation.getRotation().
+   //  - WorldUtil.getAmount3 (accumulated fall distance) is tracked
+   //    locally from the vertical velocity (CatLean uses its MoveEvent),
+   //    WorldUtil.isFlag4 is the movement-input check and getAmount4/5
+   //    are RotationController.getServerYaw/getServerPitch.
+   //  - SkyCore has no AirPlace module: the AirPlace setting stands in
+   //    for "AirPlace module enabled && its 2b2t bypass", and the bypass
+   //    packet sequence from CatLean's applyGetBlockPos runs inline.
+   //  - CatLean's decompiled container swaps pass button -1; the
+   //    vanilla-correct selected-slot button performs the same swap.
    // ------------------------------------------------------------------
 
-   private void onCatLeanTick(Minecraft minecraft) {
-      LocalPlayer player = minecraft.player;
-      boolean jumpDown = minecraft.options.keyJump.isDown();
-
-      // Telly: while holding jump and already falling, CatLean waits.
-      if (jumpDown && player.getDeltaMovement().y <= 0.0 && this.telly.get()) {
-         this.flushDelayedPackets(false);
-         return;
+   private void onTellyTick(Minecraft minecraft) {
+      // CatLean's RotationManager invokes a deferred SilentRotationAction
+      // callback at the start of the player update, before Scaffold's own
+      // handler: a GRIM placement queued last tick lands first.
+      if (this.tellyPendingHit != null) {
+         BlockHitResult pending = this.tellyPendingHit;
+         this.tellyPendingHit = null;
+         this.applyTellyBlockPos(minecraft, pending);
       }
-
-      int slot = this.fetchCatLeanBlock(player);
-      boolean canBuild = slot != -1
-         && (this.safeWalk.get() || !player.isShiftKeyDown() || this.allowShift.get());
-      if (!canBuild) {
-         this.submitSavedAngles(player);
-         this.flushDelayedPackets(false);
-         return;
-      }
-
-      if (jumpDown && !player.onGround()) {
-         this.catLeanKeepYValue = Mth.floor(player.getY() - 1.0);
-      }
-      if (player.getY() < this.catLeanKeepYValue) {
-         this.catLeanKeepYValue = CATLEAN_NO_KEEP_Y;
-      }
-
-      boolean fullBlock = this.isFullBlock(player, slot);
-      double baseY = fullBlock ? player.getY() : Math.ceil(player.getY());
-      BlockPos targetPos = (this.keepY.get() || this.telly.get()) && this.catLeanKeepYValue != CATLEAN_NO_KEEP_Y
-         ? BlockPos.containing(player.getX(), this.catLeanKeepYValue, player.getZ())
-         : BlockPos.containing(player.getX(), baseY, player.getZ()).below();
-
-      // SafeWalk: hold shift while the target cell is still empty.
-      if (this.safeWalk.get() && player.onGround()) {
-         boolean replaceable = minecraft.level.getBlockState(targetPos).canBeReplaced();
-         if (replaceable && !player.isShiftKeyDown()) {
-            minecraft.options.keyShift.setDown(true);
-            this.catLeanShiftHeld = true;
-         } else if (!replaceable && this.catLeanShiftHeld) {
-            minecraft.options.keyShift.setDown(false);
-            this.catLeanShiftHeld = false;
-         }
-      }
-
-      CatLeanTarget target = this.airPlace.get()
-         ? (minecraft.level.getBlockState(targetPos).canBeReplaced()
-            ? new CatLeanTarget(targetPos, Direction.DOWN) : null)
-         : this.computeCatLeanTarget(minecraft, targetPos);
-
-      if (target == null || this.legit.get() && this.hasGroundCollision(minecraft)) {
-         this.submitSavedAngles(player);
-         this.flushDelayedPackets(false);
-         return;
-      }
-
-      // Clamped hit point on the support face, as in CatLean: x/z clamped
-      // into the support block around the player, y near the top of the face.
-      BlockPos support = target.support();
-      Direction face = target.face();
-      Vec3 faceCenter = this.faceCentre(support, face);
-      double yFraction = player.getY() - Math.floor(player.getY());
-      double hitYOffset = yFraction == 0.5 ? 0.39 : 0.82 + ThreadLocalRandom.current().nextDouble(0.0, 0.16);
-      double hitX = this.clampSetting.get()
-         ? Mth.clamp(player.getX() + ThreadLocalRandom.current().nextDouble(-0.01, 0.01), support.getX(), support.getX() + 1.0)
-         : faceCenter.x;
-      double hitZ = this.clampSetting.get()
-         ? Mth.clamp(player.getZ() + ThreadLocalRandom.current().nextDouble(-0.01, 0.01), support.getZ(), support.getZ() + 1.0)
-         : faceCenter.z;
-      Vec3 hitPoint = new Vec3(hitX, support.getY() + hitYOffset, hitZ);
-      BlockHitResult hit = new BlockHitResult(hitPoint, face, support, false);
-      Rotation desired = Rotation.lookingAt(hitPoint, player.getEyePosition());
-      this.catLeanSavedRotation = desired;
-
-      if (this.submitCatLeanRotation(player, desired)) {
-         this.placeCatLean(minecraft, hit, desired);
-      }
+      this.onTellyUpdate(minecraft);
+      // CatLean onPostTasksProcess: release buffered packets past 500 ms.
       this.flushDelayedPackets(false);
    }
 
-   /** Searches the CatLean neighbour offsets for the first placeable cell with a support face. */
-   private CatLeanTarget computeCatLeanTarget(Minecraft minecraft, BlockPos targetPos) {
-      if (!minecraft.level.getBlockState(targetPos).canBeReplaced()) {
+   /** Transliteration of CatLean's applyGetY (its PlayerUpdateEvent handler). */
+   private void onTellyUpdate(Minecraft minecraft) {
+      LocalPlayer player = minecraft.player;
+      this.updateTellyFallDistance(player);
+      if (minecraft.options.keyJump.isDown() && this.tellyFallDistance <= 0.0 && this.tellySetting.get()) {
+         return;
+      }
+
+      int inventory = this.fetchTellyInventory(minecraft, false);
+      if (!(this.safeWalk.get() || !player.isShiftKeyDown() || this.allowShift.get()) || inventory == -1) {
+         return;
+      }
+
+      if (minecraft.options.keyJump.isDown() && !this.hasMovementInput(player)) {
+         this.tellyValue = (int) Math.floor(player.getY() - 1.0);
+      }
+      if (player.getY() < this.tellyValue) {
+         this.tellyValue = TELLY_NO_VALUE;
+      }
+
+      boolean fullBlock = this.checkFullBlock(player, inventory);
+      double baseY = fullBlock ? player.getY() : Math.ceil(player.getY());
+      BlockPos containing = (this.keepHeight.get() || this.tellySetting.get()) && this.tellyValue != TELLY_NO_VALUE
+         ? BlockPos.containing(player.getX(), this.tellyValue, player.getZ())
+         : BlockPos.containing(player.getX(), baseY, player.getZ()).below();
+      BlockPosWithFacing blockPosWithFacing = this.airPlace.get()
+         ? new BlockPosWithFacing(containing, Direction.DOWN)
+         : this.computeTellyBlockPosWithFacing(minecraft, containing);
+
+      if (this.safeWalk.get() && this.hasMovementInput(player)) {
+         if (!player.isShiftKeyDown() && minecraft.level.getBlockState(containing).canBeReplaced()) {
+            minecraft.options.keyShift.setDown(true);
+            this.tellyShiftFlag = true;
+         }
+         if (player.isShiftKeyDown() && !minecraft.level.getBlockState(containing).canBeReplaced()) {
+            minecraft.options.keyShift.setDown(false);
+            this.tellyShiftFlag = false;
+         }
+      }
+
+      double shrink = this.tellyTiming.is("VANILLA") ? -0.1 : -0.25;
+      if (blockPosWithFacing == null
+         || this.legit.get() && minecraft.level.getBlockCollisions(player,
+               player.getBoundingBox().inflate(shrink, 0.0, shrink).move(0.0, -0.1, 0.0))
+            .iterator().hasNext()) {
+         if (this.tellyRotation != null && this.saveAngles.get()) {
+            Rotation held = this.tellyRotate.get() && !this.grimSilent.get()
+               ? this.tellyRotation
+               : new Rotation(player.getYRot(), player.getXRot());
+            RotationManager.updateExact(held, TELLY_ROTATION_PRIORITY, ROTATION_TIMEOUT_TICKS,
+               this.tellyTiming.is("VANILLA"));
+         }
+         return;
+      }
+
+      BlockPos position = blockPosWithFacing.position();
+      Direction facing = blockPosWithFacing.facing();
+      BlockHitResult hitResult = new BlockHitResult(
+         new Vec3(
+            position.getX() + 0.5 + facing.getStepX() * 0.5,
+            position.getY() + 0.5 + facing.getStepY() * 0.5,
+            position.getZ() + 0.5 + facing.getStepZ() * 0.5),
+         facing, position, false);
+      double hitYOffset = player.getY() - Math.floor(player.getY()) == 0.5
+         ? 0.39
+         : 0.82 + ThreadLocalRandom.current().nextDouble(0.0, 0.16);
+      double hitX = this.clampSetting.get()
+         ? Mth.clamp(player.getX() + ThreadLocalRandom.current().nextDouble(-0.01, 0.01),
+            hitResult.getBlockPos().getX(), hitResult.getBlockPos().getX() + 1.0)
+         : hitResult.getLocation().x;
+      double hitZ = this.clampSetting.get()
+         ? Mth.clamp(player.getZ() + ThreadLocalRandom.current().nextDouble(-0.01, 0.01),
+            hitResult.getBlockPos().getZ(), hitResult.getBlockPos().getZ() + 1.0)
+         : hitResult.getLocation().z;
+      hitResult = new BlockHitResult(new Vec3(hitX, position.getY() + hitYOffset, hitZ), facing, position, false);
+
+      Rotation rotation = this.computeTellyRotation(player, hitResult.getLocation());
+      if (this.tellyRotate.get() && this.grimSilent.get()) {
+         this.sendPosRot(player, rotation.getYaw(), rotation.getPitch());
+      }
+
+      boolean submitted = !this.tellyRotate.get() || this.grimSilent.get()
+         || RotationManager.updateExact(rotation, TELLY_ROTATION_PRIORITY, ROTATION_TIMEOUT_TICKS,
+            this.tellyTiming.is("VANILLA"));
+      if (submitted) {
+         // CatLean queues a RotationAction whose callback is
+         // applyGetBlockPos: SEQUENTIAL and VANILLA fire it this tick,
+         // GRIM (SilentRotationAction) on the next player update.
+         if (this.tellyTiming.is("GRIM")) {
+            this.tellyPendingHit = hitResult;
+         } else {
+            this.applyTellyBlockPos(minecraft, hitResult);
+         }
+      }
+      this.tellyRotation = rotation;
+   }
+
+   /** Transliteration of CatLean's applyGetBlockPos (the rotation callback). */
+   private void applyTellyBlockPos(Minecraft minecraft, BlockHitResult hitResult) {
+      LocalPlayer player = minecraft.player;
+      if (minecraft.options.keyJump.isDown() && this.tellyFallDistance <= 0.0 && this.tellySetting.get()) {
+         return;
+      }
+      int inventory = this.fetchTellyInventory(minecraft, true);
+      if (inventory == -1) {
+         return;
+      }
+
+      if (minecraft.options.keyJump.isDown() && !this.hasMovementInput(player) && this.tower.get()) {
+         long now = System.currentTimeMillis();
+         boolean dip = now - this.tellyTowerWatchMillis >= 1500L;
+         if (dip) {
+            this.tellyTowerWatchMillis = now;
+         }
+         player.setDeltaMovement(player.getDeltaMovement().x, dip ? -0.28 : 0.42, player.getDeltaMovement().z);
+      } else {
+         this.tellyTowerWatchMillis = System.currentTimeMillis();
+      }
+
+      Block supportBlock = minecraft.level.getBlockState(hitResult.getBlockPos()).getBlock();
+      boolean interactive = this.testInteractiveBlock(supportBlock) && !player.isShiftKeyDown();
+      if (interactive) {
+         this.sendSneakInput(minecraft, true);
+      }
+
+      boolean mainHand = inventory != -2;
+      InteractionHand hand = mainHand ? InteractionHand.MAIN_HAND : InteractionHand.OFF_HAND;
+      if (this.airPlace.get()) {
+         // CatLean also requires its AirPlace module enabled with bypass
+         // on; the AirPlace setting covers both here (see header). The
+         // vanilla useItem call sends its own use packet first, exactly
+         // as ContainerUtil.computeInteractionResult does in CatLean.
+         minecraft.gameMode.useItem(player, hand);
+         this.sendSequencedPacket(minecraft, sequence -> new ServerboundUseItemPacket(
+            hand, sequence, RotationController.getServerYaw(), RotationController.getServerPitch()));
+         this.sendPacket(player, new ServerboundPlayerActionPacket(
+            ServerboundPlayerActionPacket.Action.SWAP_ITEM_WITH_OFFHAND, BlockPos.ZERO, Direction.DOWN));
+         this.sendSequencedPacket(minecraft, sequence -> new ServerboundUseItemOnPacket(hand, hitResult, sequence));
+         player.swing(hand);
+         this.sendPacket(player, new ServerboundPlayerActionPacket(
+            ServerboundPlayerActionPacket.Action.SWAP_ITEM_WITH_OFFHAND, BlockPos.ZERO, Direction.DOWN));
+         player.swing(hand);
+      } else {
+         int count = player.getMainHandItem().getCount();
+         if (this.grimBlockFly.get()) {
+            this.sendPacket(player, new ServerboundPlayerActionPacket(
+               ServerboundPlayerActionPacket.Action.SWAP_ITEM_WITH_OFFHAND, BlockPos.ZERO, Direction.DOWN));
+         }
+         minecraft.gameMode.useItemOn(player, hand, hitResult);
+         this.sendPacket(player, new ServerboundSwingPacket(hand));
+         if (this.grimBlockFly.get()) {
+            this.sendPacket(player, new ServerboundPlayerActionPacket(
+               ServerboundPlayerActionPacket.Action.SWAP_ITEM_WITH_OFFHAND, BlockPos.ZERO, Direction.DOWN));
+            player.getMainHandItem().setCount(count);
+         }
+      }
+
+      this.tellyValue = hitResult.getBlockPos().getY();
+      if (interactive) {
+         this.sendSneakInput(minecraft, false);
+      }
+      this.applyTellyGetInventory(minecraft, inventory);
+      if (this.tellyRotate.get() && this.grimSilent.get()) {
+         this.sendPosRot(player, player.getYRot(), player.getXRot());
+      }
+   }
+
+   /** Transliteration of CatLean's Scaffold.computeBlockPosWithFacing. */
+   private BlockPosWithFacing computeTellyBlockPosWithFacing(Minecraft minecraft, BlockPos blockPos) {
+      if (!minecraft.level.getBlockState(blockPos).canBeReplaced()) {
          return null;
       }
-      for (BlockPos offset : CATLEAN_OFFSETS) {
-         CatLeanTarget target = this.findCatLeanSupport(minecraft, targetPos.offset(offset));
-         if (target != null) {
-            return target;
+      for (BlockPos offset : TELLY_OFFSETS) {
+         BlockPosWithFacing found = this.computeTellyFacing(minecraft, blockPos.offset(offset));
+         if (found != null) {
+            return found;
          }
       }
       return null;
-   }
-
-   private CatLeanTarget findCatLeanSupport(Minecraft minecraft, BlockPos cell) {
-      LocalPlayer player = minecraft.player;
-      if (!minecraft.level.getBlockState(cell).canBeReplaced()) {
-         return null;
-      }
-      Vec3 eye = player.getEyePosition();
-      double reach = Math.min(MAX_REACH, player.blockInteractionRange());
-      for (Direction face : Direction.values()) {
-         BlockPos support = cell.relative(face.getOpposite());
-         if (!this.validSupport(minecraft, support)
-            || new AABB(support).intersects(player.getBoundingBox())) {
-            continue;
-         }
-         Vec3 hitPoint = this.faceCentre(support, face);
-         if (eye.distanceToSqr(hitPoint) > reach * reach) {
-            continue;
-         }
-         BlockHitResult visible = minecraft.level.clip(new ClipContext(
-            eye,
-            hitPoint.add(hitPoint.subtract(eye).normalize().scale(0.001)),
-            ClipContext.Block.OUTLINE,
-            ClipContext.Fluid.NONE,
-            player));
-         if (visible.getType() == HitResult.Type.BLOCK
-            && visible.getBlockPos().equals(support)
-            && visible.getDirection() == face
-            && !visible.isInside()) {
-            return new CatLeanTarget(support, face);
-         }
-      }
-      return null;
-   }
-
-   /** Legit: do not place while a (shrunk) collision box still touches ground below. */
-   private boolean hasGroundCollision(Minecraft minecraft) {
-      LocalPlayer player = minecraft.player;
-      double shrink = this.catLeanTiming.is("VANILLA") ? -0.1 : -0.25;
-      AABB box = player.getBoundingBox().inflate(shrink, 0.0, shrink).move(0.0, -0.1, 0.0);
-      return minecraft.level.getBlockCollisions(player, box).iterator().hasNext();
    }
 
    /**
-    * Submits the CatLean rotation for the current Timing and reports whether
-    * the block may be placed this tick: SEQUENTIAL places right after the
-    * submit, VANILLA (visible) and GRIM (silent) wait until the rotation has
-    * actually arrived. With GrimSilent the rotation goes through raw PosRot
-    * packets around the placement instead of the rotation manager.
+    * Transliteration of InteractionManager.computeBlockPosWithFacing: the
+    * first direction whose neighbour is not replaceable. The original
+    * performs no raycast, reach or collision check here.
     */
-   private boolean submitCatLeanRotation(LocalPlayer player, Rotation desired) {
-      if (!this.catLeanRotate.get() || this.grimSilent.get()) {
-         return true;
-      }
-      boolean visible = this.catLeanTiming.is("VANILLA");
-      if (!RotationManager.updateExact(desired, CATLEAN_ROTATION_PRIORITY, ROTATION_TIMEOUT_TICKS, visible)) {
-         return false;
-      }
-      return this.catLeanTiming.is("SEQUENTIAL")
-         || this.isCloseToRotation(player, desired, 2.5F);
-   }
-
-   /** Keeps the last bridge angles while there is nothing to place (SaveAngles). */
-   private void submitSavedAngles(LocalPlayer player) {
-      if (this.catLeanSavedRotation == null || !this.saveAngles.get()
-         || !this.catLeanRotate.get() || this.grimSilent.get()) {
-         return;
-      }
-      boolean visible = this.catLeanTiming.is("VANILLA");
-      RotationManager.updateExact(this.catLeanSavedRotation, CATLEAN_ROTATION_PRIORITY, ROTATION_TIMEOUT_TICKS, visible);
-   }
-
-   private void placeCatLean(Minecraft minecraft, BlockHitResult hit, Rotation desired) {
-      LocalPlayer player = minecraft.player;
-
-      // Tower: hold jump in the air to keep boosting upwards, with the
-      // periodic small dip CatLean applies roughly every 1.5 s.
-      if (minecraft.options.keyJump.isDown() && !player.onGround() && this.tower.get()) {
-         long now = System.currentTimeMillis();
-         boolean dip = now - this.lastTowerDipMillis >= 1500L;
-         if (dip) {
-            this.lastTowerDipMillis = now;
+   private BlockPosWithFacing computeTellyFacing(Minecraft minecraft, BlockPos blockPos) {
+      // CatLean's static direction -> offset map, in iteration order.
+      Direction[] directions = {
+         Direction.UP, Direction.DOWN, Direction.EAST, Direction.WEST, Direction.NORTH, Direction.SOUTH};
+      BlockPos[] offsets = {
+         new BlockPos(0, -1, 0), new BlockPos(0, 1, 0), new BlockPos(-1, 0, 0),
+         new BlockPos(1, 0, 0), new BlockPos(0, 0, 1), new BlockPos(0, 0, -1)};
+      for (int i = 0; i < directions.length; i++) {
+         BlockPos offset = blockPos.offset(offsets[i]);
+         if (!minecraft.level.getBlockState(offset).canBeReplaced()) {
+            return new BlockPosWithFacing(offset, directions[i]);
          }
-         player.setDeltaMovement(player.getDeltaMovement().x, dip ? -0.28 : 0.42, player.getDeltaMovement().z);
       }
-
-      boolean packetRotation = this.grimSilent.get() && this.catLeanRotate.get();
-      if (packetRotation) {
-         this.sendPosRot(player, desired.getYaw(), desired.getPitch());
-      }
-      BlockPos placedPos = hit.getBlockPos().relative(hit.getDirection());
-      this.placeBlock(minecraft, new PlacementTarget(placedPos, hit, desired));
-      if (packetRotation) {
-         this.sendPosRot(player, player.getYRot(), player.getXRot());
-      }
-      this.catLeanKeepYValue = hit.getBlockPos().getY();
+      return null;
    }
 
-   private void sendPosRot(LocalPlayer player, float yaw, float pitch) {
-      if (player.connection != null) {
-         player.connection.send(new ServerboundMovePlayerPacket.PosRot(
-            player.getX(), player.getY(), player.getZ(), yaw, pitch,
-            player.onGround(), player.horizontalCollision));
-      }
-   }
-
-   /** -2 = offhand, -1 = nothing, otherwise a hotbar marker like CatLean's fetchInventory. */
-   private int fetchCatLeanBlock(LocalPlayer player) {
-      if (this.isCatLeanBlock(player.getOffhandItem())) {
+   /**
+    * Transliteration of CatLean's fetchInventory: -2 = offhand, otherwise
+    * the selected slot (with the switch applied when {@code forUse}), or
+    * -1 when no valid block is available for the current switch mode.
+    */
+   private int fetchTellyInventory(Minecraft minecraft, boolean forUse) {
+      LocalPlayer player = minecraft.player;
+      if (this.isTellyBlock(player.getOffhandItem())) {
          return -2;
       }
-      if (this.isCatLeanBlock(player.getMainHandItem())) {
+      if (this.isTellyBlock(player.getMainHandItem())) {
          return player.getInventory().getSelectedSlot();
       }
-      return this.findHotbarBlockSlot(player) >= 0 || this.findInventoryBlockSlot(player) >= 0
-         ? player.getInventory().getSelectedSlot()
-         : -1;
+
+      int hotbarSlot = this.findTellyHotbarSlot(player);
+      int inventorySlot = this.findTellyInventorySlot(player);
+      if (!forUse) {
+         return switch (this.autoSwitch.get()) {
+            case "Inventory" -> inventorySlot >= 0 ? player.getInventory().getSelectedSlot() : -1;
+            case "Normal", "Silent" -> hotbarSlot >= 0 ? player.getInventory().getSelectedSlot() : -1;
+            default -> -1;
+         };
+      }
+      return switch (this.autoSwitch.get()) {
+         case "Inventory" -> {
+            if (inventorySlot < 0) {
+               yield -1;
+            }
+            int selected = player.getInventory().getSelectedSlot();
+            this.swapContainerSlot(minecraft, inventorySlot, selected);
+            this.tellySwapSlot = inventorySlot;
+            yield selected;
+         }
+         case "Normal", "Silent" -> {
+            if (hotbarSlot < 0) {
+               yield -1;
+            }
+            int selected = player.getInventory().getSelectedSlot();
+            this.selectSlotSilently(minecraft, hotbarSlot);
+            yield selected;
+         }
+         default -> -1;
+      };
    }
 
-   private boolean isFullBlock(LocalPlayer player, int slot) {
-      ItemStack stack = slot == -2 ? player.getOffhandItem()
-         : player.getInventory().getItem(Math.max(0, slot));
+   /** Transliteration of CatLean's applyGetInventory (the swap back). */
+   private void applyTellyGetInventory(Minecraft minecraft, int inventory) {
+      if (inventory == -2 || inventory == -1) {
+         return;
+      }
+      LocalPlayer player = minecraft.player;
+      switch (this.autoSwitch.get()) {
+         case "Inventory" -> {
+            if (this.tellySwapSlot >= 0) {
+               this.swapContainerSlot(minecraft, this.tellySwapSlot,
+                  player.getInventory().getSelectedSlot());
+               this.tellySwapSlot = -1;
+            }
+         }
+         case "Silent" -> this.selectSlotSilently(minecraft, inventory);
+         default -> {
+         }
+      }
+   }
+
+   /** CatLean's InventoryManager.fetchInventory: first valid hotbar slot. */
+   private int findTellyHotbarSlot(LocalPlayer player) {
+      for (int slot = 0; slot < 9; slot++) {
+         if (this.isTellyBlock(player.getInventory().getItem(slot))) {
+            return slot;
+         }
+      }
+      return -1;
+   }
+
+   /**
+    * CatLean's InventoryManager.fetchInventory2 as a container slot id:
+    * inventory indices 36 down to 0 (index 36 is the boots slot, an
+    * original quirk), hotbar indices converted with +36.
+    */
+   private int findTellyInventorySlot(LocalPlayer player) {
+      for (int i = 36; i >= 0; i--) {
+         if (this.isTellyBlock(player.getInventory().getItem(i))) {
+            return i < 9 ? i + 36 : i;
+         }
+      }
+      return -1;
+   }
+
+   /** CatLean's applyGetInventory2: silent slot select (local + packet). */
+   private void selectSlotSilently(Minecraft minecraft, int slot) {
+      LocalPlayer player = minecraft.player;
+      if (slot >= 0 && slot < 9 && player.getInventory().getSelectedSlot() != slot) {
+         player.getInventory().setSelectedSlot(slot);
+         this.sendPacket(player, new ServerboundSetCarriedItemPacket(slot));
+      }
+   }
+
+   /** CatLean's ContainerUtil.applyHandleContainerInput with close packet. */
+   private void swapContainerSlot(Minecraft minecraft, int slot, int button) {
+      LocalPlayer player = minecraft.player;
+      minecraft.gameMode.handleContainerInput(
+         player.containerMenu.containerId, slot, button, ContainerInput.SWAP, player);
+      this.sendPacket(player, new ServerboundContainerClosePacket(player.containerMenu.containerId));
+   }
+
+   /** Transliteration of CatLean's checkGetItem(int): full-block shape check. */
+   private boolean checkFullBlock(LocalPlayer player, int inventory) {
+      ItemStack stack;
+      if (inventory == -2) {
+         stack = player.getOffhandItem();
+      } else if (inventory != -1) {
+         stack = player.getInventory().getItem(inventory);
+      } else {
+         return true;
+      }
       if (stack.getItem() instanceof BlockItem blockItem) {
          return Block.isShapeFullBlock(
             blockItem.getBlock().defaultBlockState().getCollisionShape(player.level(), BlockPos.ZERO));
@@ -489,19 +661,115 @@ public final class ScaffoldModule extends ClientModule {
       return true;
    }
 
-   private boolean isCatLeanBlock(ItemStack stack) {
+   /** Transliteration of CatLean's checkGetItem(ItemStack). */
+   private boolean isTellyBlock(ItemStack stack) {
       return !stack.isEmpty()
          && stack.getItem() instanceof BlockItem blockItem
          && !blockItem.getBlock().defaultBlockState().canBeReplaced()
          && !(blockItem.getBlock() instanceof FallingBlock);
    }
 
-   private record CatLeanTarget(BlockPos support, Direction face) {
+   /** Transliteration of InteractionManager.testBlock. */
+   private boolean testInteractiveBlock(Block block) {
+      return block instanceof BaseEntityBlock
+         || block == Blocks.CRAFTING_TABLE
+         || block instanceof TrapDoorBlock
+         || block instanceof LeverBlock
+         || block instanceof ButtonBlock
+         || block instanceof DoorBlock;
    }
 
-   // GrimDelay: buffer incoming packets for up to 500 ms while active
-   // (CatLean's grim-block-fly). Position/disconnect packets flush the
-   // buffer and always pass through, chat/time/sound/health/bossbar too.
+   /** WorldUtil.isFlag4: the player gives movement input. */
+   private boolean hasMovementInput(LocalPlayer player) {
+      return player.input != null
+         && (player.input.getMoveVector().y != 0.0F || player.input.getMoveVector().x != 0.0F);
+   }
+
+   /** WorldUtil.amount3 upkeep: fall distance accumulated while airborne. */
+   private void updateTellyFallDistance(LocalPlayer player) {
+      if (!player.onGround() && !player.isInLiquid()) {
+         double vertical = player.getDeltaMovement().y;
+         if (vertical < 0.0) {
+            this.tellyFallDistance -= vertical;
+         }
+      } else {
+         this.tellyFallDistance = 0.0;
+      }
+   }
+
+   /**
+    * CatLean's RotationManager.computeRotation plus Rotation.getRotation:
+    * absolute angles towards the hit point, GCD-quantized against the
+    * last server rotation (WorldUtil.getAmount4/5).
+    */
+   private Rotation computeTellyRotation(LocalPlayer player, Vec3 target) {
+      float lastYaw = RotationController.getServerYaw();
+      float lastPitch = RotationController.getServerPitch();
+      double dx = target.x - player.getX();
+      double dz = target.z - player.getZ();
+      float yaw = (float) Mth.wrapDegrees(Math.toDegrees(Math.atan2(dz, dx)) - 90.0);
+      float pitch = (float) -Math.toDegrees(Math.atan2(
+         target.y - (player.getY() + player.getEyeHeight()), Math.hypot(dx, dz)));
+      float gcd = MouseSensitivity.getGCDValue();
+      if (gcd != 0.0F) {
+         yaw = lastYaw + Math.round(Mth.wrapDegrees(yaw - lastYaw) / gcd) * gcd;
+         pitch = Mth.clamp(lastPitch + Math.round((pitch - lastPitch) / gcd) * gcd, -90.0F, 90.0F);
+      }
+      return new Rotation(yaw, pitch);
+   }
+
+   /** Transliteration of InputPacketUtil.applyWrite (no ViaFabricPlus branch). */
+   private void sendSneakInput(Minecraft minecraft, boolean sneak) {
+      LocalPlayer player = minecraft.player;
+      Input current = player.input != null ? player.input.keyPresses
+         : new Input(false, false, false, false, false, false, false);
+      Input forced = new Input(current.forward(), current.backward(), current.left(),
+         current.right(), current.jump(), sneak, current.sprint());
+      if (player.input != null) {
+         player.input.keyPresses = forced;
+      }
+      this.sendPacket(player, new ServerboundPlayerInputPacket(forced));
+      player.setShiftKeyDown(sneak);
+      minecraft.options.keyShift.setDown(sneak);
+   }
+
+   /** CatLean's PacketUtil.applyCurrentSequence. */
+   private void sendSequencedPacket(Minecraft minecraft, java.util.function.IntFunction<Packet<?>> factory) {
+      LocalPlayer player = minecraft.player;
+      if (player == null || player.connection == null
+         || !(minecraft.level instanceof ClientLevelGetDestroyingBlocksAccessor accessor)) {
+         return;
+      }
+      var handler = accessor.skycore$getBlockStatePredictionHandler().startPredicting();
+      try {
+         this.sendPacket(player, factory.apply(handler.currentSequence()));
+      } finally {
+         handler.close();
+      }
+   }
+
+   private void sendPosRot(LocalPlayer player, float yaw, float pitch) {
+      this.sendPacket(player, new ServerboundMovePlayerPacket.PosRot(
+         player.getX(), player.getY(), player.getZ(), yaw, pitch,
+         player.onGround(), player.horizontalCollision));
+   }
+
+   private void sendPacket(LocalPlayer player, Packet<?> packet) {
+      if (player != null && player.connection != null) {
+         player.connection.send(packet);
+      }
+   }
+
+   private record BlockPosWithFacing(BlockPos position, Direction facing) {
+   }
+
+   // GrimBlockFly: CatLean's grim-block-fly packet delay. Incoming
+   // packets are buffered for 500 ms (its BTPacket queue); chat, time,
+   // sound, action bar, health and boss bar packets pass through, and a
+   // position or disconnect packet flushes the buffer immediately. The
+   // mixin hook in ConnectionPrepareViaNativeConnectMixin feeds packets
+   // into handlePacketDelay because SkyCore's PacketReceiveEvent is only
+   // published for a few packet types.
 
    private record DelayedPacket(Packet<?> packet, long receivedAt) {
    }
@@ -509,7 +777,7 @@ public final class ScaffoldModule extends ClientModule {
    public static boolean handlePacketDelay(Packet<?> packet) {
       ScaffoldModule module = SkycoreClient.modules() == null ? null
          : SkycoreClient.modules().get(ScaffoldModule.class).orElse(null);
-      if (module == null || !module.isEnabled() || !module.mode.is("CatLean") || !module.grimDelay.get()) {
+      if (module == null || !module.isEnabled() || !module.mode.is("Telly") || !module.grimBlockFly.get()) {
          return false;
       }
       if (packet instanceof ClientboundPlayerPositionPacket || packet instanceof ClientboundDisconnectPacket) {
@@ -556,16 +824,18 @@ public final class ScaffoldModule extends ClientModule {
       if (!this.isEnabled()) {
          return;
       }
-      if (this.mode.is("CatLean")) {
-         // Silent CatLean timings turn only the server rotation; keep the
+      if (this.mode.is("Telly")) {
+         // Silent Telly timings turn only the server rotation; keep the
          // world-space walking direction tied to the free camera, exactly as
          // in Eagle's silent mode. VANILLA shows the rotation, so no fix.
+         // (CatLean delegates this to its MoveFix module; SkyCore folds the
+         // equivalent correction into the module, as in Eagle mode.)
          Minecraft minecraft = Minecraft.getInstance();
-         if (minecraft.player == null || !this.catLeanRotate.get() || this.grimSilent.get()
-            || this.catLeanTiming.is("VANILLA")) {
+         if (minecraft.player == null || !this.tellyRotate.get() || this.grimSilent.get()
+            || this.tellyTiming.is("VANILLA")) {
             return;
          }
-         if (RotationManager.INSTANCE.isAimingAtPriority(CATLEAN_ROTATION_PRIORITY)) {
+         if (RotationManager.INSTANCE.isAimingAtPriority(TELLY_ROTATION_PRIORITY)) {
             float viewYaw = RotationController.isActive() && !RotationController.isClientLook()
                ? FreeLookController.getFreeYaw()
                : minecraft.player.getYRot();

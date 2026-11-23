@@ -1,7 +1,7 @@
-# Scaffold — Eagle, AutoPlace и CatLean
+# Scaffold — Eagle, AutoPlace и Telly
 
 `ScaffoldModule` в SkyCore работает в режимах `Eagle` (по умолчанию) и
-`CatLean`, портированном из одноимённого модуля CatLean.
+`Telly` — порте одноимённого по поведению модуля Scaffold из CatLean.
 
 ## Настройки
 
@@ -75,31 +75,37 @@
 модуль удерживает `options.keyShift`, чтобы игрок не сошёл с края. При отключении
 `Scaffold` Shift отпускается, а активная ротация модуля прекращается.
 
-## CatLean mode
+## Telly mode
 
-`Mode` = **CatLean** is the CatLean beam scaffold ported from the CatLean
-client (`su.catlean.client.features.modules.rage.Scaffold`): the support is
-searched over the same 14 neighbour offsets, the hit point is clamped into
-the support block next to the player (`Clamp`), and the rotation looks at
-exactly that point before the block is placed. `AutoPlace`, `CPS`, `Rotate`
-and `ClientLock` do not apply to this mode; the block itself is picked by
-`AutoSwitch` (`Normal`/`Silent`/`Inventory`/`None`), which now stays visible.
+`Mode` = **Telly** is the CatLean Scaffold module
+(`su.catlean.client.features.modules.rage.Scaffold`, source in `ctln/`)
+ported method by method: the support is searched over the same 14
+neighbour offsets with the same direction order, the hit point is clamped
+into the support block next to the player (`Clamp`), rotations are
+GCD-quantized against the last server rotation, and the placement fires
+with the CatLean callback timing (SEQUENTIAL/VANILLA in the same tick,
+GRIM on the next one). `AutoPlace`, `CPS`, `Rotate` and `ClientLock` do
+not apply to this mode; the block itself is picked by `AutoSwitch`
+(`Normal`/`Silent`/`Inventory`/`None` — CatLean's `switch`), which now
+stays visible.
 
 | Setting | Default | Description |
 |---|---|---|
-| `Timing` | `GRIM` | `SEQUENTIAL`: submit and place in the same tick. `VANILLA`: visible rotation, place once it has arrived. `GRIM`: silent rotation, place once it has arrived. |
+| `Timing` | `GRIM` | CatLean's rotation-action kinds: `SEQUENTIAL` places right after the submit, `VANILLA` shows the rotation and places in the same tick, `GRIM` is silent and places on the next tick. |
 | `Tower` | `true` | Holding jump in air keeps the vertical velocity at `0.42` with the periodic slight dip CatLean applies. |
 | `SafeWalk`/`AllowShift` | `false` | Safewalk holds shift while the target cell is empty; `AllowShift` permits building while sneaking. |
 | `Legit` | `true` | Do not place while a shrunk collision box still touches the ground below. |
 | `SaveAngles` | `true` | Keep the last CatLean rotation while there is nothing to place. |
-| `Telly`/`KeepY` | `false` | Hold the fixed bridge height; Telly also waits while jump is held and the player is already falling. |
+| `Telly`/`KeepHeight` | `false` | Hold the fixed bridge height; the `Telly` setting also waits while jump is held before the player has started falling. (Unrelated to the mode name.) |
 | `Clamp` | `true` | Clamp the hit point into the support block; otherwise use the face centre. |
 | `AirPlace` | `false` | Place into the cell under the player even without a support face. |
-| `GrimDelay` | `false` | Buffer incoming packets for up to 500 ms (chat/time/sound/health/bossbar pass through, position/disconnect flush and pass). |
-| `CatLeanRotate` | `true` | Master switch for all CatLean rotations. |
-| `GrimSilent` | `false` | Wrap the placement in raw position-rotation packets and place immediately. |
+| `GrimBlockFly` | `false` | Buffer incoming packets for up to 500 ms (chat/time/sound/health/bossbar pass through, position/disconnect flush and pass); also wraps the placement in offhand-swap packets. |
+| `CatLeanRotate` | `true` | Master switch for all Telly rotations (CatLean's `rotate`; renamed to avoid clashing with Eagle's `Rotate`). |
+| `GrimSilent` | `false` | Wrap the placement in raw position-rotation packets sent around it. |
 
-Where a CatLean helper service was not part of the provided source
-(`InteractionManager.computeBlockPosWithFacing`, `WorldUtil` flags, the
-separate `AirPlace` module), the closest SkyCore-native equivalent is used
-and marked in the code comments.
+The only service-boundary differences to the CatLean original (all marked
+in the code): CatLean's RotationManager actions run through SkyCore's
+`RotationManager.updateExact`, `WorldUtil`'s fall-distance/input values
+are tracked locally, SkyCore has no separate AirPlace module so the
+`AirPlace` setting also covers its bypass flag, and the decompiled
+container swaps' `button -1` is replaced by the vanilla selected slot.

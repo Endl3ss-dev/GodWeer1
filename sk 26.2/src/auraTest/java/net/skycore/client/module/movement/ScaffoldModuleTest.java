@@ -6,7 +6,7 @@ import net.skycore.client.setting.BooleanSetting;
 import net.skycore.client.setting.ModeSetting;
 import net.skycore.client.setting.NumberSetting;
 
-/** Headless settings smoke test for Eagle, its AutoPlace controls and the CatLean mode. */
+/** Headless settings smoke test for Eagle, its AutoPlace controls and the Telly mode (CatLean Scaffold port). */
 public final class ScaffoldModuleTest {
    private static void check(boolean condition, String message) {
       if (!condition) throw new AssertionError(message);
@@ -17,12 +17,12 @@ public final class ScaffoldModuleTest {
       check(module.getCategory() == ModuleCategory.MOVEMENT, "movement category");
       check(!module.isEnabled(), "disabled by default");
       check(module.suffix().equals("Eagle"), "Eagle is the default mode suffix");
-      check(module.getSettings().size() == 19, "Eagle plus five AutoPlace settings and thirteen CatLean settings");
+      check(module.getSettings().size() == 19, "Eagle plus five AutoPlace settings and thirteen Telly settings");
 
       ModeSetting mode = (ModeSetting) module.getSettings().get(0);
       check(mode.getName().equals("Mode"), "Mode setting name");
       check(mode.get().equals("Eagle"), "Eagle is the default mode");
-      check(mode.getModes().equals(List.of("Eagle", "CatLean")), "declared modes");
+      check(mode.getModes().equals(List.of("Eagle", "Telly")), "declared modes");
 
       BooleanSetting autoPlace = (BooleanSetting) module.getSettings().stream()
          .filter(setting -> setting.getName().equals("AutoPlace")).findFirst().orElseThrow();
@@ -63,18 +63,18 @@ public final class ScaffoldModuleTest {
          .filter(setting -> setting.getName().equals("Timing")).findFirst().orElseThrow();
       BooleanSetting grimSilent = (BooleanSetting) module.getSettings().stream()
          .filter(setting -> setting.getName().equals("GrimSilent")).findFirst().orElseThrow();
-      check(timing.get().equals("GRIM"), "GRIM is the default CatLean timing");
+      check(timing.get().equals("GRIM"), "GRIM is the default Telly timing");
       check(timing.getModes().equals(List.of("SEQUENTIAL", "VANILLA", "GRIM")),
-         "CatLean timings");
-      check(!tower.isVisible(), "CatLean settings are hidden in Eagle mode");
+         "Telly timings");
+      check(!tower.isVisible(), "Telly settings are hidden in Eagle mode");
       autoPlace.set(false);
-      mode.set("CatLean");
-      check(module.suffix().equals("CatLean"), "suffix follows the mode");
+      mode.set("Telly");
+      check(module.suffix().equals("Telly"), "suffix follows the mode");
       check(tower.isVisible() && timing.isVisible() && autoSwitch.isVisible(),
-         "CatLean settings appear with the mode");
-      check(autoPlace.isVisible(), "AutoPlace toggle stays visible in CatLean mode");
+         "Telly settings appear with the mode");
+      check(autoPlace.isVisible(), "AutoPlace toggle stays visible in Telly mode");
       check(!cps.isVisible() && !rotate.isVisible() && !clientLock.isVisible(),
-         "Eagle-only settings hide in CatLean mode");
+         "Eagle-only settings hide in Telly mode");
       check(!grimSilent.get(), "GrimSilent is off by default");
       System.out.println("ScaffoldModuleTest passed");
    }
