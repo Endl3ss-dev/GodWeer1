@@ -6,10 +6,25 @@ import net.skycore.client.setting.BooleanSetting;
 import net.skycore.client.setting.ModeSetting;
 import net.skycore.client.setting.NumberSetting;
 
-/** Headless settings smoke test for Eagle, its AutoPlace controls and the Telly mode (CatLean Scaffold port). */
+/** Headless settings smoke test for the Eagle/Telly Scaffold module. */
 public final class ScaffoldModuleTest {
    private static void check(boolean condition, String message) {
       if (!condition) throw new AssertionError(message);
+   }
+
+   private static BooleanSetting bool(ScaffoldModule module, String name) {
+      return (BooleanSetting) module.getSettings().stream()
+         .filter(setting -> setting.getName().equals(name)).findFirst().orElseThrow();
+   }
+
+   private static ModeSetting mode(ScaffoldModule module, String name) {
+      return (ModeSetting) module.getSettings().stream()
+         .filter(setting -> setting.getName().equals(name)).findFirst().orElseThrow();
+   }
+
+   private static NumberSetting number(ScaffoldModule module, String name) {
+      return (NumberSetting) module.getSettings().stream()
+         .filter(setting -> setting.getName().equals(name)).findFirst().orElseThrow();
    }
 
    public static void main(String[] args) {
@@ -17,24 +32,19 @@ public final class ScaffoldModuleTest {
       check(module.getCategory() == ModuleCategory.MOVEMENT, "movement category");
       check(!module.isEnabled(), "disabled by default");
       check(module.suffix().equals("Eagle"), "Eagle is the default mode suffix");
-      check(module.getSettings().size() == 28,
-         "Eagle plus AutoPlace, thirteen CatLean Telly and nine CUSTOM timing settings");
+      check(module.getSettings().size() == 11,
+         "Mode, AutoPlace, CPS, AutoSwitch, Rotate, ClientLock, SafeWalk, AllowShift, Legit, Telly, KeepHeight");
 
-      ModeSetting mode = (ModeSetting) module.getSettings().get(0);
+      ModeSetting mode = mode(module, "Mode");
       check(mode.getName().equals("Mode"), "Mode setting name");
       check(mode.get().equals("Eagle"), "Eagle is the default mode");
       check(mode.getModes().equals(List.of("Eagle", "Telly")), "declared modes");
 
-      BooleanSetting autoPlace = (BooleanSetting) module.getSettings().stream()
-         .filter(setting -> setting.getName().equals("AutoPlace")).findFirst().orElseThrow();
-      NumberSetting cps = (NumberSetting) module.getSettings().stream()
-         .filter(setting -> setting.getName().equals("CPS")).findFirst().orElseThrow();
-      ModeSetting autoSwitch = (ModeSetting) module.getSettings().stream()
-         .filter(setting -> setting.getName().equals("AutoSwitch")).findFirst().orElseThrow();
-      ModeSetting rotate = (ModeSetting) module.getSettings().stream()
-         .filter(setting -> setting.getName().equals("Rotate")).findFirst().orElseThrow();
-      BooleanSetting clientLock = (BooleanSetting) module.getSettings().stream()
-         .filter(setting -> setting.getName().equals("ClientLock")).findFirst().orElseThrow();
+      BooleanSetting autoPlace = bool(module, "AutoPlace");
+      NumberSetting cps = number(module, "CPS");
+      ModeSetting autoSwitch = mode(module, "AutoSwitch");
+      ModeSetting rotate = mode(module, "Rotate");
+      BooleanSetting clientLock = bool(module, "ClientLock");
 
       check(!autoPlace.get(), "AutoPlace is opt-in");
       check(cps.get() == 10.0 && cps.getMin() == 1.0 && cps.getMax() == 20.0 && cps.getStep() == 1.0,
@@ -42,78 +52,49 @@ public final class ScaffoldModuleTest {
       check(autoSwitch.get().equals("Silent"), "Silent is the default AutoSwitch mode");
       check(autoSwitch.getModes().equals(List.of("Normal", "Silent", "Inventory", "None")),
          "AutoSwitch modes");
-      check(autoSwitch.isVisible() == false && cps.isVisible() == false && rotate.isVisible() == false
-         && clientLock.isVisible() == false,
-         "AutoPlace settings are hidden while AutoPlace is disabled");
       check(rotate.get().equals("Normal"), "Normal is the default Rotate mode");
       check(rotate.getModes().equals(List.of("Normal", "Smooth", "Linear", "None")), "Rotate modes");
       check(clientLock.get(), "ClientLock is enabled by default");
+      check(!cps.isVisible() && !autoSwitch.isVisible() && !rotate.isVisible() && !clientLock.isVisible(),
+         "AutoPlace settings are hidden while AutoPlace is disabled in Eagle mode");
 
       autoPlace.set(true);
       check(cps.isVisible() && autoSwitch.isVisible() && rotate.isVisible() && clientLock.isVisible(),
          "AutoPlace settings become visible when enabled");
 
       rotate.set("None");
-      check(clientLock.isVisible() == false, "ClientLock is hidden while Rotate is None");
+      check(!clientLock.isVisible(), "ClientLock is hidden while Rotate is None");
       rotate.set("Normal");
       check(clientLock.isVisible(), "ClientLock returns with a rotating mode");
 
-      BooleanSetting tower = (BooleanSetting) module.getSettings().stream()
-         .filter(setting -> setting.getName().equals("Tower")).findFirst().orElseThrow();
-      ModeSetting timing = (ModeSetting) module.getSettings().stream()
-         .filter(setting -> setting.getName().equals("Timing")).findFirst().orElseThrow();
-      BooleanSetting grimSilent = (BooleanSetting) module.getSettings().stream()
-         .filter(setting -> setting.getName().equals("GrimSilent")).findFirst().orElseThrow();
-      check(timing.get().equals("GRIM"), "GRIM is the default Telly timing");
-      check(timing.getModes().equals(List.of("SEQUENTIAL", "VANILLA", "GRIM", "CUSTOM")),
-         "Telly timings");
-      check(!tower.isVisible(), "Telly settings are hidden in Eagle mode");
+      BooleanSetting safeWalk = bool(module, "SafeWalk");
+      BooleanSetting allowShift = bool(module, "AllowShift");
+      BooleanSetting legit = bool(module, "Legit");
+      BooleanSetting telly = bool(module, "Telly");
+      BooleanSetting keepHeight = bool(module, "KeepHeight");
+      check(!safeWalk.isVisible() && !allowShift.isVisible() && !legit.isVisible()
+         && !telly.isVisible() && !keepHeight.isVisible(),
+         "Telly settings are hidden in Eagle mode");
+      check(!safeWalk.get() && !allowShift.get() && legit.get() && !telly.get() && !keepHeight.get(),
+         "Telly defaults: Legit on, the rest off");
+
       autoPlace.set(false);
       mode.set("Telly");
       check(module.suffix().equals("Telly"), "suffix follows the mode");
-      check(tower.isVisible() && timing.isVisible() && autoSwitch.isVisible(),
+      check(autoSwitch.isVisible() && safeWalk.isVisible() && allowShift.isVisible()
+         && legit.isVisible() && telly.isVisible() && keepHeight.isVisible(),
          "Telly settings appear with the mode");
-      check(autoPlace.isVisible(), "AutoPlace toggle stays visible in Telly mode");
       check(!cps.isVisible() && !rotate.isVisible() && !clientLock.isVisible(),
          "Eagle-only settings hide in Telly mode");
-      check(!grimSilent.get(), "GrimSilent is off by default");
 
-      BooleanSetting customVisible = (BooleanSetting) module.getSettings().stream()
-         .filter(setting -> setting.getName().equals("CustomVisible")).findFirst().orElseThrow();
-      NumberSetting customRotateDelay = (NumberSetting) module.getSettings().stream()
-         .filter(setting -> setting.getName().equals("CustomRotateDelay")).findFirst().orElseThrow();
-      NumberSetting customPlaceDelay = (NumberSetting) module.getSettings().stream()
-         .filter(setting -> setting.getName().equals("CustomPlaceDelay")).findFirst().orElseThrow();
-      NumberSetting customYawStep = (NumberSetting) module.getSettings().stream()
-         .filter(setting -> setting.getName().equals("CustomYawStep")).findFirst().orElseThrow();
-      BooleanSetting customRetry = (BooleanSetting) module.getSettings().stream()
-         .filter(setting -> setting.getName().equals("CustomRetry")).findFirst().orElseThrow();
-      NumberSetting customRetryDelay = (NumberSetting) module.getSettings().stream()
-         .filter(setting -> setting.getName().equals("CustomRetryDelay")).findFirst().orElseThrow();
+      safeWalk.set(true);
+      check(!allowShift.isVisible(), "AllowShift hides while SafeWalk owns the shift key");
+      safeWalk.set(false);
+      check(allowShift.isVisible(), "AllowShift returns without SafeWalk");
 
-      check(customVisible.get(), "CUSTOM rotation is visible by default");
-      check(customRotateDelay.get() == 0.0 && customRotateDelay.getMin() == 0.0 && customRotateDelay.getMax() == 4.0,
-         "rotation delay after reaching the angles is 0..4 ticks");
-      check(customPlaceDelay.get() == 1.0 && customPlaceDelay.getMin() == 0.0 && customPlaceDelay.getMax() == 4.0,
-         "placement is one tick after the rotation by default");
-      check(customYawStep.get() == 180.0 && customYawStep.getMin() == 30.0 && customYawStep.getMax() == 180.0,
-         "yaw step limit");
-      check(customRetry.get() && customRetryDelay.get() == 2.0
-         && customRetryDelay.getMin() == 1.0 && customRetryDelay.getMax() == 4.0,
-         "placement retry is enabled with a two-tick delay");
-      check(!customVisible.isVisible() && !customRotateDelay.isVisible() && !customPlaceDelay.isVisible()
-         && !customRetryDelay.isVisible(),
-         "CUSTOM settings are hidden while the GRIM timing is selected");
-
-      timing.set("CUSTOM");
-      check(customVisible.isVisible() && customRotateDelay.isVisible() && customPlaceDelay.isVisible()
-         && customYawStep.isVisible() && customRetry.isVisible() && customRetryDelay.isVisible(),
-         "CUSTOM settings appear with the CUSTOM timing");
-      customRetry.set(false);
-      check(!customRetryDelay.isVisible(), "retry delay hides together with CustomRetry");
-      customRetry.set(true);
-      timing.set("GRIM");
-      check(!customVisible.isVisible(), "leaving CUSTOM hides its settings again");
+      mode.set("Eagle");
+      check(!safeWalk.isVisible() && !legit.isVisible(), "leaving Telly hides its settings again");
+      check(module.suffix().equals("Eagle"), "suffix follows the mode back");
       System.out.println("ScaffoldModuleTest passed");
    }
 }
