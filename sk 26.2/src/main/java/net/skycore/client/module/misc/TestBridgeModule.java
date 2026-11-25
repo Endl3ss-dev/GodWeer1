@@ -421,23 +421,41 @@ public final class TestBridgeModule extends ClientModule {
       if (name.isEmpty()) {
          name = "shot";
       }
+      final Path out;
+      final RenderTarget target;
       try {
-         Path out = minecraft.gameDirectory.toPath()
+         out = minecraft.gameDirectory.toPath()
             .resolve("testbridge").resolve("shots").resolve(name + ".png");
          Files.createDirectories(out.getParent());
          // The main render target moved from Minecraft to GameRenderer in the
          // 26.2 mappings; every other renderer in the client reads it the same
          // way (see AcquireViewHelper / AddQuadHelper).
-         RenderTarget target = minecraft.gameRenderer.mainRenderTarget();
-         if (target == null) {
-            return "ERR screenshot failed: no render target";
-         }
-         try (NativeImage image = Screenshot.takeScreenshot(target)) {
-            image.writeToFile(out);
-         }
-         return "OK " + out;
+         target = minecraft.gameRenderer.mainRenderTarget();
       } catch (Exception exception) {
          return "ERR screenshot failed: " + exception.getMessage();
       }
+      if (target == null) {
+         return "ERR screenshot failed: no render target";
+      }
+
+      // 26.2 turned Screenshot.takeScreenshot into an asynchronous call: it
+      // hands the pixels to a consumer once the render target has been read,
+      // and that happens after this tick. The file is therefore written from
+      // the callback; the command answers as soon as the capture is queued,
+      // which is what the bridge protocol promises (OK <path>).
+      final String path = out.toString();
+      try {
+         Screenshot.takeScreenshot(target, image -> {
+            try (NativeImage copy = image) {
+               copy.writeToFile(out);
+            } catch (Exception exception) {
+               System.err.println("[TestBridge] screenshot write failed: " + exception.getMessage());
+            }
+         });
+      } catch (Exception exception) {
+         return "ERR screenshot failed: " + exception.getMessage();
+      }
+      return "OK " + path;
    }
+
 }
