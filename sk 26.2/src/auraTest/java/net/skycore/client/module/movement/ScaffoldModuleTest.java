@@ -17,7 +17,8 @@ public final class ScaffoldModuleTest {
       check(module.getCategory() == ModuleCategory.MOVEMENT, "movement category");
       check(!module.isEnabled(), "disabled by default");
       check(module.suffix().equals("Eagle"), "Eagle is the default mode suffix");
-      check(module.getSettings().size() == 19, "Eagle plus five AutoPlace settings and thirteen Telly settings");
+      check(module.getSettings().size() == 28,
+         "Eagle plus AutoPlace, thirteen CatLean Telly and nine CUSTOM timing settings");
 
       ModeSetting mode = (ModeSetting) module.getSettings().get(0);
       check(mode.getName().equals("Mode"), "Mode setting name");
@@ -64,7 +65,7 @@ public final class ScaffoldModuleTest {
       BooleanSetting grimSilent = (BooleanSetting) module.getSettings().stream()
          .filter(setting -> setting.getName().equals("GrimSilent")).findFirst().orElseThrow();
       check(timing.get().equals("GRIM"), "GRIM is the default Telly timing");
-      check(timing.getModes().equals(List.of("SEQUENTIAL", "VANILLA", "GRIM")),
+      check(timing.getModes().equals(List.of("SEQUENTIAL", "VANILLA", "GRIM", "CUSTOM")),
          "Telly timings");
       check(!tower.isVisible(), "Telly settings are hidden in Eagle mode");
       autoPlace.set(false);
@@ -76,6 +77,43 @@ public final class ScaffoldModuleTest {
       check(!cps.isVisible() && !rotate.isVisible() && !clientLock.isVisible(),
          "Eagle-only settings hide in Telly mode");
       check(!grimSilent.get(), "GrimSilent is off by default");
+
+      BooleanSetting customVisible = (BooleanSetting) module.getSettings().stream()
+         .filter(setting -> setting.getName().equals("CustomVisible")).findFirst().orElseThrow();
+      NumberSetting customRotateDelay = (NumberSetting) module.getSettings().stream()
+         .filter(setting -> setting.getName().equals("CustomRotateDelay")).findFirst().orElseThrow();
+      NumberSetting customPlaceDelay = (NumberSetting) module.getSettings().stream()
+         .filter(setting -> setting.getName().equals("CustomPlaceDelay")).findFirst().orElseThrow();
+      NumberSetting customYawStep = (NumberSetting) module.getSettings().stream()
+         .filter(setting -> setting.getName().equals("CustomYawStep")).findFirst().orElseThrow();
+      BooleanSetting customRetry = (BooleanSetting) module.getSettings().stream()
+         .filter(setting -> setting.getName().equals("CustomRetry")).findFirst().orElseThrow();
+      NumberSetting customRetryDelay = (NumberSetting) module.getSettings().stream()
+         .filter(setting -> setting.getName().equals("CustomRetryDelay")).findFirst().orElseThrow();
+
+      check(customVisible.get(), "CUSTOM rotation is visible by default");
+      check(customRotateDelay.get() == 0.0 && customRotateDelay.getMin() == 0.0 && customRotateDelay.getMax() == 4.0,
+         "rotation delay after reaching the angles is 0..4 ticks");
+      check(customPlaceDelay.get() == 1.0 && customPlaceDelay.getMin() == 0.0 && customPlaceDelay.getMax() == 4.0,
+         "placement is one tick after the rotation by default");
+      check(customYawStep.get() == 180.0 && customYawStep.getMin() == 30.0 && customYawStep.getMax() == 180.0,
+         "yaw step limit");
+      check(customRetry.get() && customRetryDelay.get() == 2.0
+         && customRetryDelay.getMin() == 1.0 && customRetryDelay.getMax() == 4.0,
+         "placement retry is enabled with a two-tick delay");
+      check(!customVisible.isVisible() && !customRotateDelay.isVisible() && !customPlaceDelay.isVisible()
+         && !customRetryDelay.isVisible(),
+         "CUSTOM settings are hidden while the GRIM timing is selected");
+
+      timing.set("CUSTOM");
+      check(customVisible.isVisible() && customRotateDelay.isVisible() && customPlaceDelay.isVisible()
+         && customYawStep.isVisible() && customRetry.isVisible() && customRetryDelay.isVisible(),
+         "CUSTOM settings appear with the CUSTOM timing");
+      customRetry.set(false);
+      check(!customRetryDelay.isVisible(), "retry delay hides together with CustomRetry");
+      customRetry.set(true);
+      timing.set("GRIM");
+      check(!customVisible.isVisible(), "leaving CUSTOM hides its settings again");
       System.out.println("ScaffoldModuleTest passed");
    }
 }

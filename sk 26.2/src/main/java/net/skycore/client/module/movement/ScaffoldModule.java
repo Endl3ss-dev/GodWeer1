@@ -107,7 +107,7 @@ public final class ScaffoldModule extends ClientModule {
    // air-place, grim-block-fly, keep-height, rotate, grim-silent). The block
    // switch reuses the AutoSwitch setting above (CatLean's "switch" enum has
    // the same Normal/Silent/Inventory/None values).
-   private final ModeSetting tellyTiming = this.add(new ModeSetting("Timing", "GRIM", "SEQUENTIAL", "VANILLA", "GRIM"));
+   private final ModeSetting tellyTiming = this.add(new ModeSetting("Timing", "GRIM", "SEQUENTIAL", "VANILLA", "GRIM", "CUSTOM"));
    private final BooleanSetting tower = this.add(new BooleanSetting("Tower", true));
    private final BooleanSetting safeWalk = this.add(new BooleanSetting("SafeWalk", false));
    private final BooleanSetting allowShift = this.add(new BooleanSetting("AllowShift", false));
@@ -121,6 +121,22 @@ public final class ScaffoldModule extends ClientModule {
    private final BooleanSetting tellyRotate = this.add(new BooleanSetting("CatLeanRotate", true));
    private final BooleanSetting grimSilent = this.add(new BooleanSetting("GrimSilent", false));
 
+   // CUSTOM timing: the rotation/placement pipeline of CatLean is kept, but
+   // each stage is configurable instead of fixed. Built to reduce the flags
+   // of the GRIM timing: the placement is separated from the rotation over
+   // ticks, the rotation speed is limited, the hit point is validated
+   // against reach and line of sight, and a placement the client world does
+   // not show is repeated instead of leaving a hole.
+   private final BooleanSetting customVisible = this.add(new BooleanSetting("CustomVisible", true));
+   private final NumberSetting customRotateDelay = this.add(new NumberSetting("CustomRotateDelay", 0, 0, 4, 1));
+   private final NumberSetting customPlaceDelay = this.add(new NumberSetting("CustomPlaceDelay", 1, 0, 4, 1));
+   private final NumberSetting customYawStep = this.add(new NumberSetting("CustomYawStep", 180, 30, 180, 5));
+   private final NumberSetting customPitchStep = this.add(new NumberSetting("CustomPitchStep", 180, 30, 180, 5));
+   private final BooleanSetting customReachCheck = this.add(new BooleanSetting("CustomReachCheck", true));
+   private final BooleanSetting customRayCheck = this.add(new BooleanSetting("CustomRayCheck", true));
+   private final BooleanSetting customRetry = this.add(new BooleanSetting("CustomRetry", true));
+   private final NumberSetting customRetryDelay = this.add(new NumberSetting("CustomRetryDelay", 2, 1, 4, 1));
+
    private boolean wasSneaking;
    private long nextPlaceNanos;
    private Subscription tickSubscription;
@@ -132,7 +148,32 @@ public final class ScaffoldModule extends ClientModule {
    private float moveFixViewYaw;
 
    private static final int TELLY_ROTATION_PRIORITY = 41;
+   /** Placements of one CUSTOM target before the retry loop gives up. */
+   private static final int MAX_CUSTOM_ATTEMPTS = 3;
    private static final int TELLY_NO_VALUE = -999;
+   /** {@link #applyTellyBlockPos} marker: switch the slot inside the method. */
+   private static final int TELLY_FETCH_INVENTORY = -998;
+
+   /** CUSTOM timing stages: rotate first, place {@code CustomPlaceDelay} ticks later. */
+   private enum CustomStage {
+      IDLE,
+      WAIT_ROTATION,
+      WAIT_PLACEMENT
+   }
+
+   private CustomStage customStage = CustomStage.IDLE;
+   private int customWaitTicks;
+   private BlockHitResult customPendingHit;
+   private Rotation customPendingRotation;
+   private Rotation customSentRotation;
+   /** View yaw captured when the visible CUSTOM rotation engaged, for the input fix. */
+   private float customMoveFixYaw;
+   private boolean customMoveFixActive;
+   /** Position of the block the last CUSTOM placement asked for, while unconfirmed. */
+   private BlockPos customPlacedPos;
+   private int customPlacedTicks;
+   /** Attempts already made for {@link #customPlacedPos}; caps the retry loop. */
+   private int customAttempts;
    /** CatLean's static blockPoss table, same order. */
    private static final BlockPos[] TELLY_OFFSETS = {
       new BlockPos(0, 0, 0), new BlockPos(-1, 0, 0), new BlockPos(1, 0, 0),
@@ -153,6 +194,12 @@ public final class ScaffoldModule extends ClientModule {
    private long tellyTowerWatchMillis = System.currentTimeMillis();
    /** Container slot swapped in by the last Inventory fetch, for the swap back. */
    private int tellySwapSlot = -1;
+   /**
+    * The last Inventory fetch fell back to a silent hotbar select (a foreign
+    * container menu is carried, so a container swap is impossible); the
+    * original slot is restored by {@link #applyTellyGetInventory}.
+    */
+   private boolean tellySilentFetch;
    /** Hit whose placement a GRIM (silent) action deferred to the next tick. */
    private BlockHitResult tellyPendingHit;
    private final java.util.concurrent.ConcurrentLinkedQueue<DelayedPacket> delayedPackets =
@@ -177,6 +224,15 @@ public final class ScaffoldModule extends ClientModule {
       this.keepHeight.visibleWhen(() -> this.mode.is("Telly"));
       this.tellyRotate.visibleWhen(() -> this.mode.is("Telly"));
       this.grimSilent.visibleWhen(() -> this.mode.is("Telly"));
+      this.customVisible.visibleWhen(() -> this.isCustomTiming());
+      this.customRotateDelay.visibleWhen(() -> this.isCustomTiming());
+      this.customPlaceDelay.visibleWhen(() -> this.isCustomTiming());
+      this.customYawStep.visibleWhen(() -> this.isCustomTiming());
+      this.customPitchStep.visibleWhen(() -> this.isCustomTiming());
+      this.customReachCheck.visibleWhen(() -> this.isCustomTiming());
+      this.customRayCheck.visibleWhen(() -> this.isCustomTiming());
+      this.customRetry.visibleWhen(() -> this.isCustomTiming());
+      this.customRetryDelay.visibleWhen(() -> this.isCustomTiming() && this.customRetry.get());
    }
 
    @Override
@@ -189,6 +245,8 @@ public final class ScaffoldModule extends ClientModule {
       this.tellyValue = TELLY_NO_VALUE;
       this.tellyPendingHit = null;
       this.tellySwapSlot = -1;
+      this.tellySilentFetch = false;
+      this.resetCustomState();
       if (this.tickSubscription != null) {
          this.tickSubscription.close();
       }
@@ -220,6 +278,7 @@ public final class ScaffoldModule extends ClientModule {
       }
       this.tellyShiftFlag = false;
       this.tellyPendingHit = null;
+      this.resetCustomState();
       this.flushDelayedPackets(true);
       this.moveFixActive = false;
       this.bridgeXAxis = null;
@@ -238,6 +297,7 @@ public final class ScaffoldModule extends ClientModule {
       if (minecraft.player == null || minecraft.level == null || minecraft.gameMode == null) {
          this.releaseManagedRotation();
          this.bridgeXAxis = null;
+         this.resetCustomState();
          // CatLean drops its buffered packets while no world is loaded.
          this.delayedPackets.clear();
          return;
@@ -324,6 +384,10 @@ public final class ScaffoldModule extends ClientModule {
    // ------------------------------------------------------------------
 
    private void onTellyTick(Minecraft minecraft) {
+      // CatLean's MoveEvent accumulates the fall distance once per tick; both
+      // the CatLean timings and CUSTOM read it below, so it is updated here
+      // exactly once (two calls would double the accumulated distance).
+      this.updateTellyFallDistance(minecraft.player);
       // CatLean's RotationManager invokes a deferred SilentRotationAction
       // callback at the start of the player update, before Scaffold's own
       // handler: a GRIM placement queued last tick lands first.
@@ -332,22 +396,38 @@ public final class ScaffoldModule extends ClientModule {
          this.tellyPendingHit = null;
          this.applyTellyBlockPos(minecraft, pending);
       }
-      this.onTellyUpdate(minecraft);
+      if (this.isCustomTiming()) {
+         this.onCustomTick(minecraft);
+      } else {
+         this.onTellyUpdate(minecraft);
+      }
       // CatLean onPostTasksProcess: release buffered packets past 500 ms.
       this.flushDelayedPackets(false);
    }
 
    /** Transliteration of CatLean's applyGetY (its PlayerUpdateEvent handler). */
    private void onTellyUpdate(Minecraft minecraft) {
+      BlockHitResult hit = this.findTellyPlacement(minecraft);
+      if (hit != null) {
+         this.submitTellyPlacement(minecraft, hit);
+      }
+   }
+
+   /**
+    * CatLean's applyGetY up to the hit result: the fall-distance gate, the
+    * block search, SafeWalk and the Legit collision check. Returns {@code null}
+    * when this tick has nothing to place, exactly where the original returns.
+    * While nothing is found the saved angles are kept (SaveAngles).
+    */
+   private BlockHitResult findTellyPlacement(Minecraft minecraft) {
       LocalPlayer player = minecraft.player;
-      this.updateTellyFallDistance(player);
       if (minecraft.options.keyJump.isDown() && this.tellyFallDistance <= 0.0 && this.tellySetting.get()) {
-         return;
+         return null;
       }
 
       int inventory = this.fetchTellyInventory(minecraft, false);
       if (!(this.safeWalk.get() || !player.isShiftKeyDown() || this.allowShift.get()) || inventory == -1) {
-         return;
+         return null;
       }
 
       if (minecraft.options.keyJump.isDown() && !this.hasMovementInput(player)) {
@@ -382,14 +462,15 @@ public final class ScaffoldModule extends ClientModule {
          || this.legit.get() && minecraft.level.getBlockCollisions(player,
                player.getBoundingBox().inflate(shrink, 0.0, shrink).move(0.0, -0.1, 0.0))
             .iterator().hasNext()) {
-         if (this.tellyRotation != null && this.saveAngles.get()) {
+         if (this.tellyRotation != null && this.saveAngles.get()
+            && (!this.isCustomTiming() || this.customStage == CustomStage.IDLE)) {
             Rotation held = this.tellyRotate.get() && !this.grimSilent.get()
                ? this.tellyRotation
                : new Rotation(player.getYRot(), player.getXRot());
             RotationManager.updateExact(held, TELLY_ROTATION_PRIORITY, ROTATION_TIMEOUT_TICKS,
                this.tellyTiming.is("VANILLA"));
          }
-         return;
+         return null;
       }
 
       BlockPos position = blockPosWithFacing.position();
@@ -411,36 +492,80 @@ public final class ScaffoldModule extends ClientModule {
          ? Mth.clamp(player.getZ() + ThreadLocalRandom.current().nextDouble(-0.01, 0.01),
             hitResult.getBlockPos().getZ(), hitResult.getBlockPos().getZ() + 1.0)
          : hitResult.getLocation().z;
-      hitResult = new BlockHitResult(new Vec3(hitX, position.getY() + hitYOffset, hitZ), facing, position, false);
+      return new BlockHitResult(new Vec3(hitX, position.getY() + hitYOffset, hitZ), facing, position, false);
+   }
 
+   /**
+    * CatLean's applyGetY tail: submit the rotation, then fire the placement
+    * callback on the timing of the queue kind (SEQUENTIAL/VANILLA this tick,
+    * GRIM on the next player update).
+    *
+    * <p>The module runs on {@code PlayerTickEndEvent}, which is posted before
+    * {@code LocalPlayer#sendPosition} of the same tick. A rotation submitted
+    * here therefore only reaches the server after the handler returns, i.e.
+    * after our own use packet. A placement sent with angles the server has not
+    * received yet is the rotation mismatch it flags, and on a bridge it lands
+    * in the cell the player has already walked past. The timings that place in
+    * this tick send the angles explicitly, and the block is put into the hand
+    * before that so the use packet cannot precede the carried-item switch.
+    */
+   private void submitTellyPlacement(Minecraft minecraft, BlockHitResult hitResult) {
+      LocalPlayer player = minecraft.player;
       Rotation rotation = this.computeTellyRotation(player, hitResult.getLocation());
+      if (!this.tellyTiming.is("GRIM")) {
+         // The same guards the placement repeats below: once the swap is done
+         // here, an early return would leave the hotbar on the block slot.
+         if (minecraft.options.keyJump.isDown() && this.tellyFallDistance <= 0.0 && this.tellySetting.get()) {
+            return;
+         }
+         int inventory = this.fetchTellyInventory(minecraft, true);
+         if (inventory == -1) {
+            return;
+         }
+         if (this.tellyRotate.get()) {
+            if (this.tellyTiming.is("VANILLA") && !this.grimSilent.get()) {
+               // Visible: the head follows the hit point, the explicit packet
+               // only makes sure the same angles reach the server first.
+               RotationManager.updateExact(rotation, TELLY_ROTATION_PRIORITY, ROTATION_TIMEOUT_TICKS, true);
+            }
+            this.sendPosRot(player, rotation.getYaw(), rotation.getPitch());
+         }
+         this.applyTellyBlockPos(minecraft, hitResult, inventory);
+         this.tellyRotation = rotation;
+         return;
+      }
+
+      // GRIM: the placement is deferred to the next player update, by which
+      // time this tick's movement packet has carried the rotation.
       if (this.tellyRotate.get() && this.grimSilent.get()) {
          this.sendPosRot(player, rotation.getYaw(), rotation.getPitch());
+      } else if (this.tellyRotate.get()
+         && !RotationManager.updateExact(rotation, TELLY_ROTATION_PRIORITY, ROTATION_TIMEOUT_TICKS, false)) {
+         // Silent claim refused: a placement now would use angles the server
+         // never receives, so it is skipped instead.
+         this.tellyRotation = rotation;
+         return;
       }
-
-      boolean submitted = !this.tellyRotate.get() || this.grimSilent.get()
-         || RotationManager.updateExact(rotation, TELLY_ROTATION_PRIORITY, ROTATION_TIMEOUT_TICKS,
-            this.tellyTiming.is("VANILLA"));
-      if (submitted) {
-         // CatLean queues a RotationAction whose callback is
-         // applyGetBlockPos: SEQUENTIAL and VANILLA fire it this tick,
-         // GRIM (SilentRotationAction) on the next player update.
-         if (this.tellyTiming.is("GRIM")) {
-            this.tellyPendingHit = hitResult;
-         } else {
-            this.applyTellyBlockPos(minecraft, hitResult);
-         }
-      }
+      this.tellyPendingHit = hitResult;
       this.tellyRotation = rotation;
    }
 
    /** Transliteration of CatLean's applyGetBlockPos (the rotation callback). */
    private void applyTellyBlockPos(Minecraft minecraft, BlockHitResult hitResult) {
+      this.applyTellyBlockPos(minecraft, hitResult, TELLY_FETCH_INVENTORY);
+   }
+
+   /**
+    * @param preparedInventory the slot the caller already switched, or
+    *     {@link #TELLY_FETCH_INVENTORY} to switch it here (deferred GRIM path)
+    */
+   private void applyTellyBlockPos(Minecraft minecraft, BlockHitResult hitResult, int preparedInventory) {
       LocalPlayer player = minecraft.player;
       if (minecraft.options.keyJump.isDown() && this.tellyFallDistance <= 0.0 && this.tellySetting.get()) {
          return;
       }
-      int inventory = this.fetchTellyInventory(minecraft, true);
+      int inventory = preparedInventory != TELLY_FETCH_INVENTORY
+         ? preparedInventory : this.fetchTellyInventory(minecraft, true);
       if (inventory == -1) {
          return;
       }
@@ -499,9 +624,279 @@ public final class ScaffoldModule extends ClientModule {
          this.sendSneakInput(minecraft, false);
       }
       this.applyTellyGetInventory(minecraft, inventory);
-      if (this.tellyRotate.get() && this.grimSilent.get()) {
+      if (!this.isCustomTiming() && this.tellyRotate.get()
+         && (this.grimSilent.get() || this.tellyTiming.is("SEQUENTIAL"))) {
+         // Timings that put the placement angles on the wire with a raw packet
+         // restore the camera angles right after the use, otherwise the next
+         // movement packet would jump back from the placement yaw by itself.
+         // VANILLA owns a visible claim and needs no restore.
          this.sendPosRot(player, player.getYRot(), player.getXRot());
       }
+   }
+
+   // ------------------------------------------------------------------
+   // Telly -> CUSTOM timing
+   //
+   // The fifth Timing value. The CatLean pipeline is kept, but the stages
+   // that produce the GRIM flags become tunable:
+   //  - the rotation is submitted and waited for (CustomRotateDelay ticks
+   //    and the yaw/pitch step limits), and the placement is only sent
+   //    after the angles reached the hit point. On the GRIM timing the
+   //    rotation packet and the use packet are one tick apart or closer,
+   //    so a rotation the server has not applied yet is followed by a
+   //    placement made with the old head angles;
+   //  - the hit point is validated (CustomReachCheck / CustomRayCheck):
+   //    CatLean places on the first neighbouring block, which can be out
+   //    of reach or behind the player and is rejected by the server;
+   //  - a placement the client world does not show as a block is retried
+   //    (CustomRetry / CustomRetryDelay) while the cell stays replaceable,
+   //    instead of walking into the hole;
+   //  - the rotation is visible by default (CustomVisible) and is not
+   //    re-submitted while the head already points at the hit point.
+   // ------------------------------------------------------------------
+
+   private boolean isCustomTiming() {
+      return this.mode.is("Telly") && this.tellyTiming.is("CUSTOM");
+   }
+
+   private void resetCustomState() {
+      this.customStage = CustomStage.IDLE;
+      this.customWaitTicks = 0;
+      this.customPendingHit = null;
+      this.customPendingRotation = null;
+      this.customSentRotation = null;
+      this.customMoveFixActive = false;
+      this.customPlacedPos = null;
+      this.customPlacedTicks = 0;
+      this.customAttempts = 0;
+   }
+
+   private void onCustomTick(Minecraft minecraft) {
+      LocalPlayer player = minecraft.player;
+
+      // A cell we placed into stays tracked until the client world shows a
+      // block there; retrying earlier than that would spam the server.
+      if (this.customPlacedPos != null) {
+         this.customPlacedTicks++;
+         if (!minecraft.level.getBlockState(this.customPlacedPos).canBeReplaced()) {
+            this.customPlacedPos = null;
+            this.customAttempts = 0;
+         }
+      }
+
+      switch (this.customStage) {
+         case WAIT_ROTATION -> {
+            if (this.customPendingHit == null || this.customPendingRotation == null
+               || !this.isCustomCellEmpty(minecraft, this.customPendingHit)) {
+               this.resetCustomState();
+               return;
+            }
+            Rotation current = this.stepCustomRotation(player, this.customPendingRotation);
+            if (this.tellyRotate.get() && !this.grimSilent.get()) {
+               // Without the claim there is no rotation to place with: bail out
+               // instead of sending a use packet the server rejects. GrimSilent
+               // owns the angle with raw packets and takes no claim.
+               if (!RotationManager.updateExact(current, TELLY_ROTATION_PRIORITY, ROTATION_TIMEOUT_TICKS,
+                  this.customVisible.get())) {
+                  this.resetCustomState();
+                  return;
+               }
+            }
+            this.customSentRotation = current;
+            this.customWaitTicks++;
+            if (this.customReached(current, this.customPendingRotation)
+               && this.customWaitTicks > this.customRotateDelay.get().intValue()) {
+               this.customStage = CustomStage.WAIT_PLACEMENT;
+               this.customWaitTicks = 0;
+            }
+         }
+         case WAIT_PLACEMENT -> {
+            if (this.customPendingHit == null || !this.isCustomCellEmpty(minecraft, this.customPendingHit)) {
+               this.resetCustomState();
+               return;
+            }
+            if (this.tellyRotate.get() && !this.grimSilent.get() && this.customSentRotation != null) {
+               // Keep the angle owned while the placement waits for its tick:
+               // otherwise the timeout would start easing the head back.
+               RotationManager.updateExact(this.customSentRotation, TELLY_ROTATION_PRIORITY,
+                  ROTATION_TIMEOUT_TICKS, this.customVisible.get());
+            }
+            this.customWaitTicks++;
+            // CustomPlaceDelay is the number of ticks between the tick the
+            // rotation stage finished and the use packet, so it can never be
+            // zero ticks: the rotation packet has to be on the wire first.
+            if (this.customWaitTicks < Math.max(1, this.customPlaceDelay.get().intValue())) {
+               return;
+            }
+            BlockHitResult hit = this.customPendingHit;
+            BlockPos placed = hit.getBlockPos().relative(hit.getDirection());
+            this.customStage = CustomStage.IDLE;
+            this.customPendingHit = null;
+            this.customPendingRotation = null;
+            // The block goes into the hand before the rotation and the use
+            // packet: a swap after the placement would reach the server after
+            // the interaction that needs it. Everything that can abort is
+            // checked before the swap, so an aborted attempt never leaves the
+            // hotbar on the block slot.
+            if (!this.isCustomCellEmpty(minecraft, hit)) {
+               this.resetCustomState();
+               return;
+            }
+            int inventory = this.fetchTellyInventory(minecraft, true);
+            if (inventory == -1) {
+               this.resetCustomState();
+               return;
+            }
+            if (this.tellyRotate.get() && this.customSentRotation != null
+               && (this.grimSilent.get() || !this.customVisible.get())) {
+               // Silent/raw CUSTOM: the rotation packet has to be on the wire
+               // before the use packet, and Scaffold runs before sendPosition
+               // of this tick, so the module sends it itself.
+               this.sendPosRot(player, this.customSentRotation.getYaw(), this.customSentRotation.getPitch());
+            }
+            this.applyTellyBlockPos(minecraft, hit, inventory);
+            if (this.tellyRotate.get() && !this.grimSilent.get()) {
+               // Hand the head back to the free-look camera after the use
+               // packet; the silent path keeps the server angles from here on.
+               RotationManager.INSTANCE.stopRotationIfPriority(TELLY_ROTATION_PRIORITY);
+               this.customMoveFixActive = false;
+            }
+            // Client prediction is authoritative here: only a cell the
+            // interaction did not fill is worth retrying.
+            if (minecraft.level.getBlockState(placed).canBeReplaced()) {
+               this.customPlacedPos = placed;
+               this.customPlacedTicks = 0;
+               this.customAttempts++;
+            } else {
+               this.customPlacedPos = null;
+               this.customAttempts = 0;
+            }
+         }
+         default -> this.startCustomPlacement(minecraft);
+      }
+   }
+
+   /** Searches the next target and starts the rotation stage for it. */
+   private void startCustomPlacement(Minecraft minecraft) {
+      if (this.customPlacedPos != null) {
+         // Waiting for our own placement: only retry after the delay, and
+         // only for the very same cell, so nothing else is overwritten.
+         if (!this.customRetry.get() || this.customAttempts >= MAX_CUSTOM_ATTEMPTS
+            || this.customPlacedTicks < Math.max(1, this.customRetryDelay.get().intValue())) {
+            return;
+         }
+         BlockHitResult retry = this.findTellyPlacementFor(minecraft, this.customPlacedPos);
+         if (retry != null && this.validateCustomHit(minecraft, retry)) {
+            this.startCustomRotation(minecraft, retry);
+         }
+         return;
+      }
+
+      BlockHitResult hit = this.findTellyPlacement(minecraft);
+      if (hit == null || !this.validateCustomHit(minecraft, hit)) {
+         return;
+      }
+      this.startCustomRotation(minecraft, hit);
+   }
+
+   private void startCustomRotation(Minecraft minecraft, BlockHitResult hit) {
+      LocalPlayer player = minecraft.player;
+      Rotation wanted = this.computeTellyRotation(player, hit.getLocation());
+      Rotation current = this.currentCustomRotation(player);
+      this.customPendingHit = hit;
+      this.customPendingRotation = wanted;
+      this.customSentRotation = current;
+      this.customWaitTicks = 0;
+      if (this.tellyRotate.get() && !this.grimSilent.get() && this.customVisible.get()) {
+         // Visible rotation turns the head, so the walk direction has to be
+         // fixed against the yaw the player had before the rotation engaged.
+         if (!this.customMoveFixActive) {
+            this.customMoveFixYaw = player.getYRot();
+         }
+         this.customMoveFixActive = true;
+      }
+      // No managed rotation, or already looking at the hit point: skip the
+      // rotation stage entirely and wait only for the placement delay.
+      this.customStage = !this.tellyRotate.get() || this.customReached(current, wanted)
+         ? CustomStage.WAIT_PLACEMENT : CustomStage.WAIT_ROTATION;
+   }
+
+   /** True when the rotation is within one degree of the wanted angles. */
+   private boolean customReached(Rotation current, Rotation wanted) {
+      return Math.abs(Mth.wrapDegrees(wanted.getYaw() - current.getYaw())) <= 1.0F
+         && Math.abs(wanted.getPitch() - current.getPitch()) <= 1.0F;
+   }
+
+   /** Rotation the server currently has for the player. */
+   private Rotation currentCustomRotation(LocalPlayer player) {
+      return RotationController.isActive()
+         ? new Rotation(RotationController.getServerYaw(), RotationController.getServerPitch())
+         : new Rotation(player.getYRot(), player.getXRot());
+   }
+
+   /** One limited step towards the wanted angles, quantized like CatLean's rotations. */
+   private Rotation stepCustomRotation(LocalPlayer player, Rotation wanted) {
+      Rotation current = this.customSentRotation != null ? this.customSentRotation : this.currentCustomRotation(player);
+      float yawDelta = Mth.wrapDegrees(wanted.getYaw() - current.getYaw());
+      float pitchDelta = wanted.getPitch() - current.getPitch();
+      float yaw = current.getYaw() + Mth.clamp(yawDelta,
+         (float) -this.customYawStep.get().floatValue(), (float) this.customYawStep.get().floatValue());
+      float pitch = Mth.clamp(current.getPitch() + Mth.clamp(pitchDelta,
+         (float) -this.customPitchStep.get().floatValue(), (float) this.customPitchStep.get().floatValue()), -90.0F, 90.0F);
+      return new Rotation(yaw, pitch);
+   }
+
+   /**
+    * Finds a support for a specific target cell, reusing the ordinary
+    * template search of the Telly mode.
+    */
+   private BlockHitResult findTellyPlacementFor(Minecraft minecraft, BlockPos target) {
+      if (!minecraft.level.getBlockState(target).canBeReplaced()) {
+         return null;
+      }
+      BlockPosWithFacing found = this.airPlace.get()
+         ? new BlockPosWithFacing(target, Direction.DOWN)
+         : this.computeTellyBlockPosWithFacing(minecraft, target);
+      if (found == null) {
+         return null;
+      }
+      BlockPos position = found.position();
+      Direction facing = found.facing();
+      Vec3 hitPoint = new Vec3(
+         position.getX() + 0.5 + facing.getStepX() * 0.5,
+         position.getY() + 0.5 + facing.getStepY() * 0.5,
+         position.getZ() + 0.5 + facing.getStepZ() * 0.5);
+      return new BlockHitResult(hitPoint, facing, position, false);
+   }
+
+   /** Reach, line of sight and empty-cell checks for the CUSTOM timing. */
+   private boolean validateCustomHit(Minecraft minecraft, BlockHitResult hit) {
+      LocalPlayer player = minecraft.player;
+      if (!this.isCustomCellEmpty(minecraft, hit)) {
+         return false;
+      }
+      if (this.customReachCheck.get()) {
+         double reach = Math.min(MAX_REACH, player.blockInteractionRange());
+         if (player.getEyePosition().distanceToSqr(hit.getLocation()) > reach * reach) {
+            return false;
+         }
+      }
+      if (this.customRayCheck.get()) {
+         Vec3 eye = player.getEyePosition();
+         Vec3 direction = hit.getLocation().subtract(eye);
+         if (direction.lengthSqr() < 1.0E-6) {
+            return true;
+         }
+         Vec3 to = hit.getLocation().add(direction.normalize().scale(0.01));
+         BlockHitResult visible = minecraft.level.clip(new ClipContext(
+            eye, to, ClipContext.Block.OUTLINE, ClipContext.Fluid.NONE, player));
+         return visible.getType() == HitResult.Type.BLOCK && visible.getBlockPos().equals(hit.getBlockPos());
+      }
+      return true;
+   }
+
+   private boolean isCustomCellEmpty(Minecraft minecraft, BlockHitResult hit) {
+      return minecraft.level.getBlockState(hit.getBlockPos().relative(hit.getDirection())).canBeReplaced();
    }
 
    /** Transliteration of CatLean's Scaffold.computeBlockPosWithFacing. */
@@ -555,33 +950,34 @@ public final class ScaffoldModule extends ClientModule {
 
       int hotbarSlot = this.findTellyHotbarSlot(player);
       int inventorySlot = this.findTellyInventorySlot(player);
+      // A module may close the container screen without telling the server
+      // (a shop-GUI closer). The menu stays carried while the screen is gone,
+      // and a container swap would then address a menu the player cannot see,
+      // so the block is taken from the hotbar instead. The hotbar path only
+      // needs the carried-item packet and works with any menu state.
+      boolean inventoryMode = this.autoSwitch.is("Inventory") && this.hasCarriedMenu(player);
       if (!forUse) {
-         return switch (this.autoSwitch.get()) {
-            case "Inventory" -> inventorySlot >= 0 ? player.getInventory().getSelectedSlot() : -1;
-            case "Normal", "Silent" -> hotbarSlot >= 0 ? player.getInventory().getSelectedSlot() : -1;
-            default -> -1;
-         };
+         if (inventoryMode) {
+            return inventorySlot >= 0 ? player.getInventory().getSelectedSlot() : -1;
+         }
+         return hotbarSlot >= 0 ? player.getInventory().getSelectedSlot() : -1;
       }
-      return switch (this.autoSwitch.get()) {
-         case "Inventory" -> {
-            if (inventorySlot < 0) {
-               yield -1;
-            }
-            int selected = player.getInventory().getSelectedSlot();
-            this.swapContainerSlot(minecraft, inventorySlot, selected);
-            this.tellySwapSlot = inventorySlot;
-            yield selected;
+      if (inventoryMode) {
+         if (inventorySlot < 0) {
+            return -1;
          }
-         case "Normal", "Silent" -> {
-            if (hotbarSlot < 0) {
-               yield -1;
-            }
-            int selected = player.getInventory().getSelectedSlot();
-            this.selectSlotSilently(minecraft, hotbarSlot);
-            yield selected;
-         }
-         default -> -1;
-      };
+         int selected = player.getInventory().getSelectedSlot();
+         this.swapContainerSlot(minecraft, inventorySlot, selected);
+         this.tellySwapSlot = inventorySlot;
+         return selected;
+      }
+      if (hotbarSlot < 0) {
+         return -1;
+      }
+      int selected = player.getInventory().getSelectedSlot();
+      this.selectSlotSilently(minecraft, hotbarSlot);
+      this.tellySilentFetch = !this.autoSwitch.is("Silent");
+      return selected;
    }
 
    /** Transliteration of CatLean's applyGetInventory (the swap back). */
@@ -596,10 +992,20 @@ public final class ScaffoldModule extends ClientModule {
                this.swapContainerSlot(minecraft, this.tellySwapSlot,
                   player.getInventory().getSelectedSlot());
                this.tellySwapSlot = -1;
+            } else if (this.tellySilentFetch) {
+               this.selectSlotSilently(minecraft, inventory);
+               this.tellySilentFetch = false;
             }
          }
          case "Silent" -> this.selectSlotSilently(minecraft, inventory);
          default -> {
+            // "Normal" restores the slot right after the placement itself; an
+            // Inventory fetch that fell back to the hotbar (a foreign container
+            // menu is carried) has to restore here as well.
+            if (this.tellySilentFetch) {
+               this.selectSlotSilently(minecraft, inventory);
+               this.tellySilentFetch = false;
+            }
          }
       }
    }
@@ -640,6 +1046,9 @@ public final class ScaffoldModule extends ClientModule {
    /** CatLean's ContainerUtil.applyHandleContainerInput with close packet. */
    private void swapContainerSlot(Minecraft minecraft, int slot, int button) {
       LocalPlayer player = minecraft.player;
+      if (!this.hasCarriedMenu(player)) {
+         return;
+      }
       minecraft.gameMode.handleContainerInput(
          player.containerMenu.containerId, slot, button, ContainerInput.SWAP, player);
       this.sendPacket(player, new ServerboundContainerClosePacket(player.containerMenu.containerId));
@@ -826,14 +1235,26 @@ public final class ScaffoldModule extends ClientModule {
          return;
       }
       if (this.mode.is("Telly")) {
-         // Silent Telly timings turn only the server rotation; keep the
-         // world-space walking direction tied to the free camera, exactly as
-         // in Eagle's silent mode. VANILLA shows the rotation, so no fix.
+         // Silent claims turn only the server rotation; keep the world-space
+         // walking direction tied to the free camera, exactly as in Eagle's
+         // silent mode. VANILLA and SEQUENTIAL put the angles on the wire with
+         // an explicit packet and hold no claim, so nothing is remapped.
+         // Visible CUSTOM does turn the head and is handled below.
          // (CatLean delegates this to its MoveFix module; SkyCore folds the
          // equivalent correction into the module, as in Eagle mode.)
          Minecraft minecraft = Minecraft.getInstance();
          if (minecraft.player == null || !this.tellyRotate.get() || this.grimSilent.get()
-            || this.tellyTiming.is("VANILLA")) {
+            || this.tellyTiming.is("VANILLA") || this.tellyTiming.is("SEQUENTIAL")) {
+            return;
+         }
+         if (this.isCustomTiming() && this.customVisible.get()) {
+            // Visible CUSTOM rotation: the head is turned on the screen, so the
+            // walk direction is restored against the pre-rotation yaw instead
+            // of the free camera (which the visible rotation does not drive).
+            if (this.customMoveFixActive
+               && RotationManager.INSTANCE.isAimingAtPriority(TELLY_ROTATION_PRIORITY)) {
+               MovementHelper.fixMovement(event, this.customMoveFixYaw);
+            }
             return;
          }
          if (RotationManager.INSTANCE.isAimingAtPriority(TELLY_ROTATION_PRIORITY)) {
@@ -902,6 +1323,20 @@ public final class ScaffoldModule extends ClientModule {
          && player.isAlive()
          && !player.isSpectator()
          && !player.isUsingItem();
+   }
+
+   /**
+    * True while the player carries their own inventory menu. A module that
+    * closes a container screen without telling the server (a shop-GUI closer)
+    * leaves {@code containerMenu} on that foreign menu with the screen already
+    * gone; a container swap then addresses a menu the player cannot see, and
+    * the server rejects the swap and the interaction that follows, which looks
+    * like "Scaffold does not place blocks at all". The placement itself is not
+    * skipped: the callers fall back to the hotbar switch, which only sends the
+    * carried-item packet and works in any menu state.
+    */
+   private boolean hasCarriedMenu(LocalPlayer player) {
+      return player.containerMenu == player.inventoryMenu;
    }
 
    private long placeIntervalNanos() {
@@ -1171,10 +1606,12 @@ public final class ScaffoldModule extends ClientModule {
 
    private boolean placeWithInventorySwitch(Minecraft minecraft, PlacementTarget target) {
       int inventorySlot = this.findInventoryBlockSlot(minecraft.player);
-      if (inventorySlot < 0) {
+      if (inventorySlot < 0 || !this.hasCarriedMenu(minecraft.player)) {
+         // No inventory block, or a foreign menu is carried: the container
+         // swap would target a menu the player cannot see. The hotbar path
+         // only sends a carried-item packet and works in both cases.
          return this.placeWithNormalSwitch(minecraft, target);
       }
-
       int selectedSlot = minecraft.player.getInventory().getSelectedSlot();
       int menuId = minecraft.player.containerMenu.containerId;
       minecraft.gameMode.handleContainerInput(menuId, inventorySlot, selectedSlot,
