@@ -91,7 +91,7 @@ stays visible.
 
 | Setting | Default | Description |
 |---|---|---|
-| `Timing` | `GRIM` | CatLean's rotation-action kinds: `SEQUENTIAL` places right after the submit, `VANILLA` shows the rotation and places in the same tick, `GRIM` is silent and places on the next tick. `CUSTOM` is the fourth value — see below. In SkyCore `SEQUENTIAL` and `CUSTOM` send the rotation as a packet before the use packet: Scaffold runs on `PlayerTickEndEvent`, i.e. before `sendPosition` of the same tick, so without it the server would receive the placement first. |
+| `Timing` | `GRIM` | CatLean's rotation-action kinds: `SEQUENTIAL` places right after the submit, `VANILLA` shows the rotation and places in the same tick, `GRIM` is silent and places on the next tick. `CUSTOM` is the fourth value — see below. The rotation leaves with the vanilla position packet of the tick, as in CatLean; no extra `PosRot` is sent (see "Order of the packets"). |
 | `Tower` | `true` | Holding jump in air keeps the vertical velocity at `0.42` with the periodic slight dip CatLean applies. |
 | `SafeWalk`/`AllowShift` | `false` | Safewalk holds shift while the target cell is empty; `AllowShift` permits building while sneaking. |
 | `Legit` | `true` | Do not place while a shrunk collision box still touches the ground below. |
@@ -137,31 +137,29 @@ override an in-flight `CUSTOM` rotation; it only keeps the last rotation while
 the module is idle.
 
 `CUSTOM` cannot make managed scaffolding invisible to a server: it is still a
-client placing blocks under the player. What it fixes is narrower — the use
-packet no longer follows a rotation the player has not sent yet, out-of-reach
-and unlit placements are dropped instead of sent, and a lost placement is
-repeated instead of leaving a hole. `CustomPlaceDelay = 0` reproduces the CatLean
-`SEQUENTIAL` behaviour (rotation and placement in one tick) with the validation
-on and with the explicit packet order described above.
+client placing blocks under the player. What it fixes is narrower — the
+placement goes out on a later tick than the rotation, out-of-reach and unlit
+placements are dropped instead of sent, and a lost placement is repeated instead
+of leaving a hole.
 
-The order matters because Scaffold runs on `PlayerTickEndEvent`
-(`LocalPlayerPreUpdateMixin`, injected at `AbstractClientPlayer#tick`), before
-`LocalPlayer#sendPosition` of the same tick. A rotation submitted from that
-handler is only serialized **after** the handler returns, i.e. after the use
-packet sent inside it. The port therefore sends the angles explicitly, in this
-order:
+### Order of the packets
 
-1. the block is put into the hand (`AutoSwitch` swap / carried-item packet),
-2. the rotation packet (`ServerboundMovePlayerPacket.PosRot`),
-3. the use packet.
+`Scaffold` runs on `PlayerTickEndEvent` (`LocalPlayerPreUpdateMixin`, injected at
+`AbstractClientPlayer#tick`), and `LocalPlayer#sendPosition` runs later in the
+same tick. The port keeps CatLean's order and does **not** send a `PosRot` of its
+own: the rotation is submitted through `RotationManager.updateExact` and leaves
+with the vanilla position packet of the tick. An extra `PosRot` would put two
+position packets into one tick, which server-side movement checks read as a
+teleport and answer with a setback - the placement then lands where the player
+is no longer standing, and the bridge loses its blocks after the first one or
+two. `PosRot` is only sent where CatLean sends it: `GrimSilent` around the use
+packet, and the camera restore after the placement.
 
-On `SEQUENTIAL` and `VANILLA` that is done inside `submitTellyPlacement`; a
-`VANILLA` placement additionally claims the visible rotation so the head is
-where the packet says. `GRIM` keeps its own order: the rotation is claimed now
-and the use packet is deferred to the next player update, when this tick's
-movement packet has already carried it. `CUSTOM` places one tick after the
-rotation by default (`CustomPlaceDelay = 1`); with `0` it uses the same explicit
-order as `SEQUENTIAL`.
+`CUSTOM` places on the tick after the rotation (`CustomPlaceDelay = 1`; `0`
+behaves the same, the rotation has to be on the wire first), so a placement
+never shares its tick with the rotation that justifies it. Its rotation claim is
+released whenever the target disappears, otherwise priority 41 would stay owned
+and later placements would be refused.
 
 The only service-boundary differences to the CatLean original (all marked
 in the code): CatLean's RotationManager actions run through SkyCore's
