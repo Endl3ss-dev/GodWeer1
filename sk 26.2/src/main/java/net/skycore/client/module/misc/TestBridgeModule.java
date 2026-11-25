@@ -1,5 +1,7 @@
 package net.skycore.client.module.misc;
 
+import com.mojang.blaze3d.pipeline.RenderTarget;
+import com.mojang.blaze3d.platform.NativeImage;
 import java.io.BufferedReader;
 import java.io.BufferedWriter;
 import java.io.IOException;
@@ -423,7 +425,14 @@ public final class TestBridgeModule extends ClientModule {
          Path out = minecraft.gameDirectory.toPath()
             .resolve("testbridge").resolve("shots").resolve(name + ".png");
          Files.createDirectories(out.getParent());
-         try (var image = Screenshot.takeScreenshot(minecraft.getMainRenderTarget())) {
+         // The main render target moved from Minecraft to GameRenderer in the
+         // 26.2 mappings; every other renderer in the client reads it the same
+         // way (see AcquireViewHelper / AddQuadHelper).
+         RenderTarget target = minecraft.gameRenderer.mainRenderTarget();
+         if (target == null) {
+            return "ERR screenshot failed: no render target";
+         }
+         try (NativeImage image = Screenshot.takeScreenshot(target)) {
             image.writeToFile(out);
          }
          return "OK " + out;
