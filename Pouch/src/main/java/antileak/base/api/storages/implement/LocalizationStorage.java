@@ -91,7 +91,10 @@ public class LocalizationStorage {
         add("Только при Aura", "Only with Aura", "Тільки з Aura");
         add("Только с аурой", "Only with Aura", "Тільки з аурою");
         add("Режим кликов", "Click mode", "Режим кліків");
-        add("Ударов за тик", "Attacks per tick", "Ударів за тик");
+        add("Мин. ударов", "Min attacks", "Мін. ударів");
+        add("Макс. ударов", "Max attacks", "Макс. ударів");
+        add("Мин. CPS", "Min CPS", "Мін. CPS");
+        add("Макс. CPS", "Max CPS", "Макс. CPS");
         add("Анти-кик", "Anti kick", "Анти-кік");
         add("Задержка анти-кика", "Anti kick delay", "Затримка анти-кіка");
         add("Правая рука X", "Right Hand X", "Права рука X");

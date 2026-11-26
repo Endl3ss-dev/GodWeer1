@@ -486,6 +486,7 @@ public class Aura extends Module {
         }
 
         boolean burst = usesBurstClicks();
+        int swingsSent = 0;
         if (!attacked) {
             if (burst) {
                 // Пачка 1.8: N ударов уходят одним пакетом, перезарядка оружия не участвует.
@@ -493,20 +494,26 @@ public class Aura extends Module {
                 for (int i = 0; i < swings; i++) {
                     mc.interactionManager.attackEntity(mc.player, target);
                     mc.player.swingHand(Hand.MAIN_HAND);
+                    swingsSent++;
                 }
             } else {
                 mc.interactionManager.attackEntity(mc.player, target);
                 mc.player.swingHand(Hand.MAIN_HAND);
+                swingsSent = 1;
             }
         } else {
+            // Разбиение щита топором занимает пачку целиком: отдельный удар сверху не нужен.
             mc.player.swingHand(Hand.MAIN_HAND);
+            if (burst) {
+                swingsSent = Math.max(1, this.burst.attacks());
+            }
         }
 
         // Прежний темп 1.9 держится на ванильной перезарядке и 467 мс троттлинге,
-        // режим 1.8 — на пачках и окне анти-кика.
+        // режим 1.8 — на пачках, окне анти-кика и границах CPS.
         long now = System.nanoTime();
         if (burst) {
-            this.burst.recordBurst(now, burstTick);
+            this.burst.recordBurst(now, burstTick, swingsSent);
         } else {
             cps = System.currentTimeMillis() + ATTACK_DELAY_MS;
         }
