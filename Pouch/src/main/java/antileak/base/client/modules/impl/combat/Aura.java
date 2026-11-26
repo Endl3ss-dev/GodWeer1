@@ -51,6 +51,7 @@ import antileak.base.api.utils.rotate.MultipointUtils;
 import antileak.base.api.utils.rotate.Rotation;
 import antileak.base.api.utils.rotate.RotationUtils;
 import antileak.base.client.modules.Module;
+import antileak.base.client.modules.impl.combat.components.AuraBurst;
 import antileak.base.client.modules.impl.combat.components.RotationsSystem;
 import antileak.base.client.modules.impl.combat.components.interpolation.BestPoint;
 import antileak.base.client.modules.impl.combat.components.gcd.GCDUtil;
@@ -71,6 +72,9 @@ import static net.minecraft.util.math.MathHelper.wrapDegrees;
 public class Aura extends Module {
 
     public static Aura INSTANCE = new Aura();
+
+    /** Прежняя пауза между ударами режима 1.9, мс. */
+    private static final long ATTACK_DELAY_MS = 467L;
 
     public final ModeSetting rotationType = new ModeSetting("Ротация", "SpookyTime",
             "SpookyTime");
@@ -96,6 +100,9 @@ public class Aura extends Module {
     private final ModeSetting priority = new ModeSetting("Приоритет", "Дистанция", "Дистанция", "Здоровье", "Угол", "Никакой");
     private final ModeSetting moveFix = new ModeSetting("Коррекция", "Свободная", "Свободная");
 
+    // Пачки 1.8 (в SkyCore — «1.8 NoDelay») переносятся из AttackAuraModule/AuraBurst.
+    private final AuraBurst burst = new AuraBurst();
+
     @Getter
     private LivingEntity target;
     @Getter
@@ -109,7 +116,10 @@ public class Aura extends Module {
     private final SpookyTimeRots spookyTimeRots = new SpookyTimeRots();
     private final TimerUtils backTimer = new TimerUtils();
 
+    /** Прежний 467 мс троттлинг ударов режима 1.9; в 1.8 темп задают пачки {@link AuraBurst}. */
     private long cps = 0;
+    /** Номер игрового тика: пачка 1.8 уходит не чаще одного раза за тик. */
+    private int burstTick = 0;
     @Getter
     private boolean needSprintReset = false;
     private boolean sprintResetDone = false;
@@ -129,6 +139,7 @@ public class Aura extends Module {
         super("AttackAura", "Автоматически наводиться и бьёт таргета", ModuleCategory.COMBAT);
         addSettings(rotationType, targets, range, aimRange, elytraAimRange, smartCrit, sprintReset,
                 attackOnEating, throughWalls, raycast, unpressShield, breakShield, clientLook, moveFix, priority);
+        addSettings(burst.settings);
     }
     @Native
     @EventLink
@@ -172,7 +183,6 @@ public class Aura extends Module {
         if (mc.player == null || mc.world == null || target == null || moveFix.is("Нет")) {
             return;
         }
-
         float correctionYaw = getCorrectionYaw();
         event.setYaw(correctionYaw, mc.player.getYaw());
     }
@@ -230,29 +240,12 @@ public class Aura extends Module {
     }
     @Native
     private void processAttack() {
+        long now = System.nanoTime();
+        burstTick++;
         updateTarget();
 
         if (target != null) {
-            if (shouldAttack() && cps <= System.currentTimeMillis()) {
-                if (attackOnEating.isState() && mc.player.isUsingItem()) return;
-
-                if (sprintReset.isState() && mc.player.isSprinting() && !sprintResetDone) {
-                    needSprintReset = true;
-                    return;
-                }
-
-                if (sprintReset.isState() && sprintResetDone && sprintResetTicks < 1) {
-                    return;
-                }
-
-                if (isBypassRotationActive() && !prepareBypassAttack()) {
-                    return;
-                }
-                attack();
-                resetBypassAttack();
-                sprintResetDone = false;
-                sprintResetTicks = 0;
-            }
+            tryAttack(now);
         } else {
             cps = System.currentTimeMillis();
             backTimer.reset();
@@ -263,8 +256,41 @@ public class Aura extends Module {
             sprintResetDone = false;
             sprintResetTicks = 0;
             ticksToAttack = 0;
+            burst.reset();
             resetBypassAttack();
         }
+    }
+
+    /**
+     * Полная цепочка проверок и сама атака. В режиме 1.8 удар не ждёт ванильной перезарядки,
+     * поэтому пачка уходит одним пакетом, а дистанция, луч, профиль цели и сброс спринта
+     * проверяются на каждой попытке.
+     */
+    private boolean tryAttack(long now) {
+        if (target == null || !isEnable() || !shouldAttack() || !burstReady(now)) {
+            return false;
+        }
+
+        if (attackOnEating.isState() && mc.player.isUsingItem()) return false;
+
+        if (sprintReset.isState() && mc.player.isSprinting() && !sprintResetDone) {
+            needSprintReset = true;
+            return false;
+        }
+
+        if (sprintReset.isState() && sprintResetDone && sprintResetTicks < 1) {
+            return false;
+        }
+
+        if (isBypassRotationActive() && !prepareBypassAttack()) {
+            return false;
+        }
+
+        attack();
+        resetBypassAttack();
+        sprintResetDone = false;
+        sprintResetTicks = 0;
+        return true;
     }
 
     public void Rotate() {
@@ -287,7 +313,6 @@ public class Aura extends Module {
         if (mc.player == null || target == null || moveFix.is("Нет")) {
             return;
         }
-
         if (moveFix.is("Свободная")) {
             MovingUtil.fixMovementFree(event);
         }
@@ -460,15 +485,31 @@ public class Aura extends Module {
             attacked = shieldBreak(player);
         }
 
+        boolean burst = usesBurstClicks();
         if (!attacked) {
-            mc.interactionManager.attackEntity(mc.player, target);
+            if (burst) {
+                // Пачка 1.8: N ударов уходят одним пакетом, перезарядка оружия не участвует.
+                int swings = this.burst.attacks();
+                for (int i = 0; i < swings; i++) {
+                    mc.interactionManager.attackEntity(mc.player, target);
+                    mc.player.swingHand(Hand.MAIN_HAND);
+                }
+            } else {
+                mc.interactionManager.attackEntity(mc.player, target);
+                mc.player.swingHand(Hand.MAIN_HAND);
+            }
+        } else {
+            mc.player.swingHand(Hand.MAIN_HAND);
         }
 
-        mc.player.swingHand(Hand.MAIN_HAND);
-
-        long cooldown = 467L;
-
-        cps = System.currentTimeMillis() + cooldown;
+        // Прежний темп 1.9 держится на ванильной перезарядке и 467 мс троттлинге,
+        // режим 1.8 — на пачках и окне анти-кика.
+        long now = System.nanoTime();
+        if (burst) {
+            this.burst.recordBurst(now, burstTick);
+        } else {
+            cps = System.currentTimeMillis() + ATTACK_DELAY_MS;
+        }
         ticksToAttack = 10;
         attackTimer.reset();
     }
@@ -580,7 +621,8 @@ public class Aura extends Module {
     }
 
     private boolean shouldAttack() {
-        if (mc.player.getAttackCooldownProgress(1.5f) < IdealHitUtils.getAICooldown()) {
+        // Режим 1.8 задаёт темп пачками: перезарядка оружия и криты не проверяются.
+        if (!usesClickClock() && mc.player.getAttackCooldownProgress(1.5f) < IdealHitUtils.getAICooldown()) {
             return false;
         }
         EntityHitResult result = getAttackRaycastResult();
@@ -597,8 +639,23 @@ public class Aura extends Module {
             Vec3d checkPoint = distanceCheck > 3 ? BestPoint.getNearestPoint(target) : target.getBoundingBox().getCenter();
             if (checkPoint == null) checkPoint = MultipointUtils.getClosestPoint(target);
             if (mc.player.getEyePos().distanceTo(checkPoint) > getEffectiveRange()) return false;
-            return IdealHitUtils.canCritical(target);
+            return usesClickClock() || IdealHitUtils.canCritical(target);
         }
+    }
+
+    /** Включены пачки 1.8 (в SkyCore — «1.8 NoDelay»). */
+    public boolean usesBurstClicks() {
+        return this.burst.usesBurst();
+    }
+
+    /** Удары 1.8 не ждут перезарядки оружия и окна крита. */
+    public boolean usesClickClock() {
+        return usesBurstClicks();
+    }
+
+    /** Темп удара: 1.8 — пачки по тикам, 1.9 — прежний троттлинг поверх ванильной перезарядки. */
+    private boolean burstReady(long now) {
+        return usesBurstClicks() ? this.burst.ready(now, burstTick) : cps <= System.currentTimeMillis();
     }
 
     public int getWhiteRiseTicksToAttack() {
@@ -643,6 +700,7 @@ public class Aura extends Module {
         sprintResetDone = false;
         sprintResetTicks = 0;
         ticksToAttack = 0;
+        burst.reset();
         resetBypassAttack();
     }
 
@@ -655,6 +713,7 @@ public class Aura extends Module {
         sprintResetDone = false;
         sprintResetTicks = 0;
         ticksToAttack = 0;
+        burst.reset();
         resetBypassAttack();
         if (mc.player != null) {
             currentRotations = new Vec2f(mc.player.getYaw(), mc.player.getPitch());
