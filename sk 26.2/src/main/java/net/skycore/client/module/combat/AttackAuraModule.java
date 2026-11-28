@@ -3,6 +3,7 @@ package net.skycore.client.module.combat;
 import java.util.Comparator;
 import net.minecraft.client.Minecraft;
 import net.minecraft.client.player.LocalPlayer;
+import net.minecraft.client.renderer.entity.state.AvatarRenderState;
 import net.minecraft.core.BlockPos;
 import net.minecraft.core.Direction;
 import net.minecraft.network.protocol.game.ServerboundPlayerActionPacket;
@@ -52,6 +53,7 @@ import net.skycore.client.module.ClientModule;
 import net.skycore.client.module.ModuleCategory;
 import net.skycore.client.module.ModuleManager;
 import net.skycore.client.module.movement.AirStuckModule;
+import net.skycore.client.module.movement.AutoJumpModule;
 import net.skycore.client.setting.Setting;
 import net.skycore.client.setting.NumberSetting;
 import net.skycore.client.setting.ModeSetting;
@@ -101,6 +103,8 @@ public final class AttackAuraModule extends ClientModule {
    private final AuraBurst burst = new AuraBurst();
    private final AuraSprint sprintReset = new AuraSprint();
    private final AuraCameraJitter jitter = new AuraCameraJitter();
+   private final AuraFakeRat fakeRat = new AuraFakeRat();
+   private final AuraJumpPeak jumpPeak = new AuraJumpPeak();
    private final BooleanSetting throughWalls;
    private int skycoreTick;
 
@@ -166,7 +170,7 @@ public final class AttackAuraModule extends ClientModule {
    }
 
    public AttackAuraModule() {
-      super("Aura", "Attacks nearby targets with silent aim, 1.8 bursts and sprint resets", ModuleCategory.COMBAT);
+      super("Aura", "Attacks nearby targets with silent aim, retained 1.8 bursts, and sprint resets", ModuleCategory.COMBAT);
       this.rotationBehavior = this.add(new ModeSetting("Rotation behavior", "Smooth", "Smooth", "Snaps"));
       this.addSettings(this.clicks.settings);
       this.addSettings(this.burst.settings);
@@ -194,6 +198,7 @@ public final class AttackAuraModule extends ClientModule {
       this.hitThroughDoors = this.add(new BooleanSetting("Hit through doors", false));
       this.clientLook = this.add(new BooleanSetting("Client Look", false));
       this.addSettings(this.jitter.settings);
+      this.addSettings(this.fakeRat.settings);
       this.rotations = new AuraRotation();
       this.canCrit = true;
       this.lastRotateTick = -1;
@@ -233,6 +238,14 @@ public final class AttackAuraModule extends ClientModule {
    /** Living-only view for TargetHUD, ESP, ElytraTarget and other existing consumers. */
    public LivingEntity currentTarget() {
       return this.isEnabled() && this.target instanceof LivingEntity living ? living : null;
+   }
+
+   public boolean hasValidTargetForAutoJump() {
+      Minecraft mc = Minecraft.getInstance();
+      LocalPlayer player = mc.player;
+      LivingEntity living = this.currentTarget();
+      return player != null && mc.level != null && !mc.isPaused() && player.isAlive()
+         && living != null && this.isValidTarget(living);
    }
 
    private boolean shouldBlockAttack(LocalPlayer player) {
@@ -309,15 +322,7 @@ public final class AttackAuraModule extends ClientModule {
       return this.inputUnavailable(player, mc) || !RotationManager.canClaim(elytra ? 10 : ROCKSTAR_PRIORITY);
    }
 
-   private boolean pauseForClickGap(long now) {
-      if (!this.clicks.isTemporarilyPaused(now)) return false;
-      this.hitImminent = false;
-      this.releaseRotationControl();
-      return true;
-   }
-
    private void updateRotation(boolean ready, AimPhase phase, long now) {
-      if (this.pauseForClickGap(now)) return;
       Minecraft mc = Minecraft.getInstance();
       LocalPlayer player = mc.player;
       if (player == null || mc.level == null || this.target == null) {
@@ -461,10 +466,13 @@ public final class AttackAuraModule extends ClientModule {
    private void updateBeforePhysics(PlayerTickEndEvent playerTickEndEvent) {
       this.skycoreTick++;
       if (this.isEnabled()) {
-         if (this.pauseForClickGap(System.nanoTime())) return;
          if (!CrystalAuraModule.INSTANCE.isRotating()) {
             Minecraft instance = Minecraft.getInstance();
             LocalPlayer player = playerTickEndEvent.player();
+            if (player != null && instance.level != null) {
+               this.jumpPeak.observe(player.tickCount, player.getDeltaMovement().y, player.onGround(), player.fallDistance,
+                  this.isValidAttackCondition());
+            }
             if (player == null || instance.level == null) {
                this.resetState();
             } else if (this.disableOnDeath.get() && !player.isAlive()) {
@@ -734,8 +742,7 @@ public final class AttackAuraModule extends ClientModule {
    private boolean updateAttack() {
       Minecraft instance = Minecraft.getInstance();
       LocalPlayer player = instance.player;
-      if (this.pauseForClickGap(System.nanoTime())
-         || !this.isEnabled()
+      if (!this.isEnabled()
          || player == null
          || instance.level == null
          || instance.gameMode == null
@@ -755,36 +762,27 @@ public final class AttackAuraModule extends ClientModule {
          instance.gameMode.releaseUsingItem(player);
       }
 
-      boolean cps = this.usesCpsClicks();
       boolean burst = this.usesBurstClicks();
       // An axe swap per swing makes no sense inside a burst, so the shield breaker stays single-hit only.
-      boolean axeHit = !burst && this.breakShield.get() && this.target instanceof Player player2
-         && player2.isBlocking() && this.breakShieldPlayer(player, player2);
-      // A shield-breaking axe swing spends the CPS click; legacy mode keeps its follow-up hit.
-      if (!axeHit || !cps) {
-         int swings = burst ? this.burst.attacks() : 1;
-         for (int i = 0; i < swings; i++) {
-            // Vanilla clears the sprint flag on a knockback hit, so the reset has to precede every swing.
-            this.sprintReset.beforeAttack(player);
-            instance.gameMode.attack(player, this.target);
-            player.swing(InteractionHand.MAIN_HAND);
-            this.attackCounter++;
-         }
+      if (!burst && this.breakShield.get() && this.target instanceof Player player2 && player2.isBlocking()) {
+         this.breakShieldPlayer(player, player2);
+      }
+      int swings = burst ? this.burst.attacks() : 1;
+      for (int i = 0; i < swings; i++) {
+         // Vanilla clears the sprint flag on a knockback hit, so the reset has to precede every swing.
+         this.sprintReset.beforeAttack(player);
+         instance.gameMode.attack(player, this.target);
+         player.swing(InteractionHand.MAIN_HAND);
+         this.attackCounter++;
       }
       long now = System.nanoTime();
-      if (burst) {
-         this.burst.recordBurst(now, this.skycoreTick);
-      } else if (cps) {
-         this.clicks.recordClick(now);
-      } else {
-         this.clicks.reset();
-      }
+      if (burst) this.burst.recordBurst(now, this.skycoreTick);
       this.jitter.recordHit(now);
       this.lastAttackTime = System.currentTimeMillis();
       this.skycoreNextAttackTick = this.skycoreTick + 1;
       this.hitImminent = false;
+      if (this.jumpPeak.isAtPeak()) this.jumpPeak.consumePeak();
       this.rotations.onAttack();
-      if (cps) this.pauseForClickGap(now);
       return true;
    }
 
@@ -846,7 +844,6 @@ public final class AttackAuraModule extends ClientModule {
          Minecraft instance = Minecraft.getInstance();
          LocalPlayer player = instance.player;
          if (player != null && instance.level != null) {
-            if (this.pauseForClickGap(System.nanoTime())) return;
             if (this.movementCorrection.is("V2")) {
                if (this.ownsActiveAim(player) && !this.inputUnavailable(player, instance) && this.isValidTarget(this.target)) {
                   // RotationController already applies the task yaw to LocalPlayer for travel and jump physics.
@@ -898,7 +895,6 @@ public final class AttackAuraModule extends ClientModule {
    public void onGameUpdate() {
       if (this.isEnabled() && Minecraft.getInstance().player != null && this.target != null) {
          long now = System.nanoTime();
-         if (this.pauseForClickGap(now)) return;
          this.updateRotation(this.usesClickClock() ? this.canAttack() : this.hitImminent, AimPhase.ATTACK_SLOT, now);
          this.updateAttack();
       } else {
@@ -984,17 +980,13 @@ public final class AttackAuraModule extends ClientModule {
       return this.bypassWalls.get();
    }
 
-   public boolean usesCpsClicks() {
-      return this.clicks.usesCps();
-   }
-
    public boolean usesBurstClicks() {
       return this.clicks.usesBurst();
    }
 
-   /** CPS clicks and 1.8 NoDelay bursts both ignore the vanilla attack cooldown and crit gating. */
+   /** The retained 1.8 burst mode ignores vanilla cooldown and critical gating. */
    public boolean usesClickClock() {
-      return this.usesCpsClicks() || this.usesBurstClicks();
+      return this.usesBurstClicks();
    }
 
    /** Sampled only by the local render camera, never by ray checks or the rotation controller. */
@@ -1009,6 +1001,18 @@ public final class AttackAuraModule extends ClientModule {
       boolean aiming = this.jitter.whileAiming.get() && this.lastRotateTick != -1 && ticksSinceAim >= 0 && ticksSinceAim <= 1
          && this.ownsActiveAim(mc.player) && this.isValidTarget(this.target) && !TargetPearlModule.isRotationActive() && !CrystalAuraModule.INSTANCE.isRotating();
       return this.jitter.sample(System.nanoTime(), aiming);
+   }
+
+   /** Applies FakeRat to an already-extracted local render state only; the player and packet rotations are untouched. */
+   public void applyFakeRatToRenderState(AvatarRenderState state, boolean thirdPerson) {
+      Minecraft mc = Minecraft.getInstance();
+      if (state == null || !thirdPerson || !this.isEnabled() || mc.player == null || mc.level == null || mc.isPaused() || !mc.player.isAlive()) {
+         this.fakeRat.reset();
+         return;
+      }
+      AuraFakeRat.RenderRotation rotation = this.fakeRat.sample(System.nanoTime(), state.yRot, state.xRot);
+      if (rotation.applyYaw()) state.yRot = rotation.yaw();
+      if (rotation.applyPitch()) state.xRot = rotation.pitch();
    }
 
    public boolean isHitImminent() {
@@ -1041,49 +1045,62 @@ public final class AttackAuraModule extends ClientModule {
    public boolean canAttack() {
       Minecraft instance = Minecraft.getInstance();
       LocalPlayer player = instance.player;
-      if (player == null || this.pauseForClickGap(System.nanoTime())) {
+      if (player == null) {
          return false;
-      } else if (this.usesCpsClicks()) {
-         // 1.8 changes the attack clock, not the acquisition range or eligibility of a target.
-         return this.clicks.ready(System.nanoTime()) && this.isWithinAttackRange(this.target) && !instance.isPaused()
-            && !this.isManualBlockPlacement(player, instance) && !CrystalAuraModule.INSTANCE.isRotating() && !TargetPearlModule.isRotationActive();
-      } else if (this.usesBurstClicks()) {
-         // 1.8 NoDelay: one burst per tick, spaced by Anti Kick; the cooldown and crit rules are skipped.
+      }
+      if (this.usesBurstClicks()) {
+         // The renamed 1.8 mode retains the old one-burst-per-tick and Anti Kick clock.
          return this.burst.ready(System.nanoTime(), this.skycoreTick) && this.isWithinAttackRange(this.target) && !instance.isPaused()
             && !this.isManualBlockPlacement(player, instance) && !CrystalAuraModule.INSTANCE.isRotating() && !TargetPearlModule.isRotationActive();
-      } else if (ElytraTargetModule.INSTANCE.isEnabled() && player.isFallFlying() && this.target != null) {
-         return this.isWithinAttackRange(this.target) && player.getAttackStrengthScale(1.5F) > 0.92F && this.skycoreTick >= this.skycoreNextAttackTick;
-      } else {
-         float value = this.tpsSync.get() ? 1.0F : 1.5F;
-         int attackStrengthScale = this.millisSinceAttack() >= ATTACK_DELAY_MS && player.getAttackStrengthScale(value) > this.getAICooldown() ? 1 : 0;
-         // Deflecting a projectile cannot crit; the normal cooldown, reach and ray checks still apply.
-         if (this.target instanceof Projectile) {
-            return attackStrengthScale != 0;
-         }
-         int value2 = !instance.options.keyJump.isDown() && player.onGround() ? 0 : 1;
-         if (CriticalHelper.isJumpBlockedByCeiling()) {
-            return (attackStrengthScale != 0);
-         } else if (AirStuckModule.INSTANCE.isFrozen()) {
-            return (attackStrengthScale != 0);
-         } else {
-            return this.packetCriticalsEnabled()
-               ? attackStrengthScale != 0
-                  && (
-                     !this.onlyCriticals.get()
-                        || !this.isValidAttackCondition()
-                        || this.smartCriticals.get() && value2 == 0
-                        || this.canPlayerCritical()
-                        || CriticalsModule.INSTANCE.allowsAuraCritical(player)
-                  )
-               : attackStrengthScale != 0
-                  && (
-                     !this.onlyCriticals.get()
-                        || !this.isValidAttackCondition()
-                        || this.smartCriticals.get() && value2 == 0
-                        || this.canPlayerCritical() && this.canCrit
-                  );
-         }
       }
+      if (ElytraTargetModule.INSTANCE.isEnabled() && player.isFallFlying() && this.target != null) {
+         return this.isWithinAttackRange(this.target) && player.getAttackStrengthScale(1.5F) > 0.92F && this.skycoreTick >= this.skycoreNextAttackTick;
+      }
+
+      float value = this.tpsSync.get() ? 1.0F : 1.5F;
+      int attackStrengthScale = this.millisSinceAttack() >= ATTACK_DELAY_MS && player.getAttackStrengthScale(value) > this.getAICooldown() ? 1 : 0;
+      // Deflecting a projectile cannot crit; the normal cooldown, reach and ray checks still apply.
+      if (this.target instanceof Projectile) {
+         return attackStrengthScale != 0;
+      }
+      if (this.shouldWaitForJumpPeak(player)) {
+         // The apex is the single 1.12 hit window; Only crits does not veto this explicitly requested hit.
+         return attackStrengthScale != 0 && this.jumpPeak.isAtPeak();
+      }
+      int value2 = !instance.options.keyJump.isDown() && player.onGround() ? 0 : 1;
+      if (CriticalHelper.isJumpBlockedByCeiling()) {
+         return attackStrengthScale != 0;
+      } else if (AirStuckModule.INSTANCE.isFrozen()) {
+         return attackStrengthScale != 0;
+      } else {
+         return this.packetCriticalsEnabled()
+            ? attackStrengthScale != 0
+               && (
+                  !this.onlyCriticals.get()
+                     || !this.isValidAttackCondition()
+                     || this.smartCriticals.get() && value2 == 0
+                     || this.canPlayerCritical()
+                     || CriticalsModule.INSTANCE.allowsAuraCritical(player)
+               )
+            : attackStrengthScale != 0
+               && (
+                  !this.onlyCriticals.get()
+                     || !this.isValidAttackCondition()
+                     || this.smartCriticals.get() && value2 == 0
+                     || this.canPlayerCritical() && this.canCrit
+               );
+      }
+   }
+
+   private boolean shouldWaitForJumpPeak(LocalPlayer player) {
+      if (!this.clicks.mode.is("1.12") || !(this.target instanceof LivingEntity)) {
+         return false;
+      }
+      if (this.jumpPeak.isJumpArcActive()) {
+         return true;
+      }
+      return AutoJumpModule.INSTANCE.isEnabled() && player.onGround() && this.hasValidTargetForAutoJump()
+         && this.isValidAttackCondition() && !CriticalHelper.isJumpBlockedByCeiling();
    }
 
    private void bypassBlocks(LocalPlayer player, LivingEntity entity) {
@@ -1135,9 +1152,10 @@ public final class AttackAuraModule extends ClientModule {
    }
 
    private void resetClickEffects() {
-      this.clicks.reset();
       this.burst.reset();
       this.jitter.reset();
+      this.fakeRat.reset();
+      this.jumpPeak.reset();
    }
 
    /** Missing keys in an older profile must not inherit the previous profile's live effects or Rockstar modes. */
@@ -1150,6 +1168,7 @@ public final class AttackAuraModule extends ClientModule {
       for (Setting<?> option : this.burst.settings) option.reset();
       for (Setting<?> option : this.sprintReset.settings) option.reset();
       for (Setting<?> option : this.jitter.settings) option.reset();
+      for (Setting<?> option : this.fakeRat.settings) option.reset();
    }
 
    private void resetState() {

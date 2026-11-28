@@ -5,7 +5,7 @@ import net.skycore.client.setting.NumberSetting;
 import net.skycore.client.setting.Setting;
 
 /**
- * 1.8 NoDelay attack clock, ported from MotherHack Aura
+ * Retained 1.8 burst clock, ported from MotherHack Aura
  * (MotherHack/src/main/java/fun/motherhack/modules/impl/combat/Aura.java: attacksPerTick,
  * antiKick, antiKickDelay). A burst is handed to the module once per game tick, the vanilla
  * attack cooldown is never consulted, and Anti Kick spaces bursts out in wall-clock time.
