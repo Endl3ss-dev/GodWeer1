@@ -8,7 +8,9 @@ import net.minecraft.client.renderer.entity.state.AvatarRenderState;
 import net.minecraft.util.Mth;
 import net.minecraft.world.entity.Avatar;
 import net.minecraft.world.phys.Vec3;
+import net.skycore.client.SkycoreClient;
 import net.skycore.client.combat.RotationController;
+import net.skycore.client.module.combat.AttackAuraModule;
 import org.spongepowered.asm.mixin.Mixin;
 import org.spongepowered.asm.mixin.injection.At;
 import org.spongepowered.asm.mixin.injection.Inject;
@@ -53,6 +55,9 @@ public abstract class AvatarRendererFixElytraFlyingTwistMixin {
                }
             }
          }
+         AttackAuraModule aura = SkycoreClient.modules().get(AttackAuraModule.class).orElse(null);
+         boolean thirdPerson = instance.options != null && !instance.options.getCameraType().isFirstPerson();
+         if (aura != null) aura.applyFakeRatToRenderState(avatarRenderState, thirdPerson);
       }
    }
 }

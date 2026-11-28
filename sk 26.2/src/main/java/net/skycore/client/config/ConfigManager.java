@@ -239,7 +239,7 @@ public final class ConfigManager {
                if (asJsonObject2 != null) {
                   if (isAuraModule(clientModule)) {
                      migrateAuraTargets(asJsonObject2);
-                     migrateAuraClickPause(asJsonObject2);
+                     AuraClickModeMigration.migrate(asJsonObject2);
                   }
                   for (Setting setting : clientModule.getSettings()) {
                      JsonElement name2 = asJsonObject2.get(setting.getName());
@@ -695,31 +695,6 @@ public final class ConfigManager {
       settings.add("Standard targets", standard);
    }
 
-   /** Preserve the old fixed pause when loading profiles written before the pause became a range. */
-   private static void migrateAuraClickPause(JsonObject settings) {
-      JsonElement legacy = auraSetting(settings, "Pause duration");
-      if (legacy == null) {
-         return;
-      }
-      if (auraSetting(settings, "Min pause duration") == null && auraSetting(settings, "Max pause duration") == null) {
-         settings.add("Min pause duration", legacy.deepCopy());
-         settings.add("Max pause duration", legacy.deepCopy());
-      }
-   }
-
-   private static JsonElement auraSetting(JsonObject settings, String englishName) {
-      JsonElement direct = settings.get(englishName);
-      if (direct != null) {
-         return direct;
-      }
-      for (Entry<String, JsonElement> entry : settings.entrySet()) {
-         if (englishName.equalsIgnoreCase(Translations.english(entry.getKey()))) {
-            return entry.getValue();
-         }
-      }
-      return null;
-   }
-
    private static JsonElement mergedNoRenderConfig(JsonObject json, JsonElement jsonElement) {
       JsonObject asJsonObject = json.getAsJsonObject("Removals");
       JsonObject asJsonObject2 = jsonElement != null && jsonElement.isJsonObject() ? jsonElement.getAsJsonObject() : null;
@@ -845,6 +820,9 @@ public final class ConfigManager {
 
          for (Setting setting : clientModule.getSettings()) {
             json3.add(setting.getName(), this.writeSetting(setting));
+         }
+         if (isAuraModule(clientModule)) {
+            json3.addProperty(AuraClickModeMigration.SCHEMA_KEY, AuraClickModeMigration.CURRENT_SCHEMA);
          }
 
          json2.add("settings", json3);
